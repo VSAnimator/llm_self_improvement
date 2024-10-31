@@ -33,7 +33,7 @@ async def test_real_llm_action_selection(test_agent):
         Action("Look at the counter"),
         Action("Leave the kitchen")
     ]
-    selected_action = await test_agent.select_action(state, actions)
+    selected_action = await test_agent.act(state, actions)
     assert selected_action in actions
 
 @pytest.mark.asyncio
@@ -44,7 +44,7 @@ async def test_real_llm_complex_state(test_agent):
         Action("Make toast"),
         Action("Pour a glass of milk")
     ]
-    selected_action = await test_agent.select_action(state, actions)
+    selected_action = await test_agent.act(state, actions)
     assert selected_action in actions
     
 @pytest.mark.asyncio
@@ -61,7 +61,7 @@ async def test_real_llm_memory_usage(test_agent):
     ]
     
     for i in range(len(states)):
-        selected_action = await test_agent.select_action(states[i], [actions[i]])
+        selected_action = await test_agent.act(states[i], [actions[i]])
         assert selected_action == actions[i]
     
     assert len(test_agent.state_history) == 3
@@ -72,7 +72,7 @@ async def test_real_llm_with_reset(test_agent):
     state = State("You are in the kitchen")
     action = Action("Look around")
     
-    await test_agent.select_action(state, [action])
+    await test_agent.act(state, [action])
     assert len(test_agent.state_history) == 1
     
     test_agent.reset()

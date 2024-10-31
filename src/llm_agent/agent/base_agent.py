@@ -5,6 +5,9 @@ from logging import getLogger
 
 from ..env.base_env import State, Action
 from ..llm.lite_llm import LiteLLMWrapper
+from ..agent.generate_plan import generate_plan
+from ..agent.choose_action import select_action
+from ..agent.trajectory_reflexion import trajectory_reflexion
 
 logger = getLogger(__name__)
 
@@ -27,75 +30,52 @@ class BaseAgent:
         # Keep track of recent states and actions
         self.state_history: List[State] = []
         self.action_history: List[Action] = []
-        
-    async def select_action(self, state: State, available_actions: List[Action]) -> Action:
+        self.plan: Optional[str] = None
+        self.reflexions: Optional[List[str]] = None
+
+    async def act(self, state: State, available_actions: List[Action]) -> Tuple[Action, List[Dict]]:
         """Select an action from available actions given the current state"""
-        # Add state to history
+        # Generate plan
+        plan = []
+        if self.config.get('generate_plan', False) and len(self.state_history) == 0:
+            plan = await generate_plan(state, self.llm)
+
+        # Create a conversation with states and actions so far
+        conversation = []
+        # Add plan to conversation if it exists
+        if plan:
+            conversation.append({"role": "assistant", "content": plan})
+        for state in self.state_history:
+            conversation.append({"role": "user", "content": str(state)})
+        for action in self.action_history:
+            conversation.append({"role": "assistant", "content": str(action)})
+        
+        # Select action
+        action = await select_action(conversation, state, available_actions, self.llm, self.config)
+
+        # Append state, action to history
         self.state_history.append(state)
-        self.state_history = self.state_history[-self.memory_size:]
-            
-        # Format prompt with state and action info
-        prompt = self._format_prompt(state, available_actions)
-        
-        # Get LLM response
-        for _ in range(self.max_retries):
-            try:
-                # Await the response
-                response = await self.llm.generate_chat([{"role": "user", "content": prompt}])
-                action = self._parse_action(response, available_actions)
-                if action is not None:
-                    self.action_history.append(action)
-                    self.action_history = self.action_history[-self.memory_size:]
-                    return action
-            except Exception as e:
-                logger.error(f"Error selecting action: {str(e)}")
-                
-        # If all retries failed, return first available action
-        logger.warning("Failed to select action, defaulting to first available")
-        action = available_actions[0]
         self.action_history.append(action)
+
+        # Enforce memory size limit
+        self.state_history = self.state_history[-self.memory_size:]
         self.action_history = self.action_history[-self.memory_size:]
+
         return action
-        
-    def _format_prompt(self, state: State, available_actions: List[Action]) -> str:
-        """Format prompt for LLM with state and action information
-        
-        Args:
-            state: Current environment state
-            available_actions: List of available actions
-            
-        Returns:
-            Formatted prompt string
-        """
-        # Basic prompt template - override in subclasses for custom prompting
-        prompt = f"Current state: {repr(state)}\n\n"
-        prompt += "Available actions:\n"
-        for i, action in enumerate(available_actions):
-            prompt += f"{i+1}. {action.text}\n"
-        prompt += "\nSelect the most appropriate action number:"
-        return prompt
-        
-    def _parse_action(self, response: str, available_actions: List[Action]) -> Optional[Action]:
-        """Parse LLM response to get selected action
-        
-        Args:
-            response: Raw response from LLM
-            available_actions: List of available actions
-            
-        Returns:
-            Selected action or None if parsing failed
-        """
-        try:
-            # Try to parse action number from response
-            print("Response: ", response)
-            action_num = int(response.strip())
-            if 1 <= action_num <= len(available_actions):
-                return available_actions[action_num - 1]
-        except:
-            pass
-        return None
+    
+    async def reflect(self, conversation: List[Dict], state: State) -> List[Dict]:
+        """Reflect on the conversation and state"""
+        trajectory = [(state, action) for action in self.action_history]
+        reflexion = await trajectory_reflexion(trajectory, self.llm)
+        if self.reflexions is None:
+            self.reflexions = [reflexion]
+        else:
+            self.reflexions.append(reflexion)
+        return reflexion
         
     def reset(self):
         """Reset agent state between episodes"""
         self.state_history = []
         self.action_history = []
+        self.plan = None
+        self.reflexions = None

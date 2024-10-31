@@ -1,10 +1,14 @@
 import pytest
 import yaml
+import os
+import shutil
+from pathlib import Path
+from types import SimpleNamespace
 from llm_agent.agent.base_agent import BaseAgent
 from llm_agent.env.base_env import State, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
 from llm_agent.env.alfworld_env import AlfWorldEnv
-from types import SimpleNamespace
+from llm_agent.logging.setup_db import LoggingDatabases
 
 def dict_to_namespace(d):
     """Convert dictionary to namespace recursively"""
@@ -55,6 +59,37 @@ def test_config():
 @pytest.fixture
 def test_agent(real_llm, test_config):
     return BaseAgent(real_llm, test_config)
+
+@pytest.fixture(autouse=True)
+def clean_db():
+    print("Did this run")
+    # Clean up before test
+    db_path = Path("logs/test_env.db")
+    if db_path.exists():
+        os.remove(db_path)
+    print(f"Database path: {db_path}")
+    
+    # Create logs directory if it doesn't exist
+    db_path.parent.mkdir(exist_ok=True)
+    
+    yield
+    
+    # Clean up after test
+    if db_path.exists():
+        os.remove(db_path)
+
+@pytest.fixture
+def db():
+    db = LoggingDatabases(
+        env_name="test_env",
+        state_dim=4,  # Match test vector dimensions
+        trajectory_dim=4
+    )
+    yield db
+    db.close()
+    # Cleanup after tests
+    if os.path.exists("test_env"):
+        shutil.rmtree("test_env")
 
 @pytest.mark.asyncio
 async def test_alfworld_interaction(test_agent, env):

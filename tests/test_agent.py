@@ -30,10 +30,10 @@ def test_agent_initialization(test_agent, test_config):
     assert len(test_agent.action_history) == 0
 
 @pytest.mark.asyncio
-async def test_select_action(test_agent):
+async def test_act(test_agent):
     state = State("Test state")
     actions = [Action("Action 1"), Action("Action 2")]
-    selected_action = await test_agent.select_action(state, actions)
+    selected_action = await test_agent.act(state, actions)
     assert selected_action in actions
 
 @pytest.mark.asyncio
@@ -42,7 +42,7 @@ async def test_memory_size_limit(test_agent):
     actions = [Action(f"Action {i}") for i in range(10)]
     
     for i in range(10):
-        await test_agent.select_action(states[i], [actions[i]])
+        await test_agent.act(states[i], [actions[i]])
     
     assert len(test_agent.state_history) == test_agent.memory_size
     assert len(test_agent.action_history) == test_agent.memory_size
@@ -52,7 +52,7 @@ async def test_agent_reset(test_agent):
     # Add some history
     state = State("Test state")
     action = Action("Test action") 
-    await test_agent.select_action(state, [action])
+    await test_agent.act(state, [action])
     
     # Reset agent
     test_agent.reset()
@@ -69,7 +69,7 @@ async def test_llm_retry_on_failure(test_agent, mock_llm):
     state = State("Test state")
     actions = [Action("Action 1"), Action("Action 2")]
     
-    selected_action = await test_agent.select_action(state, actions)
+    selected_action = await test_agent.act(state, actions)
     
     # Verify correct action selected after retries
     assert selected_action == actions[1]
@@ -83,7 +83,7 @@ async def test_llm_max_retries_exceeded(test_agent, mock_llm):
     state = State("Test state")
     actions = [Action("Action 1"), Action("Action 2")]
     
-    selected_action = await test_agent.select_action(state, actions)
+    selected_action = await test_agent.act(state, actions)
     
     # Verify first action returned as fallback
     assert selected_action == actions[0]
