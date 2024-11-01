@@ -28,5 +28,5 @@ def format_trajectory(trajectory: List[Tuple[State, Action]]) -> str:
     """Format a trajectory for LLM reflection"""
     formatted_trajectory = ""
     for i, (state, action) in enumerate(trajectory):
-        formatted_trajectory += f"Step {i+1}:\nState: {state.text}\nAction: {action.text}\n\n"
+        formatted_trajectory += f"Step {i+1}:\nState: {repr(state)}\nAction: {action.text}\n\n"
     return formatted_trajectory
