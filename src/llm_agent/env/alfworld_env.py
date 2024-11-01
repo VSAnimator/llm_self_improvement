@@ -38,6 +38,7 @@ class AlfWorldEnv(BaseEnv):
         }
 
         if 'problem' not in config:
+            '''
             problems = glob.glob(pjoin(ALFWORLD_DATA, "**", "initial_state.pddl"), recursive=True)
 
             # Remove problem which contains movable receptacles.
@@ -48,6 +49,20 @@ class AlfWorldEnv(BaseEnv):
             
             print("Using problem: ", problems[1])
             config['problem'] = os.path.dirname(problems[1]) #os.path.dirname(random.choice(problems))
+            '''
+
+            # Read alfworld tasks suffix
+            with open('data/alfworld/alfworld_tasks_suffix.json', 'r') as f:
+                self.tasks = json.load(f)
+
+            # Select random task
+            if config.get('problem_id') is not None:
+                self.task = self.tasks[config['problem_id']]
+            else:
+                self.task = random.choice(self.tasks)
+                
+            config['problem'] = os.path.dirname(self.task['gamefile'])
+            self.goal = self.task['goal']
 
         # Load state and trajectory files
         pddl_file = os.path.join(config['problem'], 'initial_state.pddl')

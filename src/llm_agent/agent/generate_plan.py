@@ -12,7 +12,7 @@ logger = getLogger(__name__)
 # What is the best way to generate a plan? Get options from the literature
 # So we can generate the plan every time from scratch, or we can choose from a list of pre-generated plans/strategies
 
-async def generate_plan(state: State, llm: LiteLLMWrapper, output_type: str = "list") -> Union[str, List[str]]:
+async def generate_plan(goal: str, state: State, llm: LiteLLMWrapper, output_type: str = "list") -> Union[str, List[str]]:
     """Generate a plan for the agent to follow"""
     # Format state for LLM
     prompt = f"Given the current state:\n{state.text}\n\nGenerate a high-level plan of actions to achieve the goal. Format the plan as a numbered list." # TODO: make this match the literature on plan generation

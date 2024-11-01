@@ -1,4 +1,5 @@
 import pytest
+
 import yaml
 import os
 import shutil
@@ -19,7 +20,6 @@ def dict_to_namespace(d):
             d[key] = dict_to_namespace(value)
     return SimpleNamespace(**d)
 
-@pytest.fixture
 def config():
     # Load default config first
     with open('config/default.yaml', 'r') as f:
@@ -40,15 +40,12 @@ def config():
     
     return config
 
-@pytest.fixture
 def env(config):
     return AlfWorldEnv(config['benchmark'])
 
-@pytest.fixture
 def real_llm(config):
     return LiteLLMWrapper(config)
 
-@pytest.fixture
 def test_config():
     return {
         "max_retries": 3,
@@ -56,11 +53,9 @@ def test_config():
         "temperature": 0.7
     }
 
-@pytest.fixture
 def test_agent(real_llm, test_config):
     return BaseAgent(real_llm, test_config)
 
-@pytest.fixture(autouse=True)
 def clean_db():
     print("Did this run")
     # Clean up before test
@@ -78,7 +73,6 @@ def clean_db():
     if db_path.exists():
         os.remove(db_path)
 
-@pytest.fixture
 def db():
     db = LoggingDatabases(
         env_name="test_env",
@@ -91,73 +85,55 @@ def db():
     if os.path.exists("test_env"):
         shutil.rmtree("test_env")
 
-@pytest.mark.asyncio
-async def test_alfworld_interaction(test_agent, env):
-    # Get initial state from AlfWorld
-    obs, info = env.reset()
-    state = State(obs)
-    
-    # Get valid actions from environment
-    valid_actions = env.get_available_actions(info)
-    actions = [Action(cmd) for cmd in valid_actions]
-    
-    # Test agent's action selection
-    selected_action = await test_agent.act(env.goal, state, actions)
-    assert selected_action in actions
-    
-    # Test environment step
-    print(selected_action)
-    obs, reward, done, info = env.step(selected_action.text)
-    assert isinstance(obs, str)
-    assert isinstance(reward, (int, float))
-    assert isinstance(done, bool)
+async def main():
+    # Initialize config and environment
+    cfg = config()
+    environment = env(cfg)
+    llm = real_llm(cfg)
+    agent_config = test_config()
+    agent = test_agent(llm, agent_config)
 
-@pytest.mark.asyncio
-async def test_alfworld_multi_step(test_agent, env):
-    obs, info = env.reset()
+    # Initial reset
+    obs, info = environment.reset()
     done = False
     steps = 0
-    max_steps = 5
+    max_steps = 10  # Increased from test value
+    
+    print(f"Starting new episode with goal: {environment.goal}")
     
     while not done and steps < max_steps:
+        # Convert observation to state
         state = State(obs)
-        valid_actions = env.get_available_actions(info)
-        actions = [Action(cmd) for cmd in valid_actions]
+        print(f"\nStep {steps + 1}")
+        print(f"Current state: {obs}")
         
-        selected_action = await test_agent.act(env.goal, state, actions)
-        obs, reward, done, info = env.step(selected_action.text)
+        # Get valid actions
+        valid_actions = environment.get_available_actions(info)
+        actions = [Action(cmd) for cmd in valid_actions]
+        print(f"Valid actions: {[a.text for a in actions]}")
+
+        # First, reason about the available actions
+        reasoning = await agent.reason(environment.goal, state, actions)
+        print(f"Reasoning: {reasoning}")
+        
+        # Get agent's action
+        selected_action = await agent.act(environment.goal, state, actions)
+        print(f"Agent selected: {selected_action.text}")
+        
+        # Take step in environment
+        obs, reward, done, info = environment.step(selected_action.text)
+        print(f"Reward: {reward}")
         
         steps += 1
         
-    assert len(test_agent.state_history) == steps
-    assert len(test_agent.action_history) == steps
-
-@pytest.mark.asyncio
-async def test_agent_reflexion(test_agent, env):
-    # Run a few steps to build up history
-    obs, info = env.reset()
-    state = State(obs)
-    valid_actions = env.get_available_actions(info)
-    actions = [Action(cmd) for cmd in valid_actions]
+        if done:
+            print("\nEpisode finished!")
+            print(f"Steps taken: {steps}")
+            print(f"Final reward: {reward}")
     
-    # Build conversation history
-    conversation = []
-    for i in range(3):
-        selected_action = await test_agent.act(env.goal, state, actions)
-        conversation.append({"role": "user", "content": str(state)})
-        conversation.append({"role": "assistant", "content": str(selected_action)})
-        
-        # Step environment
-        obs, _, _, info = env.step(selected_action.text)
-        state = State(obs)
-        valid_actions = env.get_available_actions(info)
-        actions = [Action(cmd) for cmd in valid_actions]
+    if not done:
+        print("\nEpisode timed out after reaching max steps")
 
-    # Test reflexion
-    reflexion = await test_agent.reflect(env.goal, conversation, state)
-    
-    # Verify reflexion output
-    assert isinstance(reflexion, str)
-    assert len(reflexion) > 0
-    assert test_agent.reflexions is not None
-    assert len(test_agent.reflexions) == 1
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())

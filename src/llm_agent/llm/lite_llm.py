@@ -82,36 +82,41 @@ class LiteLLMWrapper:
 
     async def generate_structured(
         self, 
-        prompt: str,
+        messages: List[Dict[str, str]],
         output_schema: Optional[Dict[str, Any]] = None,
     ) -> GenerationResponse:
         """
         Generate structured response with full metadata
         
         Args:
-            prompt: Input text prompt
+            messages: Input conversation history
             output_schema: Optional schema specification for structured output
             
         Returns:
             GenerationResponse object containing generated text and raw response
         """
-        messages = [{"role": "user", "content": prompt}]
         response_format = None
         
         # Handle different model capabilities for structured output
         if "gpt" in self.model.lower():
-            response_format = {"type": "json_object"}
+            response_format = output_schema#{"type": "json_object"}
+            '''
             if output_schema:
                 messages[0]["content"] += f"\nPlease provide response matching this JSON schema: {json.dumps(output_schema)}"
+            '''
         
         elif "claude" in self.model.lower():
-            response_format = {"type": "json"}
+            response_format = output_schema#{"type": "json"}
+            '''
             if output_schema:
                 messages[0]["content"] += f"\nPlease provide response matching this JSON schema: {json.dumps(output_schema)}"
+            '''
 
-        raw_response = await self._generate_raw(messages, response_format)
-        generated_text = raw_response.choices[0].message.content
+        response = await self._generate_raw(messages, response_format)
         
+        return response
+
+        '''
         # Attempt to parse JSON response
         parsed_json = None
         if response_format:
@@ -130,6 +135,7 @@ class LiteLLMWrapper:
             parsed_json=parsed_json,
             raw_response=raw_response.dict()
         )
+        '''
 
 
 

@@ -2,11 +2,24 @@ import os
 from typing import Dict, List, Optional, Tuple, Any, Union
 from enum import Enum
 from logging import getLogger
+from pydantic import BaseModel
+import json
 
 from ..env.base_env import State, Action
 from ..llm.lite_llm import LiteLLMWrapper
 
 logger = getLogger(__name__)
+
+async def reason(conversation: List[Dict], state: State, available_actions: List[Action], llm: LiteLLMWrapper, config: Dict) -> List[Dict]:
+    # Reason through the action options available
+    prompt = "Given the following conversation and state, reason about the most appropriate action to take from the available actions."
+    prompt += "\nState: " + repr(state)
+    prompt += "\nAvailable actions:\n"
+    for i, action in enumerate(available_actions):
+        prompt += f"{i+1}. {action.text}\n"
+    conversation.append({"role": "user", "content": prompt})
+    response = await llm.generate_chat(conversation)
+    return response
 
 async def select_action(conversation: List[Dict], state: State, available_actions: List[Action], llm: LiteLLMWrapper, config: Dict) -> Action:
     """Select an action from available actions given the current state"""
@@ -19,10 +32,15 @@ async def select_action(conversation: List[Dict], state: State, available_action
     # Get LLM response
     for _ in range(max_retries):
         try:
-            # Await the response
             conversation.append({"role": "user", "content": prompt})
-            response = await llm.generate_chat(conversation)
-            action = _parse_action(response, available_actions)
+            #print(f"Conversation: {conversation}")
+            # Use structured output
+            class ActionNumber(BaseModel):
+                action_number: int
+            response = await llm.generate_structured(conversation, output_schema=ActionNumber)
+            # Get action number from response
+            action_number = json.loads(response.choices[0].message.content)['action_number']
+            action = available_actions[action_number - 1]
             if action is not None:
                 return action
         except Exception as e:
@@ -30,6 +48,8 @@ async def select_action(conversation: List[Dict], state: State, available_action
             
     # If all retries failed, return first available action
     logger.warning("Failed to select action, defaulting to first available")
+    # Throw error
+    raise ValueError(f"Failed to select action. Conversation: {conversation}, Response: {response}")
     action = available_actions[0]
 
     return action
@@ -64,7 +84,6 @@ def _parse_action(response: str, available_actions: List[Action]) -> Optional[Ac
     """
     try:
         # Try to parse action number from response
-        print("Response: ", response)
         action_num = int(response.strip())
         if 1 <= action_num <= len(available_actions):
             return available_actions[action_num - 1]
