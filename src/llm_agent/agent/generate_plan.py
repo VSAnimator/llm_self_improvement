@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Tuple, Any, Union
 from enum import Enum
 from logging import getLogger
 
-from ..env.base_env import State, Action
+from ..env.base_env import Observation, Action
 from ..llm.lite_llm import LiteLLMWrapper
 
 logger = getLogger(__name__)
@@ -12,10 +12,10 @@ logger = getLogger(__name__)
 # What is the best way to generate a plan? Get options from the literature
 # So we can generate the plan every time from scratch, or we can choose from a list of pre-generated plans/strategies
 
-async def generate_plan(goal: str, state: State, llm: LiteLLMWrapper, output_type: str = "list") -> Union[str, List[str]]:
+async def generate_plan(goal: str, observation: Observation, llm: LiteLLMWrapper, output_type: str = "list") -> Union[str, List[str]]:
     """Generate a plan for the agent to follow"""
-    # Format state for LLM
-    prompt = f"Given the current state:\n{state.text}\n\nGenerate a high-level plan of actions to achieve the goal. Format the plan as a numbered list." # TODO: make this match the literature on plan generation
+    # Format observation for LLM
+    prompt = f"Given the current observation:\n{observation.text}\n\nGenerate a high-level plan of actions to achieve the goal. Format the plan as a numbered list." # TODO: make this match the literature on plan generation
 
     # Get LLM response
     try:

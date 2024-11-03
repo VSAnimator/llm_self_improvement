@@ -5,34 +5,29 @@ from logging import getLogger
 from pydantic import BaseModel
 import json
 
-from ..env.base_env import State, Action
+from ..env.base_env import Observation, Action
 from ..llm.lite_llm import LiteLLMWrapper
 
 logger = getLogger(__name__)
 
-async def reason(conversation: List[Dict], state: State, available_actions: List[Action], llm: LiteLLMWrapper, config: Dict) -> List[Dict]:
-    # Reason through the action options available
-    prompt = "Given the following conversation and state, reason about the most appropriate action to take from the available actions."
-    prompt += "\nState: " + repr(state)
-    prompt += "\nAvailable actions:\n"
-    for i, action in enumerate(available_actions):
-        prompt += f"{i+1}. {action.text}\n"
-    conversation.append({"role": "user", "content": prompt})
+async def reason(conversation: List[Dict], observation: Observation, available_actions: List[Action], llm: LiteLLMWrapper, config: Dict) -> List[Dict]:
+    # Take the last conversation message and add a string saying to reason
+    conversation[-1]['content'] += "\nReason about the most appropriate action to take from the available actions."
     response = await llm.generate_chat(conversation)
     return response
 
-async def select_action(conversation: List[Dict], state: State, available_actions: List[Action], llm: LiteLLMWrapper, config: Dict) -> Action:
-    """Select an action from available actions given the current state"""
+async def select_action(conversation: List[Dict], observation: Observation, available_actions: List[Action], llm: LiteLLMWrapper, config: Dict) -> Action:
+    """Select an action from available actions given the current observation"""
     # Get config values
     max_retries = config.get('max_retries', 3)
     
-    # Format prompt with state and action info
-    prompt = _format_prompt(state, available_actions)
+    # Format prompt with observation and action info
+    #prompt = _format_prompt(observation, available_actions)
     
     # Get LLM response
     for _ in range(max_retries):
         try:
-            conversation.append({"role": "user", "content": prompt})
+            #conversation.append({"role": "user", "content": prompt})
             #print(f"Conversation: {conversation}")
             # Use structured output
             class ActionNumber(BaseModel):
@@ -54,18 +49,18 @@ async def select_action(conversation: List[Dict], state: State, available_action
 
     return action
     
-def _format_prompt(state: State, available_actions: List[Action]) -> str:
-    """Format prompt for LLM with state and action information
+def _format_prompt(observation: Observation, available_actions: List[Action]) -> str:
+    """Format prompt for LLM with observation and action information
     
     Args:
-        state: Current environment state
+        observation: Current environment observation
         available_actions: List of available actions
         
     Returns:
         Formatted prompt string
     """
     # Basic prompt template - override in subclasses for custom prompting
-    prompt = f"Current state: {repr(state)}\n\n"
+    prompt = f"Current observation: {repr(observation)}\n\n"
     prompt += "Available actions:\n"
     for i, action in enumerate(available_actions):
         prompt += f"{i+1}. {action.text}\n"

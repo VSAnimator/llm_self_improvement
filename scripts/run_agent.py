@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 from types import SimpleNamespace
 from llm_agent.agent.base_agent import BaseAgent
-from llm_agent.env.base_env import State, Action
+from llm_agent.env.base_env import Observation, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
 from llm_agent.env.alfworld_env import AlfWorldEnv
 from llm_agent.logging.setup_db import LoggingDatabases
@@ -102,10 +102,10 @@ async def main():
     print(f"Starting new episode with goal: {environment.goal}")
     
     while not done and steps < max_steps:
-        # Convert observation to state
-        state = State(obs)
+        # Convert observation to Observation object
+        observation = Observation(obs)
         print(f"\nStep {steps + 1}")
-        print(f"Current state: {obs}")
+        print(f"Observation: {obs}")
         
         # Get valid actions
         valid_actions = environment.get_available_actions(info)
@@ -113,11 +113,11 @@ async def main():
         print(f"Valid actions: {[a.text for a in actions]}")
 
         # First, reason about the available actions
-        reasoning = await agent.reason(environment.goal, state, actions)
+        reasoning = await agent.reason(environment.goal, observation, actions)
         print(f"Reasoning: {reasoning}")
         
         # Get agent's action
-        selected_action = await agent.act(environment.goal, state, actions)
+        selected_action = await agent.act(environment.goal, observation, actions, reasoning)
         print(f"Agent selected: {selected_action.text}")
         
         # Take step in environment

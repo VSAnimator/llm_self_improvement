@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 from types import SimpleNamespace
 from llm_agent.agent.base_agent import BaseAgent
-from llm_agent.env.base_env import State, Action
+from llm_agent.env.base_env import Observation, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
 from llm_agent.env.alfworld_env import AlfWorldEnv
 from llm_agent.logging.setup_db import LoggingDatabases
@@ -95,14 +95,14 @@ def db():
 async def test_alfworld_interaction(test_agent, env):
     # Get initial state from AlfWorld
     obs, info = env.reset()
-    state = State(obs)
+    observation = Observation(obs)
     
     # Get valid actions from environment
     valid_actions = env.get_available_actions(info)
     actions = [Action(cmd) for cmd in valid_actions]
     
     # Test agent's action selection
-    selected_action = await test_agent.act(env.goal, state, actions)
+    selected_action = await test_agent.act(env.goal, observation, actions)
     assert selected_action in actions
     
     # Test environment step
@@ -120,41 +120,41 @@ async def test_alfworld_multi_step(test_agent, env):
     max_steps = 5
     
     while not done and steps < max_steps:
-        state = State(obs)
+        observation = Observation(obs)
         valid_actions = env.get_available_actions(info)
         actions = [Action(cmd) for cmd in valid_actions]
         
-        selected_action = await test_agent.act(env.goal, state, actions)
+        selected_action = await test_agent.act(env.goal, observation, actions)
         obs, reward, done, info = env.step(selected_action.text)
         
         steps += 1
         
-    assert len(test_agent.state_history) == steps
+    assert len(test_agent.observation_history) == steps
     assert len(test_agent.action_history) == steps
 
 @pytest.mark.asyncio
 async def test_agent_reflexion(test_agent, env):
     # Run a few steps to build up history
     obs, info = env.reset()
-    state = State(obs)
+    observation = Observation(obs)
     valid_actions = env.get_available_actions(info)
     actions = [Action(cmd) for cmd in valid_actions]
     
     # Build conversation history
     conversation = []
     for i in range(3):
-        selected_action = await test_agent.act(env.goal, state, actions)
-        conversation.append({"role": "user", "content": str(state)})
+        selected_action = await test_agent.act(env.goal, observation, actions)
+        conversation.append({"role": "user", "content": str(observation)})
         conversation.append({"role": "assistant", "content": str(selected_action)})
         
         # Step environment
         obs, _, _, info = env.step(selected_action.text)
-        state = State(obs)
+        observation = Observation(obs)
         valid_actions = env.get_available_actions(info)
         actions = [Action(cmd) for cmd in valid_actions]
 
     # Test reflexion
-    reflexion = await test_agent.reflect(env.goal, conversation, state)
+    reflexion = await test_agent.reflect(env.goal, conversation, observation)
     
     # Verify reflexion output
     assert isinstance(reflexion, str)

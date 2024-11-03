@@ -11,7 +11,7 @@ import glob
 import random
 from os.path import join as pjoin
 
-from .base_env import BaseEnv, State, Action
+from .base_env import BaseEnv, Observation, Action
 
 class AlfWorldEnv(BaseEnv):
     """Environment wrapper for ALFWorld text-based environments"""
@@ -103,21 +103,21 @@ class AlfWorldEnv(BaseEnv):
         self.env = textworld.gym.make(self.env_id)
         
         # Track current state
-        self._state = None
+        self._observation = None
         self.steps = 0
         
-    def reset(self) -> State:
+    def reset(self) -> Observation:
         """Reset environment to initial state
         
         Returns:
-            Initial state
+            Initial observation
         """
         obs, info = self.env.reset()
-        self._state = obs
+        self._observation = obs
         self.steps = 0
         return obs, info
         
-    def step(self, action: Action) -> Tuple[State, float, bool, Dict]:
+    def step(self, action: Action) -> Tuple[Observation, float, bool, Dict]:
         """Take action in environment
         
         Args:
@@ -125,7 +125,7 @@ class AlfWorldEnv(BaseEnv):
             
         Returns:
             Tuple containing:
-            - Next state (observation text)
+            - Next observation (observation text)
             - Reward (1 for success, 0 otherwise) 
             - Done flag
             - Info dict
@@ -133,7 +133,7 @@ class AlfWorldEnv(BaseEnv):
         self.steps += 1
         
         obs, reward, done, info = self.env.step(action)
-        self._state = obs
+        self._observation = obs
         
         # End episode if max steps reached
         if self.steps >= self.max_steps:
@@ -173,4 +173,4 @@ class AlfWorldEnv(BaseEnv):
         Returns:
             Text description of current state
         """
-        return self._state
+        return self._observation

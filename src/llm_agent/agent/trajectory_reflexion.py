@@ -3,12 +3,12 @@ from typing import Dict, List, Optional, Tuple, Any, Union
 from enum import Enum
 from logging import getLogger
 
-from ..env.base_env import State, Action
+from ..env.base_env import Observation, Action
 from ..llm.lite_llm import LiteLLMWrapper
 
 logger = getLogger(__name__)
 
-async def trajectory_reflexion(goal: str, trajectory: List[Tuple[State, Action]], llm: LiteLLMWrapper, reflection_type: str = "whole") -> Union[str, List[str]]: # Output either text reflecting on the whole trajectory, or a list of text reflecting on each step
+async def trajectory_reflexion(goal: str, trajectory: List[Tuple[Observation, Action]], llm: LiteLLMWrapper, reflection_type: str = "whole") -> Union[str, List[str]]: # Output either text reflecting on the whole trajectory, or a list of text reflecting on each step
     """Reflect on a trajectory using an LLM"""
     # Format trajectory for LLM
     formatted_trajectory = format_trajectory(trajectory)
@@ -20,13 +20,13 @@ async def trajectory_reflexion(goal: str, trajectory: List[Tuple[State, Action]]
         prompt = f"Reflect on each step of the following trajectory:\n{formatted_trajectory}" # TODO: Add reflection instructions from the reflexion paper: https://arxiv.org/abs/2303.11366
 
     # Get LLM response
-    response = await llm.generate_chat([{"role": "system", "content": f"You are an agent in an environment. Given the goal: {goal}, your task is to reflect on the trajectory of actions taken. Identify any mistakes or areas for improvement in the plan or execution."}, {"role": "user", "content": prompt}]) 
+    response = await llm.generate_chat([{"role": "system", "content": f"You are an agent in an environment. Given the goal: {goal}, your task is to reflect on the trajectory of observations and actions taken. Identify any mistakes or areas for improvement in the plan or execution."}, {"role": "user", "content": prompt}]) 
 
     return response
 
-def format_trajectory(trajectory: List[Tuple[State, Action]]) -> str:
+def format_trajectory(trajectory: List[Tuple[Observation, Action]]) -> str:
     """Format a trajectory for LLM reflection"""
     formatted_trajectory = ""
-    for i, (state, action) in enumerate(trajectory):
-        formatted_trajectory += f"Step {i+1}:\nState: {repr(state)}\nAction: {action.text}\n\n"
+    for i, (observation, action) in enumerate(trajectory):
+        formatted_trajectory += f"Step {i+1}:\nObservation: {repr(observation)}\nAction: {action.text}\n\n"
     return formatted_trajectory

@@ -3,9 +3,9 @@ from typing import Dict, List, Any, Tuple, Optional
 from dataclasses import dataclass
 
 @dataclass
-class State:
-    """Represents an environment state with both structured and text descriptions"""
-    structured: Dict[str, Any]  # Structured representation of state
+class Observation:
+    """Represents an environment observation with both structured and text descriptions"""
+    structured: Dict[str, Any]  # Structured representation of observation
 
 @dataclass 
 class Action:
@@ -20,16 +20,16 @@ class BaseEnv(ABC):
         pass
     
     @abstractmethod
-    def reset(self) -> State:
+    def reset(self) -> Observation:
         """Reset environment to initial state
         
         Returns:
-            Initial state
+            Initial observation
         """
         pass
     
     @abstractmethod
-    def step(self, action: Action) -> Tuple[State, float, bool, Dict]:
+    def step(self, action: Action) -> Tuple[Observation, float, bool, Dict]:
         """Take action in environment
         
         Args:
@@ -37,7 +37,7 @@ class BaseEnv(ABC):
             
         Returns:
             Tuple containing:
-            - Next state
+            - Next observation
             - Reward
             - Done flag
             - Info dict
@@ -53,11 +53,8 @@ class BaseEnv(ABC):
         """
         pass
     
-    def get_available_actions(self, state: Optional[State] = None) -> List[Action]:
-        """Get list of available actions in current/given state
-        
-        Args:
-            state: State to get actions for (uses current state if None)
+    def get_available_actions(self) -> List[Action]:
+        """Get list of available actions
             
         Returns:
             List of available actions
@@ -65,14 +62,14 @@ class BaseEnv(ABC):
         return []  # Default implementation returns empty list
         
     def render(self) -> str:
-        """Render environment state as text
+        """Render environment observation as text
         
         Returns:
-            Text description of current state
+            Text description of current observation
         """
         return ""  # Default implementation returns empty string
 
     @property
-    def current_state(self) -> State:
-        """Get current environment state"""
-        return self._state
+    def current_observation(self) -> Observation:
+        """Get current environment observation"""
+        return self._observation
