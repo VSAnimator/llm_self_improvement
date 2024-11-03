@@ -59,7 +59,7 @@ class AlfWorldEnv(BaseEnv):
             if config.get('problem_id') is not None:
                 self.task = self.tasks[config['problem_id']]
             else:
-                self.task = random.choice(self.tasks)
+                self.task = self.tasks[0] #random.choice(self.tasks)
                 
             config['problem'] = os.path.dirname(self.task['gamefile'])
             self.goal = self.task['goal']

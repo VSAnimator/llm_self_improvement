@@ -49,7 +49,7 @@ def real_llm(config):
 def test_config():
     return {
         "max_retries": 3,
-        "memory_size": 5,
+        "memory_size": 50,
         "temperature": 0.7
     }
 
@@ -97,7 +97,7 @@ async def main():
     obs, info = environment.reset()
     done = False
     steps = 0
-    max_steps = 10  # Increased from test value
+    max_steps = 50  # Increased from test value
     
     print(f"Starting new episode with goal: {environment.goal}")
     
@@ -112,7 +112,12 @@ async def main():
         actions = [Action(cmd) for cmd in valid_actions]
         print(f"Valid actions: {[a.text for a in actions]}")
 
-        # First, reason about the available actions
+        # Generate plan if it doesn't exist
+        if not agent.plan:
+            plan = await agent.create_plan(environment.goal, observation, actions)
+            print(f"Plan: {plan}")
+
+        # Reason about the available actions
         reasoning = await agent.reason(environment.goal, observation, actions)
         print(f"Reasoning: {reasoning}")
         

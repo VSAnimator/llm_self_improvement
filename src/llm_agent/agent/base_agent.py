@@ -35,6 +35,8 @@ class BaseAgent:
 
     def create_conversation(self, conversation: List[Dict], goal: str, observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None) -> List[Dict]:
         """Create a conversation with the observation and action history"""
+        if self.plan:
+            conversation.append({"role": "user", "content": "Plan of action: " + self.plan})
         for i in range(len(self.observation_history)):
             conversation.append({"role": "user", "content": f"Observation {i+1}: " + repr(self.observation_history[i].structured)})
             conversation.append({"role": "assistant", "content": f"Action {i+1}: " + repr(self.action_history[i].text)})
@@ -54,6 +56,12 @@ class BaseAgent:
                     del conversation[i+1]
         return conversation
 
+    async def create_plan(self, goal: str, observation: Observation, available_actions: List[Action]) -> str:
+        """Generate a plan for the agent to follow"""
+        plan = await generate_plan(goal, observation, self.llm)
+        self.plan = plan
+        return plan
+
     async def reason(self, goal: str, observation: Observation, available_actions) -> List[Dict]:
         """Reason about the conversation and observation"""
         conversation = []
@@ -66,18 +74,11 @@ class BaseAgent:
 
     async def act(self, goal: str, observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None) -> Tuple[Action, List[Dict]]:
         """Select an action from available actions given the current observation"""
-        # Generate plan
-        plan = []
-        if self.config.get('generate_plan', False) and len(self.observation_history) == 0:
-            plan = await generate_plan(goal, observation, self.llm)
-
         # Create a conversation with observations and actions so far
         conversation = []
         # Want the system prompt to be standardized. Should have environment and goal info, as well as observation and action format. 
         conversation.append({"role": "system", "content": f"You are an agent in an environment. Given the current observation, you must select an action to take towards achieving the goal: {goal}"})
-        # Add plan to conversation if it exists
-        if plan:
-            conversation.append({"role": "assistant", "content": "Plan of action: " + plan})
+
         conversation = self.create_conversation(conversation, goal, observation, available_actions, reasoning)
         
         # Select action
