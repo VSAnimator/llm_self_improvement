@@ -42,8 +42,6 @@ class LiteLLMWrapper:
                 "stream": False
             }
 
-            print(messages)
-            input("waiting")
             # Add response format for models that support it
             if response_format and any(provider in self.model.lower() for provider in ["gpt", "claude", "anthropic"]):
                 completion_kwargs["response_format"] = response_format

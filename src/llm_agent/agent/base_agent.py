@@ -8,6 +8,7 @@ from ..llm.lite_llm import LiteLLMWrapper
 from ..agent.generate_plan import generate_plan
 from ..agent.choose_action import select_action, reason
 from ..agent.trajectory_reflexion import trajectory_reflexion
+from ..in_context.alfworld_fewshots import get_fewshots_for_goal
 
 logger = getLogger(__name__)
 
@@ -33,8 +34,23 @@ class BaseAgent:
         self.plan: Optional[str] = None
         self.reflexions: Optional[List[str]] = None
 
-    def create_conversation(self, conversation: List[Dict], goal: str, observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None) -> List[Dict]:
+    def create_conversation(self, conversation: List[Dict], goal: str, observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None, fewshots: bool = True) -> List[Dict]:
         """Create a conversation with the observation and action history"""
+        if fewshots and False:
+            # Add in fewshots
+            fewshots = get_fewshots_for_goal(goal)[0:1] # Only use one fewshot for now
+            for fewshot in fewshots:
+                observations, actions = fewshot
+                # Add observation and action history
+                fewshot_prompt = "Here is an example of a goal and a sequence of observations and actions that achieves a similar goal.\n"
+                for i in range(len(observations)):
+                    if i == 0:
+                        fewshot_prompt += f"Goal: " + repr(observations[i]) + "\n"
+                    else:
+                        fewshot_prompt += f"Observation {i+1}: " + repr(observations[i]) + "\n"
+                    if i < len(actions):
+                        fewshot_prompt += f"Action {i+1}: " + repr(actions[i]) + "\n"
+                conversation.append({"role": "user", "content": fewshot_prompt})
         if self.plan:
             conversation.append({"role": "user", "content": "Plan of action: " + self.plan})
         for i in range(len(self.observation_history)):
@@ -58,7 +74,10 @@ class BaseAgent:
 
     async def create_plan(self, goal: str, observation: Observation, available_actions: List[Action]) -> str:
         """Generate a plan for the agent to follow"""
-        plan = await generate_plan(goal, observation, self.llm)
+        conversation = []
+        conversation.append({"role": "system", "content": f"You are an expert at generating high-level plans of actions to achieve a goal."})
+        conversation = self.create_conversation(conversation, goal, observation, available_actions, fewshots=False)
+        plan = await generate_plan(conversation, goal, observation, self.llm)
         self.plan = plan
         return plan
 

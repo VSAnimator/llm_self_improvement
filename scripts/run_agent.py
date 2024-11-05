@@ -86,58 +86,71 @@ def db():
         shutil.rmtree("test_env")
 
 async def main():
-    # Initialize config and environment
-    cfg = config()
-    environment = env(cfg)
-    llm = real_llm(cfg)
-    agent_config = test_config()
-    agent = test_agent(llm, agent_config)
+    # Create logs directory if it doesn't exist
+    log_dir = Path("logs/episodes")
+    log_dir.mkdir(parents=True, exist_ok=True)
 
-    # Initial reset
-    obs, info = environment.reset()
-    done = False
-    steps = 0
-    max_steps = 50  # Increased from test value
-    
-    print(f"Starting new episode with goal: {environment.goal}")
-    
-    while not done and steps < max_steps:
-        # Convert observation to Observation object
-        observation = Observation(obs)
-        print(f"\nStep {steps + 1}")
-        print(f"Observation: {obs}")
-        
-        # Get valid actions
-        valid_actions = environment.get_available_actions(info)
-        actions = [Action(cmd) for cmd in valid_actions]
-        print(f"Valid actions: {[a.text for a in actions]}")
+    for i in range(134):
+        # Create log file for this episode
+        log_file = log_dir / f"episode_{i}.txt"
+        with open(log_file, "w") as f:
+            # Initialize config and environment
+            cfg = config()
+            cfg['benchmark']['problem_id'] = i
+            environment = env(cfg)
+            llm = real_llm(cfg)
+            agent_config = test_config()
+            agent = test_agent(llm, agent_config)
 
-        # Generate plan if it doesn't exist
-        if not agent.plan:
-            plan = await agent.create_plan(environment.goal, observation, actions)
-            print(f"Plan: {plan}")
+            # Initial reset
+            obs, info = environment.reset()
+            done = False
+            steps = 0
+            max_steps = 50  # Increased from test value
+            
+            f.write(f"Episode {i}\n")
+            f.write(f"Goal: {environment.goal}\n\n")
+            
+            while not done and steps < max_steps:
+                # Convert observation to Observation object
+                observation = Observation(obs)
+                f.write(f"\nStep {steps + 1}\n")
+                f.write(f"Observation: {obs}\n")
+                
+                # Get valid actions
+                valid_actions = environment.get_available_actions(info)
+                actions = [Action(cmd) for cmd in valid_actions]
+                f.write(f"Valid actions: {[a.text for a in actions]}\n")
 
-        # Reason about the available actions
-        reasoning = await agent.reason(environment.goal, observation, actions)
-        print(f"Reasoning: {reasoning}")
-        
-        # Get agent's action
-        selected_action = await agent.act(environment.goal, observation, actions, reasoning)
-        print(f"Agent selected: {selected_action.text}")
-        
-        # Take step in environment
-        obs, reward, done, info = environment.step(selected_action.text)
-        print(f"Reward: {reward}")
-        
-        steps += 1
-        
-        if done:
-            print("\nEpisode finished!")
-            print(f"Steps taken: {steps}")
-            print(f"Final reward: {reward}")
-    
-    if not done:
-        print("\nEpisode timed out after reaching max steps")
+                # Generate plan if it doesn't exist
+                if not agent.plan:
+                    plan = await agent.create_plan(environment.goal, observation, actions)
+                    f.write(f"Plan: {plan}\n")
+
+                # Reason about the available actions
+                reasoning = await agent.reason(environment.goal, observation, actions)
+                f.write(f"Reasoning: {reasoning}\n")
+                
+                # Get agent's action
+                selected_action = await agent.act(environment.goal, observation, actions, reasoning)
+                f.write(f"Selected action: {selected_action.text}\n")
+                
+                # Take step in environment
+                obs, reward, done, info = environment.step(selected_action.text)
+                f.write(f"Reward: {reward}\n")
+                
+                steps += 1
+                
+                if done:
+                    f.write("\nEpisode finished!\n")
+                    f.write(f"Steps taken: {steps}\n")
+                    f.write(f"Final reward: {reward}\n")
+
+                # Flush the file buffer
+                f.flush()
+            
+            if not done:
+                f.write("\nEpisode timed out after reaching max steps\n")
 
 if __name__ == "__main__":
     import asyncio

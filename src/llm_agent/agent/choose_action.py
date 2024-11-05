@@ -44,7 +44,7 @@ async def select_action(conversation: List[Dict], observation: Observation, avai
     # If all retries failed, return first available action
     logger.warning("Failed to select action, defaulting to first available")
     # Throw error
-    raise ValueError(f"Failed to select action. Conversation: {conversation}, Response: {response}")
+    #raise ValueError(f"Failed to select action. Conversation: {conversation}, Response: {response}")
     action = available_actions[0]
 
     return action

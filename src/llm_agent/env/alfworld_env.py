@@ -59,10 +59,10 @@ class AlfWorldEnv(BaseEnv):
             if config.get('problem_id') is not None:
                 self.task = self.tasks[config['problem_id']]
             else:
-                self.task = self.tasks[0] #random.choice(self.tasks)
+                self.task = self.tasks[9] #random.choice(self.tasks)
                 
             config['problem'] = os.path.dirname(self.task['gamefile'])
-            self.goal = self.task['goal']
+            self.goal = self.task['goal'].split('___')[0]
 
         # Load state and trajectory files
         pddl_file = os.path.join(config['problem'], 'initial_state.pddl')
