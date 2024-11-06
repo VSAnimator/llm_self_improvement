@@ -9,6 +9,7 @@ from llm_agent.agent.base_agent import BaseAgent
 from llm_agent.env.base_env import Observation, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
 from llm_agent.env.alfworld_env import AlfWorldEnv
+from llm_agent.env.gym_env import GymEnv
 from llm_agent.logging.setup_db import LoggingDatabases
 
 def dict_to_namespace(d):
@@ -40,8 +41,14 @@ def config():
     
     return config
 
+use_gym = True
+
 def env(config):
-    return AlfWorldEnv(config['benchmark'])
+    if use_gym:
+        env_config = {"env_name": "CartPole-v1"}
+        return GymEnv(env_config)
+    else:
+        return AlfWorldEnv(config['benchmark'])
 
 def real_llm(config):
     return LiteLLMWrapper(config)
@@ -95,7 +102,7 @@ async def main():
     log_dir = Path("logs/episodes")
     log_dir.mkdir(parents=True, exist_ok=True)
 
-    for i in range(134):
+    for i in range(20):
         # Create log file for this episode
         log_file = log_dir / f"episode_{i}.txt"
         reflexion_count = 0
@@ -160,7 +167,7 @@ async def main():
                     f.write("\nEpisode timed out after reaching max steps\n")
 
                 # If reflexion is enabled, perform reflexion
-                if reward < 1 and use_reflexion and reflexion_count < reflexion_steps:
+                if reward < 200 and use_reflexion and reflexion_count < reflexion_steps:
                     reflexion = await agent.reflect(environment.goal, observation)
                     f.write(f"Reflexion: {reflexion}\n")
                     f.flush()

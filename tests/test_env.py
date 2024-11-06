@@ -3,7 +3,8 @@ import yaml
 #from llm_agent.envs import ENVS, INIT_TASKS_FN
 from llm_agent.env.alfworld_env import AlfWorldEnv
 from types import SimpleNamespace
-
+from llm_agent.env.gym_env import GymEnv
+import numpy as np
 def dict_to_namespace(d):
     """Convert dictionary to namespace recursively"""
     if not isinstance(d, dict):
@@ -37,6 +38,37 @@ def config():
 @pytest.fixture
 def env(config):
     return AlfWorldEnv(config['benchmark'])
+
+def test_gym_env():
+    config = {"env_name": "CartPole-v1"}
+    env = GymEnv(config)
+    
+    # Test initialization
+    assert env is not None
+    
+    # Test reset
+    initial_obs = env.reset()
+    assert isinstance(initial_obs, (list, tuple, float, int, np.ndarray))
+    
+    # Test step
+    action = 0  # Valid action for CartPole
+    obs, reward, done, info = env.step(action)
+    assert isinstance(obs, (list, tuple, float, int, np.ndarray))
+    assert isinstance(reward, (int, float))
+    assert isinstance(done, bool)
+    assert isinstance(info, dict)
+    
+    # Test action space
+    action_space = env.get_action_space()
+    assert isinstance(action_space, dict)
+    assert action_space["type"] == "integer"
+    assert "minimum" in action_space
+    assert "maximum" in action_space
+    
+    # Test available actions
+    actions = env.get_available_actions()
+    assert isinstance(actions, list)
+    assert all(isinstance(a, int) for a in actions)
 
 def test_env_init(env):
     assert env is not None
