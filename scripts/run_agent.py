@@ -85,6 +85,11 @@ def db():
     if os.path.exists("test_env"):
         shutil.rmtree("test_env")
 
+# Placeholder for configs
+use_plan = True
+use_reflexion = True
+reflexion_steps = 3
+
 async def main():
     # Create logs directory if it doesn't exist
     log_dir = Path("logs/episodes")
@@ -93,6 +98,7 @@ async def main():
     for i in range(134):
         # Create log file for this episode
         log_file = log_dir / f"episode_{i}.txt"
+        reflexion_count = 0
         with open(log_file, "w") as f:
             # Initialize config and environment
             cfg = config()
@@ -102,55 +108,67 @@ async def main():
             agent_config = test_config()
             agent = test_agent(llm, agent_config)
 
-            # Initial reset
-            obs, info = environment.reset()
-            done = False
-            steps = 0
-            max_steps = 50  # Increased from test value
-            
-            f.write(f"Episode {i}\n")
-            f.write(f"Goal: {environment.goal}\n\n")
-            
-            while not done and steps < max_steps:
-                # Convert observation to Observation object
-                observation = Observation(obs)
-                f.write(f"\nStep {steps + 1}\n")
-                f.write(f"Observation: {obs}\n")
+            while True:
+                # Initial reset
+                obs, info = environment.reset()
+                done = False
+                steps = 0
+                max_steps = 50  # Increased from test value
                 
-                # Get valid actions
-                valid_actions = environment.get_available_actions(info)
-                actions = [Action(cmd) for cmd in valid_actions]
-                f.write(f"Valid actions: {[a.text for a in actions]}\n")
+                f.write(f"Episode {i}\n")
+                f.write(f"Goal: {environment.goal}\n\n")
+                
+                while not done and steps < max_steps:
+                    # Convert observation to Observation object
+                    observation = Observation(obs)
+                    f.write(f"\nStep {steps + 1}\n")
+                    f.write(f"Observation: {obs}\n")
+                    
+                    # Get valid actions
+                    valid_actions = environment.get_available_actions(info)
+                    actions = [Action(cmd) for cmd in valid_actions]
+                    f.write(f"Valid actions: {[a.text for a in actions]}\n")
 
-                # Generate plan if it doesn't exist
-                if not agent.plan:
-                    plan = await agent.create_plan(environment.goal, observation, actions)
-                    f.write(f"Plan: {plan}\n")
+                    # Generate plan if it doesn't exist
+                    if not agent.plan and use_plan:
+                        plan = await agent.create_plan(environment.goal, observation, actions)
+                        f.write(f"Plan: {plan}\n")
 
-                # Reason about the available actions
-                reasoning = await agent.reason(environment.goal, observation, actions)
-                f.write(f"Reasoning: {reasoning}\n")
-                
-                # Get agent's action
-                selected_action = await agent.act(environment.goal, observation, actions, reasoning)
-                f.write(f"Selected action: {selected_action.text}\n")
-                
-                # Take step in environment
-                obs, reward, done, info = environment.step(selected_action.text)
-                f.write(f"Reward: {reward}\n")
-                
-                steps += 1
-                
-                if done:
-                    f.write("\nEpisode finished!\n")
-                    f.write(f"Steps taken: {steps}\n")
-                    f.write(f"Final reward: {reward}\n")
+                    # Reason about the available actions
+                    reasoning = await agent.reason(environment.goal, observation, actions)
+                    f.write(f"Reasoning: {reasoning}\n")
+                    
+                    # Get agent's action
+                    selected_action = await agent.act(environment.goal, observation, actions, reasoning)
+                    f.write(f"Selected action: {selected_action.text}\n")
+                    
+                    # Take step in environment
+                    obs, reward, done, info = environment.step(selected_action.text)
+                    f.write(f"Reward: {reward}\n")
+                    
+                    steps += 1
+                    
+                    if done:
+                        f.write("\nEpisode finished!\n")
+                        f.write(f"Steps taken: {steps}\n")
+                        f.write(f"Final reward: {reward}\n")
 
-                # Flush the file buffer
-                f.flush()
-            
-            if not done:
-                f.write("\nEpisode timed out after reaching max steps\n")
+                    # Flush the file buffer
+                    f.flush()
+                
+                if not done:
+                    f.write("\nEpisode timed out after reaching max steps\n")
+
+                # If reflexion is enabled, perform reflexion
+                if reward < 1 and use_reflexion and reflexion_count < reflexion_steps:
+                    reflexion = await agent.reflect(environment.goal, observation)
+                    f.write(f"Reflexion: {reflexion}\n")
+                    f.flush()
+                    reflexion_count += 1
+                    # Clear history after reflexion
+                    agent.clear_history()
+                else:
+                    break
 
 if __name__ == "__main__":
     import asyncio

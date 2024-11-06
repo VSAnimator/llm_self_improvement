@@ -24,6 +24,12 @@ async def trajectory_reflexion(goal: str, trajectory: List[Tuple[Observation, Ac
 
     return response
 
+async def conversation_reflexion(goal: str, conversation: List[Dict], llm: LiteLLMWrapper) -> str:
+    """Reflect on a conversation using an LLM"""
+    prompt = f"Reflect on the following conversation:\n{conversation}"
+    response = await llm.generate_chat([{"role": "system", "content": f"You are an agent in an environment. Given the goal: {goal}, your task is to reflect on an attempt to achieve the goal. Identify any mistakes or areas for improvement in the plan, as well as the choice of actions taken. Respond with a single paragraph."}, {"role": "user", "content": prompt}]) 
+    return response
+
 def format_trajectory(trajectory: List[Tuple[Observation, Action]]) -> str:
     """Format a trajectory for LLM reflection"""
     formatted_trajectory = ""

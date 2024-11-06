@@ -7,7 +7,7 @@ from ..env.base_env import Observation, Action
 from ..llm.lite_llm import LiteLLMWrapper
 from ..agent.generate_plan import generate_plan
 from ..agent.choose_action import select_action, reason
-from ..agent.trajectory_reflexion import trajectory_reflexion
+from ..agent.trajectory_reflexion import trajectory_reflexion, conversation_reflexion
 from ..in_context.alfworld_fewshots import get_fewshots_for_goal
 
 logger = getLogger(__name__)
@@ -30,6 +30,7 @@ class BaseAgent:
         
         # Keep track of recent observations and actions
         self.observation_history: List[Observation] = []
+        self.reasoning_history: List[str] = []
         self.action_history: List[Action] = []
         self.plan: Optional[str] = None
         self.reflexions: Optional[List[str]] = None
@@ -51,14 +52,23 @@ class BaseAgent:
                     if i < len(actions):
                         fewshot_prompt += f"Action {i+1}: " + repr(actions[i]) + "\n"
                 conversation.append({"role": "user", "content": fewshot_prompt})
+        # Add on reflexions from previous episodes
+        if self.reflexions:
+            for i, reflexion in enumerate(self.reflexions):
+                conversation.append({"role": "user", "content": "Reflexion on attempt " + str(i+1) + ": " + reflexion})
+        # Add on plan
         if self.plan:
             conversation.append({"role": "user", "content": "Plan of action: " + self.plan})
         for i in range(len(self.observation_history)):
             conversation.append({"role": "user", "content": f"Observation {i+1}: " + repr(self.observation_history[i].structured)})
+            #if self.reasoning_history and len(self.reasoning_history) > i:
+            #    conversation.append({"role": "user", "content": f"Reasoning {i+1}: " + self.reasoning_history[i]}) # Unclear if reasoning should be included in the conversation history
             conversation.append({"role": "assistant", "content": f"Action {i+1}: " + repr(self.action_history[i].text)})
-        curr_prompt = f"Current observation: " + repr(observation.structured) + "\nAvailable actions:\n"
-        for i, action in enumerate(available_actions):
-            curr_prompt += f"{i+1}. {action.text}\n"
+        curr_prompt = f"Current observation: " + repr(observation.structured)
+        if available_actions and len(available_actions) > 0:
+            curr_prompt += "\nAvailable actions:\n"
+            for i, action in enumerate(available_actions):
+                curr_prompt += f"{i+1}. {action.text}\n"
         if reasoning:
             curr_prompt += "\nReasoning: " + reasoning
         conversation.append({"role": "user", "content": curr_prompt})
@@ -105,6 +115,11 @@ class BaseAgent:
 
         # Append observation, action to history
         self.observation_history.append(observation)
+        if reasoning:
+            print("Appending reasoning")
+            self.reasoning_history.append(reasoning)
+        else:
+            print("Not appending reasoning because", self.reasoning_history, reasoning)
         self.action_history.append(action)
 
         # Enforce memory size limit
@@ -113,19 +128,28 @@ class BaseAgent:
 
         return action
     
-    async def reflect(self, goal: str, conversation: List[Dict], observation: Observation) -> List[Dict]:
+    async def reflect(self, goal: str, observation: Observation) -> List[Dict]:
         """Reflect on the conversation and observation"""
-        trajectory = [(observation, action) for action in self.action_history]
-        reflexion = await trajectory_reflexion(goal, trajectory, self.llm)
+        conversation = []
+        conversation = self.create_conversation(conversation, goal, observation, [])
+        reflexion = await conversation_reflexion(goal, conversation, self.llm)
         if self.reflexions is None:
             self.reflexions = [reflexion]
         else:
             self.reflexions.append(reflexion)
         return reflexion
         
+    def clear_history(self):
+        """Clear the agent's history"""
+        self.observation_history = []
+        self.action_history = []
+        self.reasoning_history = []
+        self.plan = None
+
     def reset(self):
         """Reset agent state between episodes"""
         self.observation_history = []
         self.action_history = []
+        self.reasoning_history = []
         self.plan = None
         self.reflexions = None

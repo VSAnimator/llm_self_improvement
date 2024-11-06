@@ -46,6 +46,9 @@ class LiteLLMWrapper:
             if response_format and any(provider in self.model.lower() for provider in ["gpt", "claude", "anthropic"]):
                 completion_kwargs["response_format"] = response_format
 
+            #print(completion_kwargs)
+            #input("waiting")
+
             response = await litellm.acompletion(**completion_kwargs)
             return response
 
