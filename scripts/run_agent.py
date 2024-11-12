@@ -136,6 +136,7 @@ async def main():
                     actions = [Action(cmd) for cmd in valid_actions]
                     f.write(f"Valid actions: {[a.text for a in actions]}\n")
 
+                    # Restructure the code to reflect the pseudocode
                     # Generate plan if it doesn't exist
                     if not agent.plan and use_plan:
                         plan = await agent.create_plan(environment.goal, observation, actions)

@@ -60,11 +60,11 @@ class BaseAgent:
         if self.plan:
             conversation.append({"role": "user", "content": "Plan of action: " + self.plan})
         for i in range(len(self.observation_history)):
-            conversation.append({"role": "user", "content": f"Observation {i+1}: " + repr(self.observation_history[i].structured)})
+            conversation.append({"role": "user", "content": f"Observation {i+1}: " + repr(self.observation_history[i].structured)}) # Also have image observation option
             #if self.reasoning_history and len(self.reasoning_history) > i:
             #    conversation.append({"role": "user", "content": f"Reasoning {i+1}: " + self.reasoning_history[i]}) # Unclear if reasoning should be included in the conversation history
             conversation.append({"role": "assistant", "content": f"Action {i+1}: " + repr(self.action_history[i].text)})
-        curr_prompt = f"Current observation: " + repr(observation.structured)
+        curr_prompt = f"Current observation: " + repr(observation.structured) # Also have image observation option
         if available_actions and len(available_actions) > 0:
             curr_prompt += "\nAvailable actions:\n"
             for i, action in enumerate(available_actions):
