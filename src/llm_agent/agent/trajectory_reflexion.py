@@ -30,6 +30,26 @@ async def conversation_reflexion(goal: str, conversation: List[Dict], llm: LiteL
     response = await llm.generate_chat([{"role": "system", "content": f"You are an agent in an environment. Given the goal: {goal}, your task is to reflect on an attempt to achieve the goal. Identify any mistakes or areas for improvement in the plan, as well as the choice of actions taken. Respond with a single paragraph."}, {"role": "user", "content": prompt}]) 
     return response
 
+async def trajectory_summary(goal: str, conversation: List[Dict], llm: LiteLLMWrapper) -> str:
+    """Generate a concise summary of a trajectory from conversation history using an LLM"""
+    prompt = f"Based on the conversation history, summarize what has happened so far in 1-2 sentences:\n{conversation}"
+    
+    response = await llm.generate_chat([
+        {"role": "system", "content": f"You are an agent in an environment. Given the goal: {goal}, your task is to provide a brief summary of what has happened in the conversation history."},
+        {"role": "user", "content": prompt}
+    ])
+    return response
+
+async def observation_summary(goal: str, observation: Observation, conversation: List[Dict], llm: LiteLLMWrapper) -> str:
+    """Generate a concise summary of the current observation in context of conversation history using an LLM"""
+    prompt = f"Given the conversation history and current observation, summarize the current state in 1 sentence:\n\nConversation History:\n{conversation}\n\nCurrent Observation:\n{repr(observation)}"
+    
+    response = await llm.generate_chat([
+        {"role": "system", "content": f"You are an agent in an environment. Given the goal: ``{goal}``, your task is to provide a brief, clear summary of the current observation taking into account the context from previous interactions."},
+        {"role": "user", "content": prompt}
+    ])
+    return response
+
 def format_trajectory(trajectory: List[Tuple[Observation, Action]]) -> str:
     """Format a trajectory for LLM reflection"""
     formatted_trajectory = ""

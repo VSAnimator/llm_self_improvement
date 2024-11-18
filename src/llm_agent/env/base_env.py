@@ -15,9 +15,9 @@ class Action:
 class BaseEnv(ABC):
     """Abstract base class for environments that can interact with LLM agents"""
     
-    def __init__(self):
+    def __init__(self, config: Dict):
         """Initialize environment"""
-        pass
+        self.num_attempts = config.get('num_attempts', 1)
     
     @abstractmethod
     def reset(self) -> Observation:

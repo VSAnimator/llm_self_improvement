@@ -26,7 +26,7 @@ class AlfWorldEnv(BaseEnv):
                 - grammar: Path to grammar file
                 - max_steps: Maximum steps per episode (default: 50)
         """
-        super().__init__()
+        super().__init__(config)
         
         self.config = config['logic']
         self.max_steps = config.get('max_steps', 50)
