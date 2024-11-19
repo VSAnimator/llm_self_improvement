@@ -6,6 +6,8 @@ import shutil
 from pathlib import Path
 from types import SimpleNamespace
 from llm_agent.agent.base_agent_v2 import BaseAgent
+from llm_agent.agent.react import React
+from llm_agent.agent.reflexion import Reflexion
 from llm_agent.env.base_env import Observation, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
 from llm_agent.env.alfworld_env import AlfWorldEnv
@@ -61,7 +63,12 @@ def test_config():
     }
 
 def test_agent(real_llm, test_config):
-    return BaseAgent(real_llm, test_config)
+    if test_config.get('agent_type', 'react') == 'react':
+        return React(real_llm, test_config)
+    elif test_config.get('agent_type', 'react') == 'reflexion':
+        return Reflexion(real_llm, test_config)
+    else:
+        raise ValueError(f"Invalid agent type: {test_config.get('agent_type', 'react')}")
 
 def clean_db():
     print("Did this run")

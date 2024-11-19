@@ -36,44 +36,34 @@ class BaseAgent:
         self.plan: Optional[str] = None
         self.reflexions: Optional[List[str]] = None
 
-    def retrieve_in_context(self, goal: str, observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None) -> List[Dict]:
+    def retrieve_in_context(self, key_type, key, value_type) -> List[Dict]:
         """Retrieve in context examples from the database"""
-        in_context_example_list = []
-        for elem in self.config.get('in_context_queries', []):
-            # Retrieve in context examples by similarity function and retrieval target
-            # Options: 
-            # 1. Use the goal as the retrieval target
-            # 2. Use the observation as the retrieval target
-            # 3. Use the reasoning as the retrieval target
-            # 4. Use the trajectory summary as the retrieval target
-            retrieval_target = elem.get('retrieval_target', 'goal')
-            if retrieval_target == 'goal':
-                similar_entries = db.get_similar_entries('goal', goal)
-            elif retrieval_target == 'observation':
-                similar_entries = db.get_similar_entries('observation', repr(observation.structured))
-            elif retrieval_target == 'plan':
-                similar_entries = db.get_similar_entries('plan', self.plan)
-            elif retrieval_target == 'reasoning':
-                similar_entries = db.get_similar_entries('reasoning', reasoning)
-            elif retrieval_target == 'summary':
-                similar_entries = db.get_similar_entries('summary', self.summarize(goal, self.observation_history, self.reasoning_history, self.action_history, self.reward_history, self.plan, self.reflexions))
-            # Now figure out which part of the examples to return in-context
-            # Options:
-            # 1. Return the entire trajectory
-            # 2. Return the summary
-            # 3. Return the action and observation pairs
-            # 4. Return the reflexion
-            in_context_type = elem.get('in_context_type', retrieval_target)
-            if in_context_type == 'trajectory':
-                in_context_examples = [entry['trajectory'] for entry in similar_entries]
-            elif in_context_type == 'summary':
-                in_context_examples = [entry['summary'] for entry in similar_entries]
-            elif in_context_type == 'action':
-                in_context_examples = [[entry['observation'], entry['action']] for entry in similar_entries]
-            elif in_context_type == 'reflexion':
-                in_context_examples = [entry['reflexion'] for entry in similar_entries]
-            in_context_example_list.append(in_context_examples)
-        return in_context_example_list
+        if key == 'goal':
+            similar_entries = db.get_similar_entries('goal', goal)
+        elif key == 'observation':
+            similar_entries = db.get_similar_entries('observation', repr(observation.structured))
+        elif key == 'plan':
+            similar_entries = db.get_similar_entries('plan', self.plan)
+        elif key == 'reasoning':
+            similar_entries = db.get_similar_entries('reasoning', reasoning)
+        elif key == 'summary':
+            similar_entries = db.get_similar_entries('summary', self.summarize(goal, self.observation_history, self.reasoning_history, self.action_history, self.reward_history, self.plan, self.reflexions))
+        # Now figure out which part of the examples to return in-context
+        # Options:
+        # 1. Return the entire trajectory
+        # 2. Return the summary
+        # 3. Return the action and observation pairs
+        # 4. Return the reflexion
+        value = elem.get('in_context_type', key)
+        if value == 'trajectory':
+            in_context_examples = [entry['trajectory'] for entry in similar_entries]
+        elif value == 'summary':
+            in_context_examples = [entry['summary'] for entry in similar_entries]
+        elif value == 'action':
+            in_context_examples = [[entry['observation'], entry['action']] for entry in similar_entries]
+        elif value == 'reflexion':
+            in_context_examples = [entry['reflexion'] for entry in similar_entries]
+        return in_context_examples
 
     def create_conversation(self, conversation: List[Dict], goal: str, observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None, in_context: bool = False) -> List[Dict]:
         """Create a conversation with the observation and action history"""
@@ -127,7 +117,7 @@ class BaseAgent:
                     del conversation[i+1]
         return conversation
 
-    async def create_plan(self, goal: str, observation: Observation, available_actions: List[Action]) -> str:
+    async def create_plan(self, goal: str, observation: Observation, available_actions: List[Action], in_context_data = None) -> str:
         """Generate a plan for the agent to follow"""
         conversation = []
         conversation.append({"role": "system", "content": f"You are an expert at generating high-level plans of actions to achieve a goal."})
@@ -139,7 +129,7 @@ class BaseAgent:
         self.plan = plan
         return plan
 
-    async def reason(self, goal: str, observation: Observation, available_actions) -> List[Dict]:
+    async def reason(self, goal: str, observation: Observation, available_actions, in_context_data = None) -> List[Dict]:
         """Reason about the conversation and observation"""
         conversation = []
         # Add system prompt
@@ -149,7 +139,7 @@ class BaseAgent:
         reasoning = await reason(conversation, observation, available_actions, self.llm, self.config)
         return reasoning
 
-    async def act(self, goal: str, observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None) -> Tuple[Action, List[Dict]]:
+    async def act(self, goal: str, observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None, in_context_data= None) -> Tuple[Action, List[Dict]]:
         """Select an action from available actions given the current observation"""
         # Create a conversation with observations and actions so far
         conversation = []
@@ -176,7 +166,7 @@ class BaseAgent:
 
         return action
     
-    async def reflect(self, goal: str, observation: Observation) -> List[Dict]:
+    async def reflect(self, goal: str, observation: Observation, in_context_data = None) -> List[Dict]:
         """Reflect on the conversation and observation"""
         conversation = []
         conversation = self.create_conversation(conversation, goal, observation, [])
@@ -187,7 +177,7 @@ class BaseAgent:
             self.reflexions.append(reflexion)
         return reflexion
     
-    async def summarize(self, goal, obs=None) -> str:
+    async def summarize(self, goal, obs=None, in_context_data = None) -> str:
         """Summarize the conversation and observation"""
         conversation = []
         conversation = self.create_conversation(conversation, goal, None, None, None)
