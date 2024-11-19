@@ -59,14 +59,15 @@ def test_config():
     return {
         "max_retries": 3,
         "memory_size": 50,
-        "temperature": 0.7
+        "temperature": 0.7,
+        "agent_type": "reflexion"
     }
 
-def test_agent(real_llm, test_config):
+def test_agent(real_llm, db, env, test_config):
     if test_config.get('agent_type', 'react') == 'react':
-        return React(real_llm, test_config)
+        return React(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'reflexion':
-        return Reflexion(real_llm, test_config)
+        return Reflexion(real_llm, db, env, test_config)
     else:
         raise ValueError(f"Invalid agent type: {test_config.get('agent_type', 'react')}")
 
@@ -122,13 +123,13 @@ async def run_env(agent, env, log_file):
             valid_actions = env.get_available_actions(info)
             print("Valid actions", valid_actions)
             # Choose action
-            selected_action = await agent.choose_action(env.goal, obs, valid_actions, log_file)
+            selected_action = await agent.choose_action(obs, valid_actions, log_file)
             print("Selected action", selected_action)
             # Take step in env
             obs, reward, done, info = env.step(selected_action.text) # This feedback needs to be looped anyways
             print("Obs", obs, "Reward", reward, "Done", done, "Info", info)
             # Pass feedback to agent
-            await agent.process_feedback(env.goal, obs, reward, done, log_file)
+            await agent.process_feedback(obs, reward, done, log_file)
             print("Feedback processed")
             # Increment step count
             steps += 1
@@ -143,7 +144,8 @@ async def main():
     environment = env(cfg)
     llm = real_llm(cfg)
     agent_config = test_config()
-    agent = test_agent(llm, agent_config)
+    agent = test_agent(llm, None, environment, agent_config)
+    print("Environment ID", agent.environment_id)
     await run_env(agent, environment, "test_log.txt")
 
 if __name__ == "__main__":

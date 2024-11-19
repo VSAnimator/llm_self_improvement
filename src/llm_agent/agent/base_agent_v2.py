@@ -15,61 +15,60 @@ logger = getLogger(__name__)
 class BaseAgent:
     """Base agent class that uses an LLM to select actions"""
     
-    def __init__(self, llm: LiteLLMWrapper, config: Dict):
+    def __init__(self, llm, db, env, config):
         """Initialize the agent
         
         Args:
             llm: LLM instance to use for decision making
             config: Configuration dictionary containing agent parameters
         """
-        self.llm = llm
         self.config = config
+
+        # LLM
+        self.llm = llm
         self.max_retries = config.get('max_retries', 3)
-        self.memory_size = config.get('memory_size', 10)
+        self.memory_size = config.get('memory_size', 20)
         self.temperature = config.get('temperature', 0.7)
         
-        # Keep track of recent observations and actions
+        # Trajectory history
         self.observation_history: List[Observation] = []
         self.reasoning_history: List[str] = []
         self.action_history: List[Action] = []
         self.reward_history: List[float] = []
         self.plan: Optional[str] = None
         self.reflexions: Optional[List[str]] = None
+        
+        # Environment info
+        self.environment_id: Optional[str] = env.id
+        self.goal: Optional[str] = env.goal
 
-    def retrieve_in_context(self, key_type, key, value_type) -> List[Dict]:
+        # Database
+        self.db = db
+
+    def get_in_context_data(self, key_type, key, value_type) -> List[Dict]:
         """Retrieve in context examples from the database"""
-        if key == 'goal':
-            similar_entries = db.get_similar_entries('goal', goal)
-        elif key == 'observation':
-            similar_entries = db.get_similar_entries('observation', repr(observation.structured))
-        elif key == 'plan':
-            similar_entries = db.get_similar_entries('plan', self.plan)
-        elif key == 'reasoning':
-            similar_entries = db.get_similar_entries('reasoning', reasoning)
-        elif key == 'summary':
-            similar_entries = db.get_similar_entries('summary', self.summarize(goal, self.observation_history, self.reasoning_history, self.action_history, self.reward_history, self.plan, self.reflexions))
+        similar_entries = self.db.get_similar_entries(key_type, key)
         # Now figure out which part of the examples to return in-context
         # Options:
         # 1. Return the entire trajectory
         # 2. Return the summary
         # 3. Return the action and observation pairs
         # 4. Return the reflexion
-        value = elem.get('in_context_type', key)
-        if value == 'trajectory':
+        if value_type == 'trajectory':
             in_context_examples = [entry['trajectory'] for entry in similar_entries]
-        elif value == 'summary':
+        elif value_type == 'summary':
             in_context_examples = [entry['summary'] for entry in similar_entries]
-        elif value == 'action':
+        elif value_type == 'action':
             in_context_examples = [[entry['observation'], entry['action']] for entry in similar_entries]
-        elif value == 'reflexion':
+        elif value_type == 'reflexion':
             in_context_examples = [entry['reflexion'] for entry in similar_entries]
         return in_context_examples
 
-    def create_conversation(self, conversation: List[Dict], goal: str, observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None, in_context: bool = False) -> List[Dict]:
+    def create_conversation(self, conversation: List[Dict], observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None, in_context: bool = False) -> List[Dict]:
         """Create a conversation with the observation and action history"""
         if in_context:
             # Add in fewshots
-            fewshots = self.retrieve_in_context(goal, observation, available_actions, reasoning)
+            fewshots = self.retrieve_in_context(self.goal, observation, available_actions, reasoning)
             for i, elem in enumerate(fewshots):
                 # Have to have a prompt for the type of fewshot we are using
                 fewshot_config = self.config.get('in_context_queries', [])[i]
@@ -117,36 +116,37 @@ class BaseAgent:
                     del conversation[i+1]
         return conversation
 
-    async def create_plan(self, goal: str, observation: Observation, available_actions: List[Action], in_context_data = None) -> str:
+    async def create_plan(self, observation: Observation, available_actions: List[Action], in_context_data = None) -> str:
         """Generate a plan for the agent to follow"""
         conversation = []
         conversation.append({"role": "system", "content": f"You are an expert at generating high-level plans of actions to achieve a goal."})
-        conversation = self.create_conversation(conversation, goal, observation, available_actions, in_context=False)
+        print("Observation", observation)
+        conversation = self.create_conversation(conversation, observation, available_actions, in_context=False)
         current_reflection = None
         if self.config.get('always_reflect', False) and len(self.reflexions) > 0: # If we always refelct, re-generate plan
             current_reflection = self.reflexions[-1]
-        plan = await generate_plan(conversation, goal, observation, self.llm, self.plan, current_reflection)
+        plan = await generate_plan(conversation, self.goal, observation, self.llm, self.plan, current_reflection)
         self.plan = plan
         return plan
 
-    async def reason(self, goal: str, observation: Observation, available_actions, in_context_data = None) -> List[Dict]:
+    async def reason(self, observation: Observation, available_actions, in_context_data = None) -> List[Dict]:
         """Reason about the conversation and observation"""
         conversation = []
         # Add system prompt
-        conversation.append({"role": "system", "content": f"You are an agent in an environment. Given the current observation, you must reason about the most appropriate action to take towards achieving the goal: {goal}"})
+        conversation.append({"role": "system", "content": f"You are an agent in an environment. Given the current observation, you must reason about the most appropriate action to take towards achieving the goal: {self.goal}"})
         # Add conversation history
-        conversation = self.create_conversation(conversation, goal, observation, available_actions)
+        conversation = self.create_conversation(conversation, observation, available_actions)
         reasoning = await reason(conversation, observation, available_actions, self.llm, self.config)
         return reasoning
 
-    async def act(self, goal: str, observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None, in_context_data= None) -> Tuple[Action, List[Dict]]:
+    async def act(self, observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None, in_context_data= None) -> Tuple[Action, List[Dict]]:
         """Select an action from available actions given the current observation"""
         # Create a conversation with observations and actions so far
         conversation = []
         # Want the system prompt to be standardized. Should have environment and goal info, as well as observation and action format. 
-        conversation.append({"role": "system", "content": f"You are an agent in an environment. Given the current observation, you must select an action to take towards achieving the goal: {goal}"})
+        conversation.append({"role": "system", "content": f"You are an agent in an environment. Given the current observation, you must select an action to take towards achieving the goal: {self.goal}"})
 
-        conversation = self.create_conversation(conversation, goal, observation, available_actions, reasoning)
+        conversation = self.create_conversation(conversation, observation, available_actions, reasoning)
         
         # Select action
         action = await select_action(conversation, observation, available_actions, self.llm, self.config)
@@ -166,28 +166,28 @@ class BaseAgent:
 
         return action
     
-    async def reflect(self, goal: str, observation: Observation, in_context_data = None) -> List[Dict]:
+    async def reflect(self, observation: Observation, in_context_data = None) -> List[Dict]:
         """Reflect on the conversation and observation"""
         conversation = []
-        conversation = self.create_conversation(conversation, goal, observation, [])
-        reflexion = await conversation_reflexion(goal, conversation, self.llm)
+        conversation = self.create_conversation(conversation, observation, [])
+        reflexion = await conversation_reflexion(self.goal, conversation, self.llm)
         if self.reflexions is None:
             self.reflexions = [reflexion]
         else:
             self.reflexions.append(reflexion)
         return reflexion
     
-    async def summarize(self, goal, obs=None, in_context_data = None) -> str:
+    async def summarize(self, obs=None, in_context_data = None) -> str:
         """Summarize the conversation and observation"""
         conversation = []
-        conversation = self.create_conversation(conversation, goal, None, None, None)
+        conversation = self.create_conversation(conversation, None, None, None)
         if obs is None:
-            summary = await trajectory_summary(goal, conversation, self.llm)
+            summary = await trajectory_summary(self.goal, conversation, self.llm)
         else:
-            summary = await observation_summary(goal, obs, conversation, self.llm)
+            summary = await observation_summary(self.goal, obs, conversation, self.llm)
         return summary
     
-    async def choose_action(self, goal, obs, valid_actions, log_file):
+    async def choose_action(self, obs, valid_actions, log_file):
         """Choose an action from available actions given the current observation"""
         # Create observation from obs string
         obs = Observation(structured=obs)
@@ -195,34 +195,34 @@ class BaseAgent:
         valid_actions = [Action(text=action) for action in valid_actions]
         if self.config.get('use_summarization', False):
             original_obs = obs
-            obs = await self.summarize(goal, obs) # Create_conversation can pull in the trajectory
+            obs = await self.summarize(self.goal, obs) # Create_conversation can pull in the trajectory
         # Agent config should control the behavior here, reflect all algorithms we want to encompass
         if self.config.get('use_plan', True):
-            await self.create_plan(goal, obs, valid_actions) # Re-planning based off reflexion can go in here
+            await self.create_plan(self.goal, obs, valid_actions) # Re-planning based off reflexion can go in here
         if self.config.get('use_reasoning', True):
-            reasoning = await self.reason(goal, obs, valid_actions)
-        action = await self.act(goal, obs, valid_actions, reasoning) # This is where we store everything too.
+            reasoning = await self.reason(self.goal, obs, valid_actions)
+        action = await self.act(self.goal, obs, valid_actions, reasoning) # This is where we store everything too.
         return action
     
-    async def process_feedback(self, goal, new_obs, reward, done, log_file):
+    async def process_feedback(self, new_obs, reward, done, log_file):
         """Process feedback from the environment"""
         self.reward_history.append(reward)
         new_obs = Observation(structured=new_obs)
         reflexion = None
         summary = None
         if self.config.get('use_reflexion', True) and ((done and reward < 1) or self.config.get('always_reflect', False)):
-            reflexion = await self.reflect(goal, new_obs) # Handle this separately if in progress or not. In theory this could take more inputs from the reasoning chain...
+            reflexion = await self.reflect(self.goal, new_obs) # Handle this separately if in progress or not. In theory this could take more inputs from the reasoning chain...
             if self.config.get('always_reflect', False) and (not done and len(self.reflexions) > 0):
                 # We should override the existing reflexion
                 self.reflexions[-1] = reflexion
             else:
                 self.reflexions.append(reflexion)
         if self.config.get('use_summarization', True) and done:
-            summary = await self.summarize(goal, new_obs)
+            summary = await self.summarize(self.goal, new_obs)
             print("Summary", summary)
         if self.config.get('use_memory', True) and done and reward == 1:
             # We need to add to the database here
-            await self.store_episode(goal, self.observation_history, self.reasoning_history, self.action_history, self.reward_history, self.plan, self.reflexions, reflexion, summary)
+            await self.store_episode(self.goal, self.observation_history, self.reasoning_history, self.action_history, self.reward_history, self.plan, self.reflexions, reflexion, summary)
         
     def clear_history(self):
         """Clear the agent's history"""

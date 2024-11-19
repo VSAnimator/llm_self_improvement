@@ -101,6 +101,8 @@ class AlfWorldEnv(BaseEnv):
         
         # Create the environment
         self.env = textworld.gym.make(self.env_id)
+
+        self.id = self.gamefile
         
         # Track current state
         self._observation = None
