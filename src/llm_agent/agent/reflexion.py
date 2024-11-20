@@ -8,7 +8,7 @@ class Reflexion(BaseAgent):
     async def choose_action(self, obs, valid_actions, log_file):
         """Choose an action from available actions given the current observation"""
         # Use the previos reflections as in-context data
-        in_context_data = await self.get_in_context_data(key_type="environment_id", key=self.environment_id, value_type="reflexions")
+        in_context_data = self.get_in_context_data(key_type="environment_id", key=self.environment_id, value_type="reflexion")
         # Create observation from obs string
         obs = Observation(structured=obs)
         # Create action objects from valid action strings
@@ -28,5 +28,5 @@ class Reflexion(BaseAgent):
         summary = None
         if done and reward < 1:
             reflexion = await self.reflect(new_obs)
-            await self.store_episode(reflexion, summary)
+            self.store_episode(reflexion, summary)
         

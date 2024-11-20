@@ -26,7 +26,7 @@ class RAP(BaseAgent):
         new_obs = Observation(structured=new_obs)
         reflexion = None
         summary = None
-        if done and reward == 1:
+        if done:# and reward == 1:
             # We need to add to the database here
             await self.store_episode(reflexion, summary)
         

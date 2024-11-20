@@ -39,7 +39,8 @@ class LiteLLMWrapper:
                 "frequency_penalty": self.frequency_penalty,
                 "presence_penalty": self.presence_penalty,
                 "timeout": self.timeout,
-                "stream": False
+                "stream": False,
+                "mock_response": "test" if response_format is None else None
             }
 
             # Add response format for models that support it

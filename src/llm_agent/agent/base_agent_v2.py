@@ -54,6 +54,9 @@ class BaseAgent:
         # 2. Return the summary
         # 3. Return the action and observation pairs
         # 4. Return the reflexion
+        in_context_examples = []
+        print("Similar entries", similar_entries)
+        input("Press Enter to continue")
         if value_type == 'trajectory':
             in_context_examples = [entry['trajectory'] for entry in similar_entries]
         elif value_type == 'summary':
@@ -63,6 +66,10 @@ class BaseAgent:
         elif value_type == 'reflexion':
             in_context_examples = [entry['reflexion'] for entry in similar_entries]
         return in_context_examples
+    
+    def store_episode(self, reflexion, summary):
+        """Store an episode in the database"""
+        self.db.store_episode(self.environment_id, self.goal, self.observation_history, self.reasoning_history, self.action_history, self.reward_history, self.plan, reflexion, summary)
 
     def create_conversation(self, conversation: List[Dict], observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None, in_context: bool = False) -> List[Dict]:
         """Create a conversation with the observation and action history"""

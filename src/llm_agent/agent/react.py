@@ -12,8 +12,8 @@ class React(BaseAgent):
         obs = Observation(structured=obs)
         # Create action objects from valid action strings
         valid_actions = [Action(text=action) for action in valid_actions]
-        #if self.config.get('use_summarization', False):
-        #    obs = await self.summarize(goal, obs) # Create_conversation can pull in the trajectory
+        if self.config.get('use_summarization', False):
+            obs = await self.summarize(obs) # Create_conversation can pull in the trajectory
         # Agent config should control the behavior here, reflect all algorithms we want to encompass
         await self.create_plan(obs, valid_actions) # Re-planning based off reflexion can go in here
         reasoning = await self.reason(obs, valid_actions)

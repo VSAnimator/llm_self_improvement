@@ -17,7 +17,7 @@ class BaseEnv(ABC):
     
     def __init__(self, config: Dict):
         """Initialize environment"""
-        self.num_attempts = config.get('num_attempts', 1)
+        self.num_attempts = config.get('num_attempts', 3)
     
     @abstractmethod
     def reset(self) -> Observation:
