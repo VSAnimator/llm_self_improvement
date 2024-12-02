@@ -16,7 +16,7 @@ class Synapse(BaseAgent):
         # Agent config should control the behavior here, reflect all algorithms we want to encompass
         await self.create_plan(obs, valid_actions) # Re-planning based off reflexion can go in here
         reasoning = await self.reason(obs, valid_actions)
-        in_context_data = await self.get_in_context_data(key_type="observation", key=repr(obs.structured), value_type="trajectory")
+        in_context_data = self.get_in_context_data(key_type="state", key=repr(obs.structured), value_type=["state", "action"])
         action = await self.act(obs, valid_actions, reasoning, in_context_data) 
         return action
     

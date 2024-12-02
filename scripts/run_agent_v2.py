@@ -9,6 +9,7 @@ from llm_agent.agent.base_agent_v2 import BaseAgent
 from llm_agent.agent.react import React
 from llm_agent.agent.reflexion import Reflexion
 from llm_agent.agent.rap import RAP
+from llm_agent.agent.synapse import Synapse
 from llm_agent.env.base_env import Observation, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
 from llm_agent.env.alfworld_env import AlfWorldEnv
@@ -62,7 +63,7 @@ def test_config():
         "max_retries": 3,
         "memory_size": 50,
         "temperature": 0.7,
-        "agent_type": "rap"
+        "agent_type": "synapse"
     }
 
 def test_agent(real_llm, db, env, test_config):
@@ -72,6 +73,8 @@ def test_agent(real_llm, db, env, test_config):
         return Reflexion(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'rap':
         return RAP(real_llm, db, env, test_config)
+    elif test_config.get('agent_type', 'react') == 'synapse':
+        return Synapse(real_llm, db, env, test_config)
     else:
         raise ValueError(f"Invalid agent type: {test_config.get('agent_type', 'react')}")
 
