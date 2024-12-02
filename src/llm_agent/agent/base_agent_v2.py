@@ -57,7 +57,9 @@ class BaseAgent:
         in_context_examples = []
         print("Similar entries", similar_entries)
         input("Press Enter to continue")
-        if value_type == 'trajectory':
+        if isinstance(value_type, list): # Check that this is a list, not a string
+            in_context_examples = [entry[value_type[i]] for entry in similar_entries for i in range(len(value_type))]
+        elif value_type == 'trajectory':
             in_context_examples = [entry['trajectory'] for entry in similar_entries]
         elif value_type == 'summary':
             in_context_examples = [entry['summary'] for entry in similar_entries]
