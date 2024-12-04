@@ -14,7 +14,8 @@ class RAP(BaseAgent):
         if self.config.get('use_summarization', False):
             obs = await self.summarize(obs) # Create_conversation can pull in the trajectory
         # Agent config should control the behavior here, reflect all algorithms we want to encompass
-        await self.create_plan(obs, valid_actions) # Re-planning based off reflexion can go in here
+        if not self.plan:
+            await self.create_plan(obs, valid_actions) # Re-planning based off reflexion can go in here
         reasoning = await self.reason(obs, valid_actions)
         in_context_data = self.get_in_context_data(key_type="reasoning", key=reasoning, value_type=["state", "action"])
         action = await self.act(obs, valid_actions, reasoning, in_context_data) 
@@ -26,7 +27,7 @@ class RAP(BaseAgent):
         new_obs = Observation(structured=new_obs)
         reflexion = None
         summary = None
-        if done:# and reward == 1:
+        if done and reward == 1:
             # We need to add to the database here
             self.store_episode(reflexion, summary)
         

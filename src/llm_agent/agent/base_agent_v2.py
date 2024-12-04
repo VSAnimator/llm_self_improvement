@@ -56,7 +56,6 @@ class BaseAgent:
         # 4. Return the reflexion
         in_context_examples = []
         print("Similar entries", similar_entries)
-        input("Press Enter to continue")
         if isinstance(value_type, list): # Check that this is a list, not a string
             in_context_examples = [entry[value_type[i]] for entry in similar_entries for i in range(len(value_type))]
         elif value_type == 'trajectory':

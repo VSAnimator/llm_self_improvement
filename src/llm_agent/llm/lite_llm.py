@@ -31,17 +31,20 @@ class LiteLLMWrapper:
         """Base generation method"""
         try:
             completion_kwargs = {
-                "model": self.model,
+                "model": self.model, #"openai/meta-llama/Llama-3.1-8B-Instruct",#self.model,
                 "messages": messages,
-                "max_tokens": self.max_tokens,
+                "max_tokens": 1024,#self.max_tokens,
                 "temperature": self.temperature,
                 "top_p": self.top_p,
                 "frequency_penalty": self.frequency_penalty,
                 "presence_penalty": self.presence_penalty,
                 "timeout": self.timeout,
                 "stream": False,
-                "mock_response": "test" if response_format is None else None
+                #"api_base": "http://0.0.0.0:8000/v1"
+                #"mock_response": "test" if response_format is None else None
             }
+
+            print(messages)
 
             # Add response format for models that support it
             if response_format and any(provider in self.model.lower() for provider in ["gpt", "claude", "anthropic"]):

@@ -37,6 +37,8 @@ class AlfWorldEnv(BaseEnv):
             "grammar": open(self.config['grammar']).read(),
         }
 
+        print("config", config)
+
         if 'problem' not in config:
             '''
             problems = glob.glob(pjoin(ALFWORLD_DATA, "**", "initial_state.pddl"), recursive=True)
@@ -55,11 +57,17 @@ class AlfWorldEnv(BaseEnv):
             with open('data/alfworld/alfworld_tasks_suffix.json', 'r') as f:
                 self.tasks = json.load(f)
 
+            print("Problem ID", config.get('problem_id'))
+
             # Select random task
             if config.get('problem_id') is not None:
                 self.task = self.tasks[config['problem_id']]
             else:
-                self.task = self.tasks[9] #random.choice(self.tasks)
+                # Throw error
+                raise ValueError("Problem ID not specified")
+                #self.task = self.tasks[9] #random.choice(self.tasks)
+
+            print("self.task", self.task)
                 
             config['problem'] = os.path.dirname(self.task['gamefile'])
             self.goal = self.task['goal'].split('___')[0]
