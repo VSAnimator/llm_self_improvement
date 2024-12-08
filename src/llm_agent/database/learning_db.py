@@ -177,7 +177,7 @@ class LearningDB:
                     self.state_id_mappings[field][str(curr_size)] = trajectory_id
                     self._save_index(field, self.state_indices[field], False)
 
-    def get_similar_entries(self, key_type: str, key: str, k: int = 5) -> List[Dict]:
+    def get_similar_entries(self, key_type: str, key: str, k: int = 5, outcome: str = None) -> List[Dict]:
         """Get similar entries based on key_type and key"""
         key_embedding = self.model.encode([key])[0].reshape(1, -1)
         
@@ -189,7 +189,10 @@ class LearningDB:
         mappings = self.trajectory_id_mappings if is_trajectory else self.state_id_mappings
         cursor = self.trajectory_cursor if is_trajectory else self.state_cursor
         
-        D, I = indices[key_type].search(key_embedding, k)
+        if outcome:
+            D, I = indices[key_type].search(key_embedding, k * 10) # Buffer for losing episodes fetched as well
+        else:
+            D, I = indices[key_type].search(key_embedding, k)
         
         # Filter invalid results
         D = [d for d, i in zip(D[0], I[0]) if i != -1]
@@ -201,6 +204,7 @@ class LearningDB:
         entry_ids = [mappings[key_type][str(i)] for i in I]
         
         similar_entries = []
+        success_labels = []
         for entry_id in entry_ids:
             if is_trajectory:
                 cursor.execute("SELECT * FROM trajectories WHERE id = ?", (entry_id,))
@@ -242,6 +246,18 @@ class LearningDB:
                             'summary': trajectory_row[9]
                         }
                     }
-            similar_entries.append(entry)
+
+            outcome_flag = 1 if outcome == "winning" else 0
+            
+            if not outcome or ('rewards' in entry and entry['rewards'][-1] == outcome_flag) or ('trajectory' in entry and entry['trajectory']['rewards'][-1] == outcome_flag):
+                similar_entries.append(entry)
+                success_labels.append(entry['rewards'][-1] == 1)
+
+            if len(similar_entries) >= k:
+                break
+
+        # Create two separate lists of entries for success vs failure
+        success_entries = [similar_entries[i] for i in range(len(success_labels)) if success_labels[i]]
+        failure_entries = [similar_entries[i] for i in range(len(success_labels)) if not success_labels[i]]
                 
-        return similar_entries
+        return success_entries, failure_entries

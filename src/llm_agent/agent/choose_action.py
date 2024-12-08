@@ -4,6 +4,7 @@ from enum import Enum
 from logging import getLogger
 from pydantic import BaseModel
 import json
+import enum
 
 from ..env.base_env import Observation, Action
 from ..llm.lite_llm import LiteLLMWrapper
@@ -12,7 +13,7 @@ logger = getLogger(__name__)
 
 async def reason(conversation: List[Dict], observation: Observation, available_actions: List[Action], llm: LiteLLMWrapper, config: Dict) -> List[Dict]:
     # Take the last conversation message and add a string saying to reason
-    conversation[-1]['content'] += "\nReason about the most appropriate action to take from the available actions."
+    conversation[-1]['content'] += "\n Think about the most appropriate action to take from the available actions."
     response = await llm.generate_chat(conversation)
     return response
 
@@ -27,13 +28,10 @@ async def select_action(conversation: List[Dict], observation: Observation, avai
     # Get LLM response
     for _ in range(max_retries):
         try:
-            #conversation.append({"role": "user", "content": prompt})
-            #print(f"Conversation: {conversation}")
             # Use structured output
             class ActionNumber(BaseModel):
                 action_number: int
             response = await llm.generate_structured(conversation, output_schema=ActionNumber)
-            # Get action number from response
             action_number = json.loads(response.choices[0].message.content)['action_number']
             action = available_actions[action_number - 1]
             if action is not None:
