@@ -199,7 +199,7 @@ class LearningDB:
         I = [i for i in I[0] if i != -1]
         
         if not I:
-            return []
+            return [], []
             
         entry_ids = [mappings[key_type][str(i)] for i in I]
         

@@ -51,7 +51,7 @@ class BaseAgent:
         print("Value type", value_type)
         # So we basically want to unroll the examples into a string
         if len(value_type) == 1:
-            return value_type + ": " + repr(in_context_data[0])
+            return value_type[0] + ": " + repr(in_context_data[value_type[0]])
         else:
             # If there are multiple value types, we want to interleave them. Ex. Obs 1, Action 1, Obs 2, Action 2, etc.
             in_context_string = ""
@@ -114,11 +114,11 @@ class BaseAgent:
                     del conversation[i+1]
         return conversation
     
-    def in_context_prompt(self, system_prompt, in_context_data):
+    def in_context_prompt(self, system_prompt, in_context_data): # We should integrate the value type into the prompt
         """Create a prompt for the in context data"""
         if "low_level" in in_context_data:
             success, data = in_context_data["low_level"]
-            system_prompt += f"\nHere are some low-level examples from episodes that {'successfully achieved' if success else 'failed to achieve'} the goal. Follow the steps from these examples exactly:"
+            system_prompt += f"\nHere are some low-level examples from episodes that {'successfully achieved' if success else 'failed to achieve'} similar goals:"
             for i, elem in enumerate(data):
                 system_prompt += f"\nExample {i+1}:\n" + elem
         if "high_level" in in_context_data:

@@ -13,6 +13,7 @@ from llm_agent.agent.rap import RAP
 from llm_agent.agent.synapse import Synapse
 from llm_agent.agent.autoguide import AutoGuide
 from llm_agent.agent.retrieval_test import RetrievalTest
+from llm_agent.agent.expel_train import ExpelTrain
 from llm_agent.env.base_env import Observation, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
 from llm_agent.env.alfworld_env import AlfWorldEnv
@@ -66,7 +67,7 @@ def test_config():
         "max_retries": 1,
         "memory_size": 50,
         "temperature": 0.7,
-        "agent_type": "retrieval_test"
+        "agent_type": "expel_train"
     }
 
 def test_agent(real_llm, db, env, test_config):
@@ -84,6 +85,8 @@ def test_agent(real_llm, db, env, test_config):
         return AutoGuide(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'retrieval_test':
         return RetrievalTest(real_llm, db, env, test_config)
+    elif test_config.get('agent_type', 'react') == 'expel_train':
+        return ExpelTrain(real_llm, db, env, test_config)
     else:
         raise ValueError(f"Invalid agent type: {test_config.get('agent_type', 'react')}")
 
@@ -141,7 +144,7 @@ async def run_env(agent, env, log_file):
 
 # Run the environment
 async def main():
-    for i in [0, 1, 3]: #range(9, 134):
+    for i in range(134):
         cfg = config()
         cfg['benchmark']['problem_id'] = i
         environment = env(cfg)

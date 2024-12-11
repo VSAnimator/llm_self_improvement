@@ -87,7 +87,42 @@ def parse_fewshot(fewshot):
     for line in lines:
         if line.startswith('> '):
             # If we have a pending observation, add it
-            if current_obs:
+            if current_obs and current_obs[0] != 'OK.':
+                parsed.append(('obs', ' '.join(current_obs)))
+                current_obs = []
+            
+            # Parse the action
+            act = line[2:] # Remove '> ' prefix
+            if act.startswith('think:'):
+                # If the last action was also a thought, we need to combine them
+                if parsed and parsed[-1][0] == 'thought':
+                    parsed[-1] = ('thought', parsed[-1][1] + ' ' + act[7:].strip())
+                else:
+                    parsed.append(('thought', act[7:].strip())) # Remove 'think: ' prefix
+            else:
+                parsed.append(('act', act.strip()))
+                
+        else:
+            current_obs.append(line.strip())
+            
+    # Add final observation if exists
+    if current_obs:
+        parsed.append(('obs', ' '.join(current_obs)))
+        
+    return parsed
+
+def parse_fewshot_old(fewshot):
+    """Parse a fewshot example into observations and actions"""
+    lines = fewshot.split('\n')
+    parsed = []
+    
+    current_obs = []
+    current_act = []
+    
+    for line in lines:
+        if line.startswith('> '):
+            # If we have a pending observation, add it
+            if current_obs and current_obs[0] != 'OK.':
                 parsed.append(('obs', ' '.join(current_obs)))
                 current_obs = []
             
@@ -152,7 +187,7 @@ def get_fewshots_for_goal(goal: str) -> list:
         List of (observations, actions) tuples for the matching task type
     """
     task_type = get_task_type(goal)
-    return FILTERED_FEWSHOTS[task_type]
+    return PARSED_FEWSHOTS[task_type]
 
 #test_goal = "put the apple in the fridge"
 #print(get_fewshots_for_goal(test_goal)[0])
