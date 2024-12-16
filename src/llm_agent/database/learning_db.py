@@ -188,6 +188,63 @@ class LearningDB:
         indices = self.trajectory_indices if is_trajectory else self.state_indices
         mappings = self.trajectory_id_mappings if is_trajectory else self.state_id_mappings
         cursor = self.trajectory_cursor if is_trajectory else self.state_cursor
+
+        # For environment_id, use exact matching instead of embedding search
+        if key_type == 'environment_id':
+            cursor = self.trajectory_cursor
+            if outcome is not None:
+                input("waiting")
+                # Filter by outcome and get k shortest trajectories
+                cursor.execute(f"""
+                    SELECT *, LENGTH(observations) as traj_len,
+                    CASE 
+                        WHEN json_array_length(rewards) > 0 AND rewards LIKE '%1%' THEN 1
+                        ELSE 0
+                    END as success
+                    FROM trajectories 
+                    WHERE environment_id = "{key}"
+                    AND CASE 
+                        WHEN json_array_length(rewards) > 0 AND rewards LIKE '%1%' THEN 1
+                        ELSE 0
+                    END = {1 if outcome == 'success' else 0}
+                    ORDER BY traj_len ASC
+                    LIMIT {k}
+                """)
+            else:
+                # Get k shortest trajectories without filtering outcome
+                cursor.execute(f"""
+                    SELECT *, LENGTH(observations) as traj_len,
+                    CASE 
+                        WHEN json_array_length(rewards) > 0 AND rewards LIKE '%1%' THEN 1
+                        ELSE 0
+                    END as success
+                    FROM trajectories 
+                    WHERE environment_id = "{key}"
+                    ORDER BY traj_len ASC
+                    LIMIT {k}
+                """)
+            
+            rows = cursor.fetchall()
+            
+            similar_entries = []
+            success_labels = []
+            for row in rows:
+                entry = {
+                    'environment_id': row[1],
+                    'goal': row[2], 
+                    'observation': json.loads(row[3]),
+                    'reasoning': json.loads(row[4]) if row[4] else None,
+                    'action': json.loads(row[5]),
+                    'rewards': json.loads(row[6]),
+                    'plan': row[7],
+                    'reflection': row[8],
+                    'summary': row[9]
+                }
+                similar_entries.append(entry)
+                success_labels.append(1 if max(json.loads(row[6])) == 1 else 0)
+            success_entries = [similar_entries[i] for i in range(len(success_labels)) if success_labels[i]]
+            failure_entries = [similar_entries[i] for i in range(len(success_labels)) if not success_labels[i]]
+            return success_entries, failure_entries
         
         if outcome:
             D, I = indices[key_type].search(key_embedding, k * 10) # Buffer for losing episodes fetched as well
