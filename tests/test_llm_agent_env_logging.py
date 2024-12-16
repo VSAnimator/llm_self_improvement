@@ -133,7 +133,7 @@ async def test_alfworld_multi_step(test_agent, env):
     assert len(test_agent.action_history) == steps
 
 @pytest.mark.asyncio
-async def test_agent_reflexion(test_agent, env):
+async def test_agent_reflection(test_agent, env):
     # Run a few steps to build up history
     obs, info = env.reset()
     observation = Observation(obs)
@@ -153,11 +153,11 @@ async def test_agent_reflexion(test_agent, env):
         valid_actions = env.get_available_actions(info)
         actions = [Action(cmd) for cmd in valid_actions]
 
-    # Test reflexion
-    reflexion = await test_agent.reflect(env.goal, conversation, observation)
+    # Test reflection
+    reflection = await test_agent.reflect(env.goal, conversation, observation)
     
-    # Verify reflexion output
-    assert isinstance(reflexion, str)
-    assert len(reflexion) > 0
-    assert test_agent.reflexions is not None
-    assert len(test_agent.reflexions) == 1
+    # Verify reflection output
+    assert isinstance(reflection, str)
+    assert len(reflection) > 0
+    assert test_agent.reflections is not None
+    assert len(test_agent.reflections) == 1

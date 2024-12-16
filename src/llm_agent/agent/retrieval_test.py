@@ -7,12 +7,6 @@ class RetrievalTest(BaseAgent):
 
     async def choose_action(self, obs, valid_actions, log_file):
         """Choose an action from available actions given the current observation"""
-        # Create observation from obs string
-        obs = Observation(structured=obs)
-        # Create action objects from valid action strings
-        valid_actions = [Action(text=action) for action in valid_actions]
-        if self.config.get('use_summarization', False):
-            obs = await self.summarize(obs) # Create_conversation can pull in the trajectory
         if not self.plan:   
             in_context_data = self.get_in_context_data(key_type="environment_id", key=self.environment_id, value_type=["plan"], outcome="winning", k=5) # key=repr(obs.structured) ["observation", "action"]
             self.plan = await self.create_plan(obs, valid_actions, in_context_data)
@@ -35,10 +29,10 @@ class RetrievalTest(BaseAgent):
         self.reward_history.append(reward)
         '''
         new_obs = Observation(structured=new_obs)
-        reflexion = None
+        reflection = None
         summary = None
         if done and reward == 1:
             # We need to add to the database here
-            await self.store_episode(reflexion, summary)
+            await self.store_episode(reflection, summary)
         '''
         

@@ -34,7 +34,7 @@ class LearningDB:
                 actions TEXT NOT NULL,
                 rewards TEXT NOT NULL,
                 plan TEXT,
-                reflexion TEXT,
+                reflection TEXT,
                 summary TEXT
             )
         """)
@@ -66,7 +66,7 @@ class LearningDB:
             'environment_id': self._load_or_create_index('environment_id'),
             'goal': self._load_or_create_index('goal'),
             'plan': self._load_or_create_index('plan'),
-            'reflexion': self._load_or_create_index('reflexion'),
+            'reflection': self._load_or_create_index('reflection'),
             'summary': self._load_or_create_index('summary')
         }
         
@@ -117,7 +117,7 @@ class LearningDB:
 
     def store_episode(self, environment_id: str, goal: str, observations: List[str], reasoning: List[str], 
                      actions: List[str], rewards: List[float], plan: Optional[str],
-                     reflexion: Optional[str], summary: Optional[str]):
+                     reflection: Optional[str], summary: Optional[str]):
         """Store an episode in both trajectory and state databases"""
         # Store trajectory
         observations_str = json.dumps([observation.structured for observation in observations])
@@ -126,9 +126,9 @@ class LearningDB:
         rewards_str = json.dumps(rewards)
         
         self.trajectory_cursor.execute("""
-            INSERT INTO trajectories (environment_id, goal, observations, reasoning, actions, rewards, plan, reflexion, summary)
+            INSERT INTO trajectories (environment_id, goal, observations, reasoning, actions, rewards, plan, reflection, summary)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (environment_id, goal, observations_str, reasoning_str, actions_str, rewards_str, plan, reflexion, summary))
+        """, (environment_id, goal, observations_str, reasoning_str, actions_str, rewards_str, plan, reflection, summary))
         trajectory_id = self.trajectory_cursor.lastrowid
         self.trajectory_conn.commit()
         
@@ -149,7 +149,7 @@ class LearningDB:
             'environment_id': environment_id,
             'goal': goal,
             'plan': plan,
-            'reflexion': reflexion,
+            'reflection': reflection,
             'summary': summary
         }
         
@@ -182,7 +182,7 @@ class LearningDB:
         key_embedding = self.model.encode([key])[0].reshape(1, -1)
         
         # Determine if this is a trajectory or state level search
-        trajectory_keys = {'environment_id', 'goal', 'plan', 'reflexion', 'summary'}
+        trajectory_keys = {'environment_id', 'goal', 'plan', 'reflection', 'summary'}
         is_trajectory = key_type in trajectory_keys
         
         indices = self.trajectory_indices if is_trajectory else self.state_indices
@@ -218,7 +218,7 @@ class LearningDB:
                         'action': json.loads(row[5]),
                         'rewards': json.loads(row[6]),
                         'plan': row[7],
-                        'reflexion': row[8],
+                        'reflection': row[8],
                         'summary': row[9]
                     }
             else:
@@ -242,7 +242,7 @@ class LearningDB:
                             'action': json.loads(trajectory_row[5]),
                             'rewards': json.loads(trajectory_row[6]),
                             'plan': trajectory_row[7],
-                            'reflexion': trajectory_row[8],
+                            'reflection': trajectory_row[8],
                             'summary': trajectory_row[9]
                         }
                     }

@@ -36,12 +36,13 @@ class LiteLLMWrapper:
                 "max_tokens": 1024,#self.max_tokens,
                 "temperature": self.temperature,
                 "top_p": self.top_p,
-                "frequency_penalty": self.frequency_penalty,
-                "presence_penalty": self.presence_penalty,
+                #"frequency_penalty": self.frequency_penalty,
+                #"presence_penalty": self.presence_penalty,
                 "timeout": self.timeout,
                 "stream": False,
                 #"api_base": "http://0.0.0.0:8000/v1"
                 #"mock_response": "test" if response_format is None else None
+                #"drop_params": True, # In case the model doesn't have some of the parameters
             }
 
             print(messages)
@@ -54,6 +55,7 @@ class LiteLLMWrapper:
             #input("waiting")
 
             response = await litellm.acompletion(**completion_kwargs)
+
             return response
 
         except Exception as e:
@@ -107,6 +109,15 @@ class LiteLLMWrapper:
         # Handle different model capabilities for structured output
         if "gpt" in self.model.lower():
             response_format = output_schema#{"type": "json_object"}
+            '''
+            if output_schema:
+                messages[0]["content"] += f"\nPlease provide response matching this JSON schema: {json.dumps(output_schema)}"
+            '''
+
+        elif "gemini" in self.model.lower():
+            response_format = {"type": "json_object", "response_schema": output_schema.model_json_schema(), "strict": True}
+            #print(response_format)
+            #input("waiting")
             '''
             if output_schema:
                 messages[0]["content"] += f"\nPlease provide response matching this JSON schema: {json.dumps(output_schema)}"

@@ -94,8 +94,8 @@ def db():
 
 # Placeholder for configs
 use_plan = True
-use_reflexion = True
-reflexion_steps = 3
+use_reflection = True
+reflection_steps = 3
 
 async def main():
     # Create logs directory if it doesn't exist
@@ -105,7 +105,7 @@ async def main():
     for i in range(20):
         # Create log file for this episode
         log_file = log_dir / f"episode_{i}.txt"
-        reflexion_count = 0
+        reflection_count = 0
         with open(log_file, "w") as f:
             # Initialize config and environment
             cfg = config()
@@ -167,13 +167,13 @@ async def main():
                 if not done:
                     f.write("\nEpisode timed out after reaching max steps\n")
 
-                # If reflexion is enabled, perform reflexion
-                if reward < 200 and use_reflexion and reflexion_count < reflexion_steps:
-                    reflexion = await agent.reflect(environment.goal, observation)
-                    f.write(f"Reflexion: {reflexion}\n")
+                # If reflection is enabled, perform reflection
+                if reward < 200 and use_reflection and reflection_count < reflection_steps:
+                    reflection = await agent.reflect(environment.goal, observation)
+                    f.write(f"Reflection: {reflection}\n")
                     f.flush()
-                    reflexion_count += 1
-                    # Clear history after reflexion
+                    reflection_count += 1
+                    # Clear history after reflection
                     agent.clear_history()
                 else:
                     break

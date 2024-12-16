@@ -16,7 +16,7 @@ class Synapse(BaseAgent):
         # Agent config should control the behavior here, reflect all algorithms we want to encompass
         in_context_data = self.get_in_context_data(key_type="environment_id", key=self.environment_id, value_type=["observation", "action"], outcome="losing", k=1) # key=repr(obs.structured)
         if not self.plan:
-            await self.create_plan(obs, valid_actions, in_context_data) # Re-planning based off reflexion can go in here
+            await self.create_plan(obs, valid_actions, in_context_data) # Re-planning based off reflection can go in here
             print("Plan", self.plan)
             input()
         reasoning = await self.reason(obs, valid_actions, in_context_data)
@@ -28,12 +28,7 @@ class Synapse(BaseAgent):
     async def process_feedback(self, new_obs, reward, done, log_file):
         """Process feedback from the environment"""
         self.reward_history.append(reward)
-        '''
-        new_obs = Observation(structured=new_obs)
-        reflexion = None
-        summary = None
         if done and reward == 1:
             # We need to add to the database here
-            await self.store_episode(reflexion, summary)
-        '''
+            await self.store_episode(None, None)
         

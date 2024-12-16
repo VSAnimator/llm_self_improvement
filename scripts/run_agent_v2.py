@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from llm_agent.agent.base_agent_v2 import BaseAgent
 from llm_agent.agent.react import React
 from llm_agent.agent.reflexion import Reflexion
-from llm_agent.agent.reflexion_collect import ReflexionCollect
+from llm_agent.agent.reflection_collect import ReflectionCollect
 from llm_agent.agent.rap import RAP
 from llm_agent.agent.synapse import Synapse
 from llm_agent.agent.autoguide import AutoGuide
@@ -75,8 +75,8 @@ def test_agent(real_llm, db, env, test_config):
         return React(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'reflexion':
         return Reflexion(real_llm, db, env, test_config)
-    elif test_config.get('agent_type', 'react') == 'reflexion_collect':
-        return ReflexionCollect(real_llm, db, env, test_config)
+    elif test_config.get('agent_type', 'react') == 'reflection_collect':
+        return ReflectionCollect(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'rap':
         return RAP(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'synapse':
@@ -93,14 +93,6 @@ def test_agent(real_llm, db, env, test_config):
 def db():
     return LearningDB("data/learning.db")
 
-# Placeholder for configs
-learning_config = {}
-#num_attempts = learning_config.get('num_attempts', 3)
-use_plan = learning_config.get('use_plan', True)
-use_reflexion = learning_config.get('use_reflexion', True)
-
-# llm should be a property of the agent
-
 async def run_env(agent, env, log_file):
     # Goal: run the agent on the environment and log the results
     attempt_count = 0
@@ -111,12 +103,14 @@ async def run_env(agent, env, log_file):
             # Initial reset
             obs, info = env.reset()
             f.write(f"Initial observation: {obs}\n")
+            obs = Observation(structured=obs)
             done = False
             steps = 0
 
             while not done and steps < env.max_steps:
                 # Get valid actions
                 valid_actions = env.get_available_actions(info)
+                valid_actions = [Action(text=action) for action in valid_actions]
                 f.write(f"Valid actions: {valid_actions}\n")
                 # Choose action
                 selected_action = await agent.choose_action(obs, valid_actions, log_file)
@@ -124,6 +118,7 @@ async def run_env(agent, env, log_file):
                 # Take step in env
                 obs, reward, done, info = env.step(selected_action.text) # This feedback needs to be looped anyways
                 f.write(f"Obs: {obs}, Reward: {reward}\n")
+                obs = Observation(structured=obs)
                 # Pass feedback to agent
                 await agent.process_feedback(obs, reward, done, log_file)
                 # Increment step count
@@ -144,9 +139,10 @@ async def run_env(agent, env, log_file):
 
 # Run the environment
 async def main():
-    for i in range(134):
+    for i in range(42, 134):
         cfg = config()
         cfg['benchmark']['problem_id'] = i
+        #cfg['llm']['model'] = "gemini/gemini-1.5-flash-latest"
         environment = env(cfg)
         llm = real_llm(cfg)
         agent_config = test_config()
