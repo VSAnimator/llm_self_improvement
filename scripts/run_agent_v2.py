@@ -21,6 +21,9 @@ from llm_agent.env.gym_env import GymEnv
 from llm_agent.database.learning_db import LearningDB
 import random
 
+#import warnings
+#warnings.filterwarnings("ignore")
+
 def dict_to_namespace(d):
     """Convert dictionary to namespace recursively"""
     if not isinstance(d, dict):
@@ -139,10 +142,12 @@ async def run_env(agent, env, log_file):
 
 # Run the environment
 async def main():
-    for i in range(42, 134):
+    for i in range(1, 134):
         cfg = config()
         cfg['benchmark']['problem_id'] = i
-        #cfg['llm']['model'] = "gemini/gemini-1.5-flash-latest"
+        #cfg['llm']['model'] = "gemini/gemini-2.0-flash-exp"
+        #cfg['llm']['model'] = "anthropic/claude-3-5-sonnet-20240620"
+        #cfg['llm']['model'] = "together_ai/Qwen/QwQ-32B-Preview" #"together_ai/meta-llama/Llama-Vision-Free"
         environment = env(cfg)
         llm = real_llm(cfg)
         agent_config = test_config()

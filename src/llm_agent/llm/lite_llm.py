@@ -45,14 +45,9 @@ class LiteLLMWrapper:
                 #"drop_params": True, # In case the model doesn't have some of the parameters
             }
 
-            print(messages)
-
             # Add response format for models that support it
-            if response_format and any(provider in self.model.lower() for provider in ["gpt", "claude", "anthropic"]):
+            if response_format and any(provider in self.model.lower() for provider in ["gpt", "claude", "anthropic", "gemini"]):
                 completion_kwargs["response_format"] = response_format
-
-            #print(completion_kwargs)
-            #input("waiting")
 
             response = await litellm.acompletion(**completion_kwargs)
 
@@ -108,52 +103,18 @@ class LiteLLMWrapper:
         
         # Handle different model capabilities for structured output
         if "gpt" in self.model.lower():
-            response_format = output_schema#{"type": "json_object"}
-            '''
-            if output_schema:
-                messages[0]["content"] += f"\nPlease provide response matching this JSON schema: {json.dumps(output_schema)}"
-            '''
+            response_format = output_schema
 
-        elif "gemini" in self.model.lower():
-            response_format = {"type": "json_object", "response_schema": output_schema.model_json_schema(), "strict": True}
-            #print(response_format)
-            #input("waiting")
-            '''
-            if output_schema:
-                messages[0]["content"] += f"\nPlease provide response matching this JSON schema: {json.dumps(output_schema)}"
-            '''
+        elif "gemini" in self.model.lower() or "together" in self.model.lower():
+            response_format = {"type": "json_object", "response_schema": output_schema.model_json_schema(), "enforce_validation": True}
         
         elif "claude" in self.model.lower():
-            response_format = output_schema#{"type": "json"}
-            '''
-            if output_schema:
-                messages[0]["content"] += f"\nPlease provide response matching this JSON schema: {json.dumps(output_schema)}"
-            '''
+            response_format = output_schema
 
         response = await self._generate_raw(messages, response_format)
         
         return response
 
-        '''
-        # Attempt to parse JSON response
-        parsed_json = None
-        if response_format:
-            try:
-                # Handle potential markdown code blocks in response
-                if "```json" in generated_text:
-                    generated_text = generated_text.split("```json")[1].split("```")[0].strip()
-                elif "```" in generated_text:
-                    generated_text = generated_text.split("```")[1].strip()
-                parsed_json = json.loads(generated_text)
-            except json.JSONDecodeError as e:
-                logger.warning(f"Failed to parse JSON response: {str(e)}")
-
-        return GenerationResponse(
-            text=generated_text,
-            parsed_json=parsed_json,
-            raw_response=raw_response.dict()
-        )
-        '''
 
 
 

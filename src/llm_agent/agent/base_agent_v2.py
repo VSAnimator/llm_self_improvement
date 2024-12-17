@@ -160,7 +160,7 @@ class BaseAgent:
     async def act(self, observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None, in_context_data= None) -> Tuple[Action, List[Dict]]:
         """Select an action from available actions given the current observation"""
         # If the model is gemini, just get the action from the reasoning string
-        if "gemini" in self.llm.model.lower():
+        if ("gemini" in self.llm.model.lower() or "together" in self.llm.model.lower()):
             # Look for a number followed by a period
             action = re.search(r'\d+\.', reasoning)
             for op in available_actions:
@@ -169,8 +169,6 @@ class BaseAgent:
                     break
             if action is None:
                 raise ValueError(f"No action found in reasoning: {reasoning}")
-            #print("Action", action)
-            #input("waiting")
             return action
 
         # Create a conversation with observations and actions so far
