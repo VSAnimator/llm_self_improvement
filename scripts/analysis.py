@@ -21,6 +21,7 @@ for folder in sorted(txt_folders):
     success_count_dict = {}
     failure_count_dict = {}
     attempt_dict = {}
+    success_attempts_dict = {}
 
     # Process each episode file
     for episode_file in episode_files:
@@ -47,6 +48,9 @@ for folder in sorted(txt_folders):
                         attempts.append(1)
                     elif 'Reward: 0' in prev_line:
                         attempts.append(0)
+
+            success_attempts = attempts.index(1) + 1 if 1 in attempts else len(attempts)
+            success_attempts_dict[success_attempts] = success_attempts_dict.get(success_attempts, 0) + 1
             
             for i in range(len(attempts)):
                 if i+1 not in attempt_dict:
@@ -67,8 +71,8 @@ for folder in sorted(txt_folders):
     print("Success dict", dict(sorted(success_count_dict.items(), key=lambda item: item[0]))) 
     print("Failure dict", dict(sorted(failure_count_dict.items(), key=lambda item: -1*item[0])))
 
-    print("Average per attempt", {k: sum(v)/len(v) for k,v in attempt_dict.items()})
+    print("Average success per attempt", {k: sum(v)/len(v) for k,v in attempt_dict.items()})
 
-    print("Overall average", sum(sum(v)/len(v) for v in attempt_dict.values())/len(attempt_dict.values()))
+    print("Overall average success", sum(sum(v)/len(v) for v in attempt_dict.values())/len(attempt_dict.values()))
 
-
+    print("Average success rate filtering events after first success", successful_episodes/sum(k*v for k,v in success_attempts_dict.items()))
