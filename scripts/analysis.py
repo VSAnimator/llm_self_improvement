@@ -20,6 +20,7 @@ for folder in sorted(txt_folders):
 
     success_count_dict = {}
     failure_count_dict = {}
+    attempt_dict = {}
 
     # Process each episode file
     for episode_file in episode_files:
@@ -35,6 +36,23 @@ for folder in sorted(txt_folders):
             one_count = content.count('Reward: 1')
             success_count_dict[one_count] = success_count_dict.get(one_count, 0) + 1
             failure_count_dict[zero_count] = failure_count_dict.get(zero_count, 0) + 1
+
+            attempts = []
+            lines = content.split('\n')
+            for i, line in enumerate(lines):
+                if 'Step 20 of 20' in line or 'Reward: 1' in line:
+                    # Check if previous line had Reward: 1 or 0
+                    prev_line = lines[i-1]
+                    if 'Reward: 1' in line:
+                        attempts.append(1)
+                    elif 'Reward: 0' in prev_line:
+                        attempts.append(0)
+            
+            for i in range(len(attempts)):
+                if i+1 not in attempt_dict:
+                    attempt_dict[i+1] = []
+                attempt_dict[i+1].append(attempts[i])
+
     # Calculate success rate
     success_rate = (successful_episodes / total_episodes) * 100
 
@@ -44,5 +62,7 @@ for folder in sorted(txt_folders):
 
     print("Success dict", dict(sorted(success_count_dict.items(), key=lambda item: item[0]))) 
     print("Failure dict", dict(sorted(failure_count_dict.items(), key=lambda item: -1*item[0])))
+
+    print("Average per attempt", {k: sum(v)/len(v) for k,v in attempt_dict.items()})
 
 
