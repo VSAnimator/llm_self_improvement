@@ -10,6 +10,8 @@ for dirpath, dirnames, filenames in os.walk(root_dir):
         txt_folders.add(dirpath)
 
 print("Folders containing txt files:")
+average_success_rates = {}
+cumulative_success_rates = {}
 for folder in sorted(txt_folders):
     print(folder)
     # Get all episode files
@@ -72,6 +74,7 @@ for folder in sorted(txt_folders):
     print("Failure dict", dict(sorted(failure_count_dict.items(), key=lambda item: -1*item[0])))
 
     print("Average success per attempt", {k: sum(v)/len(v) for k,v in attempt_dict.items()})
+    average_success_rates[folder] = {k: sum(v)/len(v) for k,v in attempt_dict.items()}
 
     print("Overall average success", sum(sum(v)/len(v) for v in attempt_dict.values())/len(attempt_dict.values()))
 
@@ -90,4 +93,35 @@ for folder in sorted(txt_folders):
             cumulative_success_rate += v/sum(success_attempts_dict.values())
             cumulative_success_rate_dict[k] = cumulative_success_rate
     print("Cumulative success rate dict:", cumulative_success_rate_dict)
+    cumulative_success_rates[folder] = cumulative_success_rate_dict
+
+# Plot average and cumulative success rates in two separate plots
+import matplotlib.pyplot as plt
+
+# Create two subplots
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
+
+# Plot average success rates
+for folder in average_success_rates:
+    ax1.plot(list(average_success_rates[folder].keys()), 
+             list(average_success_rates[folder].values()),
+             label=folder.split('/')[-2])
+ax1.set_xlabel('Attempt')
+ax1.set_ylabel('Success Rate') 
+ax1.set_title('Average Success Rate by Attempt')
+ax1.legend()
+
+# Plot cumulative success rates
+for folder in cumulative_success_rates:
+    ax2.plot(list(cumulative_success_rates[folder].keys()),
+             list(cumulative_success_rates[folder].values()),
+             label=folder.split('/')[-2])
+ax2.set_xlabel('Attempt')
+ax2.set_ylabel('Success Rate')
+ax2.set_title('Cumulative Success Rate')
+ax2.legend()
+plt.tight_layout()
+plt.savefig('success_rates.png')
+plt.close()
+
 
