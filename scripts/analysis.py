@@ -49,7 +49,7 @@ for folder in sorted(txt_folders):
                     elif 'Reward: 0' in prev_line:
                         attempts.append(0)
 
-            success_attempts = attempts.index(1) + 1 if 1 in attempts else len(attempts)
+            success_attempts = attempts.index(1) + 1 if 1 in attempts else -1
             success_attempts_dict[success_attempts] = success_attempts_dict.get(success_attempts, 0) + 1
             
             for i in range(len(attempts)):
@@ -74,5 +74,10 @@ for folder in sorted(txt_folders):
     print("Average success per attempt", {k: sum(v)/len(v) for k,v in attempt_dict.items()})
 
     print("Overall average success", sum(sum(v)/len(v) for v in attempt_dict.values())/len(attempt_dict.values()))
-
-    print("Average success rate filtering events after first success", successful_episodes/sum(k*v for k,v in success_attempts_dict.items()))
+    
+    # Get weighted average of inverse of keys of success_attempts_dict, weighted by values.
+    # Where the key is -1, set the inverse to 0.
+    weighted_sum = sum((1/k if k > 0 else 0) * v for k,v in success_attempts_dict.items())
+    total_weight = sum(success_attempts_dict.values())
+    weighted_avg = weighted_sum / total_weight if total_weight > 0 else 0
+    print("Weighted average of inverse attempts:", weighted_avg)
