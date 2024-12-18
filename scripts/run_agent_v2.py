@@ -20,9 +20,8 @@ from llm_agent.env.alfworld_env import AlfWorldEnv
 from llm_agent.env.gym_env import GymEnv
 from llm_agent.database.learning_db import LearningDB
 import random
-
-#import warnings
-#warnings.filterwarnings("ignore")
+import argparse
+import json
 
 def dict_to_namespace(d):
     """Convert dictionary to namespace recursively"""
@@ -65,12 +64,12 @@ def env(config):
 def real_llm(config):
     return LiteLLMWrapper(config)
 
-def test_config():
+def test_config(agent_type):
     return {
         "max_retries": 1,
         "memory_size": 50,
         "temperature": 0.7,
-        "agent_type": "expel_train"
+        "agent_type": agent_type
     }
 
 def test_agent(real_llm, db, env, test_config):
@@ -93,8 +92,8 @@ def test_agent(real_llm, db, env, test_config):
     else:
         raise ValueError(f"Invalid agent type: {test_config.get('agent_type', 'react')}")
 
-def db():
-    return LearningDB("data/learning.db")
+def db(db_path):
+    return LearningDB(db_path)
 
 async def run_env(agent, env, log_file):
     # Goal: run the agent on the environment and log the results
@@ -142,22 +141,38 @@ async def run_env(agent, env, log_file):
 
 # Run the environment
 async def main():
-    for i in range(1, 134):
+    # Parse command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--llm', required=True, help='LLM model to use')
+    parser.add_argument('--db_path', help='Optional custom path for learning database')
+    parser.add_argument('--agent_type', required=True, help='Type of agent to use')
+    args = parser.parse_args()
+
+    for i in range(1,134):
         cfg = config()
         cfg['benchmark']['problem_id'] = i
-        #cfg['llm']['model'] = "gemini/gemini-2.0-flash-exp"
-        #cfg['llm']['model'] = "anthropic/claude-3-5-sonnet-20240620"
-        #cfg['llm']['model'] = "together_ai/Qwen/QwQ-32B-Preview" #"together_ai/meta-llama/Llama-Vision-Free"
+        cfg['llm']['model'] = args.llm
+        
+        agent_config = test_config(agent_type=args.agent_type)
+        log_dir = Path("logs/episodes") / f"{cfg['benchmark']['name']}/{cfg['benchmark']['split']}/{args.agent_type}/{args.llm}"
+        log_dir.mkdir(parents=True, exist_ok=True)
+
+        # Save command line args on first iteration
+        if i == 1:
+            with open(log_dir / "run_config.json", "w") as f:
+                json.dump({
+                    "llm": args.llm,
+                    "db_path": args.db_path,
+                    "agent_type": args.agent_type
+                }, f, indent=2)
+
+        log_file = log_dir / f"{i}.txt"
         environment = env(cfg)
         llm = real_llm(cfg)
-        agent_config = test_config()
-        learning_db = db()
+        default_db_path = f"{log_dir}/learning.db"
+        db_path = args.db_path if args.db_path else default_db_path
+        learning_db = db(db_path=db_path)
         agent = test_agent(llm, learning_db, environment, agent_config)
-        # Create log file folder matching config
-        # Make sure to name sub-folder to include environment and agent type
-        log_dir = Path("logs/episodes") / f"{cfg['benchmark']['name']}/{cfg['benchmark']['split']}/{agent_config.get('agent_type', 'react')}/{cfg['llm']['model']}"
-        log_dir.mkdir(parents=True, exist_ok=True)
-        log_file = log_dir / f"{i}.txt"
         await run_env(agent, environment, log_file)
 
 if __name__ == "__main__":

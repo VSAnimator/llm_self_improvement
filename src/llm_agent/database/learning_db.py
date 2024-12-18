@@ -193,7 +193,6 @@ class LearningDB:
         if key_type == 'environment_id':
             cursor = self.trajectory_cursor
             if outcome is not None:
-                input("waiting")
                 # Filter by outcome and get k shortest trajectories
                 cursor.execute(f"""
                     SELECT *, LENGTH(observations) as traj_len,
@@ -206,7 +205,7 @@ class LearningDB:
                     AND CASE 
                         WHEN json_array_length(rewards) > 0 AND rewards LIKE '%1%' THEN 1
                         ELSE 0
-                    END = {1 if outcome == 'success' else 0}
+                    END = {1 if (outcome == 'success' or outcome == 'winning') else 0}
                     ORDER BY traj_len ASC
                     LIMIT {k}
                 """)

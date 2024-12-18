@@ -36,7 +36,6 @@ class BaseAgent:
         self.action_history: List[Action] = []
         self.reward_history: List[float] = []
         self.plan: Optional[str] = None
-        self.reflections: Optional[List[str]] = None
         
         # Environment info
         self.environment_id: Optional[str] = env.id
@@ -83,10 +82,6 @@ class BaseAgent:
 
     def create_conversation(self, conversation: List[Dict], observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None) -> List[Dict]:
         """Create a conversation with the observation and action history"""
-        # Add on reflections from previous episodes
-        if self.reflections:
-            for i, reflection in enumerate(self.reflections):
-                conversation.append({"role": "user", "content": "Reflection on attempt " + str(i+1) + ": " + reflection})
         # Add on plan
         if self.plan:
             conversation.append({"role": "user", "content": "Plan of action: " + self.plan})
@@ -123,7 +118,7 @@ class BaseAgent:
                 system_prompt += f"\nExample {i+1}:\n" + elem
         if "high_level" in in_context_data:
             success, data = in_context_data["high_level"]
-            system_prompt += f"\nHere is some higher-level analysis examples that {'successfully achieved' if success else 'failed to achieve'} similar goals:"
+            system_prompt += f"\nHere is some higher-level analysis examples from episodes that {'successfully achieved' if success else 'failed to achieve'} similar goals:"
             for i, elem in enumerate(data):
                 system_prompt += f"\nExample {i+1}:\n" + elem
         return system_prompt
@@ -137,10 +132,7 @@ class BaseAgent:
         conversation.append({"role": "system", "content": system_prompt})
         #print("Observation", observation)
         conversation = self.create_conversation(conversation, observation, available_actions)
-        current_reflection = None
-        if self.config.get('always_reflect', False) and len(self.reflections) > 0: # If we always refelct, re-generate plan
-            current_reflection = self.reflections[-1]
-        plan = await generate_plan(conversation, self.goal, observation, self.llm, self.plan, current_reflection)
+        plan = await generate_plan(conversation, self.goal, observation, self.llm)
         self.plan = plan
         return plan
 
@@ -198,15 +190,11 @@ class BaseAgent:
 
         return action
     
-    async def reflect(self, observation: Observation, in_context_data = None) -> List[Dict]:
+    async def reflect(self, observation: Observation, reward: float) -> List[Dict]:
         """Reflect on the conversation and observation"""
         conversation = []
         conversation = self.create_conversation(conversation, observation, [])
-        reflection = await conversation_reflection(self.goal, conversation, self.llm)
-        if self.reflections is None:
-            self.reflections = [reflection]
-        else:
-            self.reflections.append(reflection)
+        reflection = await conversation_reflection(self.goal, conversation, self.llm, reward)
         return reflection
     
     async def summarize(self, obs=None, in_context_data = None) -> str:
@@ -221,40 +209,11 @@ class BaseAgent:
     
     async def choose_action(self, obs, valid_actions, log_file):
         """Choose an action from available actions given the current observation"""
-        # Create observation from obs string
-        obs = Observation(structured=obs)
-        # Create action objects from valid action strings
-        valid_actions = [Action(text=action) for action in valid_actions]
-        if self.config.get('use_summarization', False):
-            original_obs = obs
-            obs = await self.summarize(self.goal, obs) # Create_conversation can pull in the trajectory
-        # Agent config should control the behavior here, reflect all algorithms we want to encompass
-        if self.config.get('use_plan', True):
-            await self.create_plan(self.goal, obs, valid_actions) # Re-planning based off reflection can go in here
-        if self.config.get('use_reasoning', True):
-            reasoning = await self.reason(self.goal, obs, valid_actions)
-        action = await self.act(self.goal, obs, valid_actions, reasoning) # This is where we store everything too.
-        return action
+        pass
     
     async def process_feedback(self, new_obs, reward, done, log_file):
         """Process feedback from the environment"""
-        self.reward_history.append(reward)
-        new_obs = Observation(structured=new_obs)
-        reflection = None
-        summary = None
-        if self.config.get('use_reflection', True) and ((done and reward < 1) or self.config.get('always_reflect', False)):
-            reflection = await self.reflect(self.goal, new_obs) # Handle this separately if in progress or not. In theory this could take more inputs from the reasoning chain...
-            if self.config.get('always_reflect', False) and (not done and len(self.reflections) > 0):
-                # We should override the existing reflection
-                self.reflections[-1] = reflection
-            else:
-                self.reflections.append(reflection)
-        if self.config.get('use_summarization', True) and done:
-            summary = await self.summarize(self.goal, new_obs)
-            print("Summary", summary)
-        if self.config.get('use_memory', True) and done and reward == 1:
-            # We need to add to the database here
-            await self.store_episode(self.goal, self.observation_history, self.reasoning_history, self.action_history, self.reward_history, self.plan, self.reflections, reflection, summary)
+        pass
         
     def clear_history(self):
         """Clear the agent's history"""
