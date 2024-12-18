@@ -42,7 +42,7 @@ for folder in sorted(txt_folders):
     print(f"Successful episodes: {successful_episodes}")
     print(f"Success rate: {success_rate:.2f}%")
 
-    print(success_count_dict)
-    print(failure_count_dict)
+    print("Success dict", dict(sorted(success_count_dict.items(), key=lambda item: item[0]))) 
+    print("Failure dict", dict(sorted(failure_count_dict.items(), key=lambda item: -1*item[0])))
 
 
