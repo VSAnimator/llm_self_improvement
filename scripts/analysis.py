@@ -53,6 +53,10 @@ for folder in sorted(txt_folders):
                     attempt_dict[i+1] = []
                 attempt_dict[i+1].append(attempts[i])
 
+    # Continue if attempt_dict is empty
+    if not attempt_dict:
+        continue
+
     # Calculate success rate
     success_rate = (successful_episodes / total_episodes) * 100
 
@@ -64,5 +68,7 @@ for folder in sorted(txt_folders):
     print("Failure dict", dict(sorted(failure_count_dict.items(), key=lambda item: -1*item[0])))
 
     print("Average per attempt", {k: sum(v)/len(v) for k,v in attempt_dict.items()})
+
+    print("Overall average", sum(sum(v)/len(v) for v in attempt_dict.values())/len(attempt_dict.values()))
 
 
