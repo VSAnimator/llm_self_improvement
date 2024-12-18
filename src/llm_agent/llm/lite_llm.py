@@ -40,16 +40,19 @@ class LiteLLMWrapper:
                 #"presence_penalty": self.presence_penalty,
                 "timeout": self.timeout,
                 "stream": False,
-                #"api_base": "http://0.0.0.0:8000/v1"
+                "api_base": "http://0.0.0.0:8000/v1"
                 #"mock_response": "test" if response_format is None else None
                 #"drop_params": True, # In case the model doesn't have some of the parameters
             }
 
             # Add response format for models that support it
-            if response_format and any(provider in self.model.lower() for provider in ["gpt", "claude", "anthropic", "gemini"]):
+            if response_format: # and any(provider in self.model.lower() for provider in ["openai", "claude", "anthropic", "gemini", "together"]):
                 completion_kwargs["response_format"] = response_format
 
             response = await litellm.acompletion(**completion_kwargs)
+
+            #print(response)
+            #input("Waiting")
 
             return response
 
@@ -102,7 +105,7 @@ class LiteLLMWrapper:
         response_format = None
         
         # Handle different model capabilities for structured output
-        if "gpt" in self.model.lower():
+        if "gpt" in self.model.lower() or "openai" in self.model.lower():
             response_format = output_schema
 
         elif "gemini" in self.model.lower() or "together" in self.model.lower():

@@ -14,6 +14,7 @@ from llm_agent.agent.synapse import Synapse
 from llm_agent.agent.autoguide import AutoGuide
 from llm_agent.agent.retrieval_test import RetrievalTest
 from llm_agent.agent.expel_train import ExpelTrain
+from llm_agent.agent.vanilla_train import VanillaTrain
 from llm_agent.env.base_env import Observation, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
 from llm_agent.env.alfworld_env import AlfWorldEnv
@@ -89,6 +90,8 @@ def test_agent(real_llm, db, env, test_config):
         return RetrievalTest(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'expel_train':
         return ExpelTrain(real_llm, db, env, test_config)
+    elif test_config.get('agent_type', 'react') == 'vanilla_train':
+        return VanillaTrain(real_llm, db, env, test_config)
     else:
         raise ValueError(f"Invalid agent type: {test_config.get('agent_type', 'react')}")
 
@@ -98,7 +101,7 @@ def db(db_path):
 async def run_env(agent, env, log_file):
     # Goal: run the agent on the environment and log the results
     attempt_count = 0
-    num_attempts = env.num_attempts
+    num_attempts = 5 #env.num_attempts
     print("Num attempts", num_attempts)
     with open(log_file, "w") as f:
         for attempt in range(num_attempts):
@@ -133,11 +136,11 @@ async def run_env(agent, env, log_file):
                 f.write("\nEpisode timed out after reaching max steps\n")
                 f.flush()
 
-            if reward < 1:
-                attempt_count += 1 
-                agent.clear_history()
-            else:
-                break
+            #if reward < 1:
+            attempt_count += 1 
+            agent.clear_history()
+            #else:
+            #    break
 
 # Run the environment
 async def main():
@@ -148,7 +151,7 @@ async def main():
     parser.add_argument('--agent_type', required=True, help='Type of agent to use')
     args = parser.parse_args()
 
-    for i in range(1,134):
+    for i in range(0,134,2):
         cfg = config()
         cfg['benchmark']['problem_id'] = i
         cfg['llm']['model'] = args.llm
