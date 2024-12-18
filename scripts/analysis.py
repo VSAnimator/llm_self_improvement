@@ -74,10 +74,20 @@ for folder in sorted(txt_folders):
     print("Average success per attempt", {k: sum(v)/len(v) for k,v in attempt_dict.items()})
 
     print("Overall average success", sum(sum(v)/len(v) for v in attempt_dict.values())/len(attempt_dict.values()))
-    
+
     # Get weighted average of inverse of keys of success_attempts_dict, weighted by values.
     # Where the key is -1, set the inverse to 0.
     weighted_sum = sum((1/k if k > 0 else 0) * v for k,v in success_attempts_dict.items())
     total_weight = sum(success_attempts_dict.values())
     weighted_avg = weighted_sum / total_weight if total_weight > 0 else 0
     print("Weighted average of inverse attempts:", weighted_avg)
+
+    # Print the success rate on each attempt of the ones that haven't succeeded yet
+    cumulative_success_rate = 0
+    cumulative_success_rate_dict = {}
+    for k,v in sorted(success_attempts_dict.items(), key=lambda item: item[0]):
+        if k > 0:
+            cumulative_success_rate += v/sum(success_attempts_dict.values())
+            cumulative_success_rate_dict[k] = cumulative_success_rate
+    print("Cumulative success rate dict:", cumulative_success_rate_dict)
+
