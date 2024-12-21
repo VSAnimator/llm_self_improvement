@@ -15,6 +15,7 @@ from llm_agent.agent.autoguide import AutoGuide
 from llm_agent.agent.retrieval_test import RetrievalTest
 from llm_agent.agent.expel_train import ExpelTrain
 from llm_agent.agent.vanilla_train import VanillaTrain
+from llm_agent.agent.vanilla_test import VanillaTest
 from llm_agent.env.base_env import Observation, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
 from llm_agent.env.alfworld_env import AlfWorldEnv
@@ -92,6 +93,8 @@ def test_agent(real_llm, db, env, test_config):
         return ExpelTrain(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'vanilla_train':
         return VanillaTrain(real_llm, db, env, test_config)
+    elif test_config.get('agent_type', 'react') == 'vanilla_test':
+        return VanillaTest(real_llm, db, env, test_config)
     else:
         raise ValueError(f"Invalid agent type: {test_config.get('agent_type', 'react')}")
 
