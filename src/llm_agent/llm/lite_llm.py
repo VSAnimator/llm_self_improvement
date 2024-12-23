@@ -40,7 +40,7 @@ class LiteLLMWrapper:
                 #"presence_penalty": self.presence_penalty,
                 "timeout": self.timeout,
                 "stream": False,
-                "api_base": "http://0.0.0.0:8000/v1"
+                #"api_base": "http://0.0.0.0:8000/v1"
                 #"mock_response": "test" if response_format is None else None
                 #"drop_params": True, # In case the model doesn't have some of the parameters
             }

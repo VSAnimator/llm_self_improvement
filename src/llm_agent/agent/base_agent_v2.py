@@ -204,7 +204,10 @@ class BaseAgent:
         if obs is None:
             summary = await trajectory_summary(self.goal, conversation, self.llm)
         else:
-            summary = await observation_summary(self.goal, obs, conversation, self.llm)
+            prev_obs = self.observation_history[-1] if len(self.observation_history) > 0 else Observation(None)
+            summary = await observation_summary(self.goal, obs, prev_obs, self.llm)
+        # Create an observation object again
+        summary = Observation(summary)
         return summary
     
     async def choose_action(self, obs, valid_actions, log_file):

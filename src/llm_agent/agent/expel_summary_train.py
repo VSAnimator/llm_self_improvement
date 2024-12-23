@@ -14,7 +14,9 @@ class ExpelSummaryTrain(BaseAgent):
         in_context_data = self.get_in_context_data(key_type="environment_id", key=self.environment_id, value_type="reflection", outcome="losing")
         in_context_data['low_level'] = (True, expel_in_context)
         # Let's use a summarized version of obs
-        obs = self.summarize(obs)
+        print(f"Original obs: {obs}")
+        obs = await self.summarize(obs)
+        print(f"Summarized obs: {obs}")
         if not self.plan:
             await self.create_plan(obs, valid_actions, in_context_data) # Re-planning based off reflection can go in here
         reasoning = await self.reason(obs, valid_actions, in_context_data)

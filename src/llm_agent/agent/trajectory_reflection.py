@@ -41,12 +41,12 @@ async def trajectory_summary(goal: str, conversation: List[Dict], llm: LiteLLMWr
     ])
     return response
 
-async def observation_summary(goal: str, observation: Observation, conversation: List[Dict], llm: LiteLLMWrapper) -> str:
+async def observation_summary(goal: str, observation: Observation, prev_summary: List[Dict], llm: LiteLLMWrapper) -> str:
     """Generate a concise summary of the current observation in context of conversation history using an LLM"""
-    prompt = f"Given the conversation history and current observation, summarize the current state in 1 sentence:\n\nConversation History:\n{conversation}\n\nCurrent Observation:\n{repr(observation)}"
+    prompt = f"Given the prior state, action taken, and current observation, summarize the current state of the environment:\n\nCPrior summary:\n{prev_summary.structured}\n\nCurrent Observation:\n{observation.structured}"
     
     response = await llm.generate_chat([
-        {"role": "system", "content": f"You are an agent in an environment. Given the goal: ``{goal}``, your task is to provide a brief, clear summary of the current state taking into account the current observation and context from previous interactions."},
+        {"role": "system", "content": f"You are an agent in an environment that is solving a partially-observable markov decision process. Given the previous state and the action taken, your task is to provide a brief, clear summary of the current state of the environment. Make sure to include all known information and any relevant context."},
         {"role": "user", "content": prompt}
     ])
     return response

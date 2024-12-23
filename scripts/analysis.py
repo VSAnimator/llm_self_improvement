@@ -78,6 +78,8 @@ for folder in sorted(txt_folders):
 
     print("Overall average success", sum(sum(v)/len(v) for v in attempt_dict.values())/len(attempt_dict.values()))
 
+    print("Success attempts dict", success_attempts_dict)
+
     # Get weighted average of inverse of keys of success_attempts_dict, weighted by values.
     # Where the key is -1, set the inverse to 0.
     weighted_sum = sum((1/k if k > 0 else 0) * v for k,v in success_attempts_dict.items())
@@ -101,24 +103,54 @@ import matplotlib.pyplot as plt
 # Create two subplots
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
 
+for folder in average_success_rates:
+    for i in range(1,6):
+        if i not in average_success_rates[folder]:
+            average_success_rates[folder][i] = average_success_rates[folder][i-1]
+        if i not in cumulative_success_rates[folder]:
+            cumulative_success_rates[folder][i] = cumulative_success_rates[folder][i-1]
+
+# Sort average and cumulative success rates by attempt
+for folder in average_success_rates:
+    average_success_rates[folder] = dict(sorted(average_success_rates[folder].items()))
+    cumulative_success_rates[folder] = dict(sorted(cumulative_success_rates[folder].items()))
+
 # Plot average success rates
 for folder in average_success_rates:
+    label = folder.split('/')[-3]
+    if label == "alfworld":
+        continue
+    elif label == "expel_train":
+        label = "react + example + reflection"
+    elif label == "vanilla_train":
+        label = "react + example"
+    elif label == "zero_shot_train":
+        label = "react"
     ax1.plot(list(average_success_rates[folder].keys()), 
              list(average_success_rates[folder].values()),
-             label=folder.split('/')[-2])
+             label=label)
 ax1.set_xlabel('Attempt')
 ax1.set_ylabel('Success Rate') 
-ax1.set_title('Average Success Rate by Attempt')
+ax1.set_title('Average Success Rate by Attempt (gpt-4o-mini)')
 ax1.legend()
 
 # Plot cumulative success rates
 for folder in cumulative_success_rates:
+    label = folder.split('/')[-3]
+    if label == "alfworld":
+        continue
+    elif label == "expel_train":
+        label = "react + example + reflection"
+    elif label == "vanilla_train":
+        label = "react + example"
+    elif label == "zero_shot_train":
+        label = "react"
     ax2.plot(list(cumulative_success_rates[folder].keys()),
              list(cumulative_success_rates[folder].values()),
-             label=folder.split('/')[-2])
+             label=label)
 ax2.set_xlabel('Attempt')
 ax2.set_ylabel('Success Rate')
-ax2.set_title('Cumulative Success Rate')
+ax2.set_title('Cumulative Success Rate (gpt-4o-mini)')
 ax2.legend()
 plt.tight_layout()
 plt.savefig('success_rates.png')
