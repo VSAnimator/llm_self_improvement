@@ -197,7 +197,7 @@ class BaseAgent:
         reflection = await conversation_reflection(self.goal, conversation, self.llm, reward)
         return reflection
     
-    async def summarize(self, obs=None, in_context_data = None) -> str:
+    async def summarize(self, obs=None) -> str:
         """Summarize the conversation and observation"""
         conversation = []
         conversation = self.create_conversation(conversation, None, None, None)

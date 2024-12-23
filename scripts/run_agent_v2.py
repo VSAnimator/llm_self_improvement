@@ -14,6 +14,7 @@ from llm_agent.agent.synapse import Synapse
 from llm_agent.agent.autoguide import AutoGuide
 from llm_agent.agent.retrieval_test import RetrievalTest
 from llm_agent.agent.expel_train import ExpelTrain
+from llm_agent.agent.expel_summary_train import ExpelSummaryTrain
 from llm_agent.agent.vanilla_train import VanillaTrain
 from llm_agent.agent.vanilla_test import VanillaTest
 from llm_agent.env.base_env import Observation, Action
@@ -91,6 +92,8 @@ def test_agent(real_llm, db, env, test_config):
         return RetrievalTest(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'expel_train':
         return ExpelTrain(real_llm, db, env, test_config)
+    elif test_config.get('agent_type', 'react') == 'expel_summary_train':
+        return ExpelSummaryTrain(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'vanilla_train':
         return VanillaTrain(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'vanilla_test':

@@ -46,7 +46,7 @@ async def observation_summary(goal: str, observation: Observation, conversation:
     prompt = f"Given the conversation history and current observation, summarize the current state in 1 sentence:\n\nConversation History:\n{conversation}\n\nCurrent Observation:\n{repr(observation)}"
     
     response = await llm.generate_chat([
-        {"role": "system", "content": f"You are an agent in an environment. Given the goal: ``{goal}``, your task is to provide a brief, clear summary of the current observation taking into account the context from previous interactions."},
+        {"role": "system", "content": f"You are an agent in an environment. Given the goal: ``{goal}``, your task is to provide a brief, clear summary of the current state taking into account the current observation and context from previous interactions."},
         {"role": "user", "content": prompt}
     ])
     return response
