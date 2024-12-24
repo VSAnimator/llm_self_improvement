@@ -48,7 +48,7 @@ PREFIXES = {
             'pick_two_obj': 'puttwo'
         }
 
-FEWSHOTS = {k: [d[f'react_{v}_{i}'] for i in range(2)] for k, v in PREFIXES.items()}
+FEWSHOTS = {k: [d[f'react_{v}_{i}'] for i in range(3)] for k, v in PREFIXES.items()}
 
 def get_task_type(task_desc):
     """Map task description to task type based on key verbs.
@@ -110,6 +110,56 @@ def parse_fewshot(fewshot):
         parsed.append(('obs', ' '.join(current_obs)))
         
     return parsed
+
+def parse_fewshot_lists(fewshot):
+    """Parse a fewshot example into observations and actions"""
+    lines = fewshot.split('\n')
+    
+    current_obs = ""
+    current_act = ""
+    current_thought = ""
+    plan = ""
+
+    goal = lines[1]
+    del lines[1]
+    obs_list = []
+    thought_list = []
+    act_list = []
+    
+    for line in lines:
+        if line.startswith('> '):
+            # Parse the action
+            act = line[2:] # Remove '> ' prefix
+            if act.startswith('think:'):
+                if plan == "":
+                    plan = act[7:].strip()
+                else:
+                    # Add the thought
+                    current_thought += act[7:].strip()
+            else:
+                current_act = act.strip()
+                
+        else:
+            # If the current line is OK, just skip
+            if line.strip() == "OK.":
+                continue
+            if len(current_obs) > 0:
+            # New obs--meaning add the previous obs, thought, and act to the lists
+                obs_list.append(current_obs)
+                thought_list.append(current_thought)
+                act_list.append(current_act)
+            current_obs = line.strip()
+            current_thought = ""
+            current_act = ""
+
+    del act_list[-1]
+    del thought_list[-1]
+            
+    # Add final observation if exists
+    if len(current_obs) > 0:
+        obs_list.append(current_obs)
+        
+    return goal, plan, obs_list, thought_list, act_list
 
 def parse_fewshot_old(fewshot):
     """Parse a fewshot example into observations and actions"""
@@ -177,6 +227,11 @@ FILTERED_FEWSHOTS = {
     for task, parsed_fewshots in PARSED_FEWSHOTS.items()
 }
 
+PARSED_FEWSHOTS_LISTS = {
+    task: [parse_fewshot_lists(fs) for fs in fewshots]
+    for task, fewshots in FEWSHOTS.items()
+}
+
 def get_fewshots_for_goal(goal: str) -> list:
     """Get filtered fewshot examples for a given goal
     
@@ -192,3 +247,13 @@ def get_fewshots_for_goal(goal: str) -> list:
 #test_goal = "put the apple in the fridge"
 #print(get_fewshots_for_goal(test_goal)[0])
 #print(FILTERED_FEWSHOTS['pick_and_place'][0])
+
+# Try running parse_fewshot_lists
+'''
+goal, plan, obs_list, thought_list, act_list = PARSED_FEWSHOTS_LISTS['pick_and_place'][2]
+print(goal)
+print(plan)
+print(obs_list)
+print(thought_list)
+print(act_list)
+'''

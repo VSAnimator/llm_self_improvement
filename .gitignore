@@ -61,6 +61,8 @@ coverage.xml
 *.log
 *.sqlite
 *.db
+*.json
+*.index
 
 # Model files and data
 *.h5
