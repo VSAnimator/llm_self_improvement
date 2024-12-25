@@ -12,8 +12,6 @@ class Synapse(BaseAgent):
         if not self.plan:
             await self.create_plan(obs, valid_actions, in_context_data) # Re-planning based off reflection can go in here
         reasoning = await self.reason(obs, valid_actions, in_context_data)
-        print("Reasoning", reasoning)
-        input()
         action = await self.act(obs, valid_actions, reasoning) 
         return action
     
