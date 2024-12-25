@@ -56,7 +56,8 @@ class BaseAgent:
             in_context_string = ""
             for i in range(len(in_context_data[value_type[0]])):
                 for j in range(len(value_type)):
-                    in_context_string += value_type[j] + " " + str(i+1) + ": " + repr(in_context_data[value_type[j]][i]) + ", "
+                    if len(in_context_data[value_type[j]]) > i:
+                        in_context_string += value_type[j] + " " + str(i+1) + ": " + repr(in_context_data[value_type[j]][i]) + ", "
             return in_context_string
 
     def get_in_context_data(self, key_type, key, value_type, outcome="winning", k=5) -> List[Dict]:

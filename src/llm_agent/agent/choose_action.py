@@ -13,7 +13,7 @@ logger = getLogger(__name__)
 
 async def reason(conversation: List[Dict], observation: Observation, available_actions: List[Action], llm: LiteLLMWrapper, config: Dict) -> List[Dict]:
     # Take the last conversation message and add a string saying to reason
-    conversation[-1]['content'] += "\n Think about the most appropriate action to take from the available actions."
+    conversation[-1]['content'] += "\n Think about the most appropriate action to take from the available actions. The task is not yet complete."
     response = await llm.generate_chat(conversation)
     return response
 
