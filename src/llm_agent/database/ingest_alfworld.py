@@ -25,6 +25,7 @@ def ingest_alfworld_fewshots_expel():
             db.store_episode(
                 environment_id=environment_id,
                 goal=goal,
+                category=task,
                 observations=obs_list,
                 reasoning=thought_list,
                 actions=act_list,

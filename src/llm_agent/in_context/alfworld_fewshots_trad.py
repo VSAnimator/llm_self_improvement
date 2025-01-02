@@ -32,6 +32,9 @@ def parse_fewshot_trad(fewshot):
                 current_act = act[5:].strip()
         else:
             if phase == "think":
+                #if "To solve the task" in line and plan == "":
+                #    plan = line.split(".")[0].strip()
+                #    line = line[len(plan):].strip()
                 current_thought += " " + line.strip()
             else:
                 if len(current_obs) > 0:

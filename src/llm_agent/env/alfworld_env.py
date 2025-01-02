@@ -12,6 +12,7 @@ import random
 from os.path import join as pjoin
 
 from .base_env import BaseEnv, Observation, Action
+from ..in_context.alfworld_fewshots import get_task_type
 
 class AlfWorldEnv(BaseEnv):
     """Environment wrapper for ALFWorld text-based environments"""
@@ -70,7 +71,11 @@ class AlfWorldEnv(BaseEnv):
             print("self.task", self.task)
                 
             config['problem'] = os.path.dirname(self.task['gamefile'])
-            self.goal = self.task['goal'].split('___')[0]
+            print(self.task['goal'])
+            input()
+            # Also cut off everything before "Your task is to: "
+            self.goal = "Your task is to: " + self.task['goal'].split('Your task is to: ')[1].split('___')[0]
+            self.category = get_task_type(self.goal)
 
         # Load state and trajectory files
         pddl_file = os.path.join(config['problem'], 'initial_state.pddl')
@@ -123,6 +128,8 @@ class AlfWorldEnv(BaseEnv):
             Initial observation
         """
         obs, info = self.env.reset()
+        # Remove the "Your task is to: " text and everything after
+        obs = obs.split("-= Welcome to TextWorld, ALFRED! =-")[1].split("Your task is to: ")[0].strip()
         self._observation = obs
         self.steps = 0
         return obs, info

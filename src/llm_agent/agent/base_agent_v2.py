@@ -40,6 +40,7 @@ class BaseAgent:
         # Environment info
         self.environment_id: Optional[str] = env.id
         self.goal: Optional[str] = env.goal
+        self.category: Optional[str] = env.category if hasattr(env, 'category') else None
 
         # Database
         self.db = db
@@ -54,10 +55,18 @@ class BaseAgent:
         else:
             # If there are multiple value types, we want to interleave them. Ex. Obs 1, Action 1, Obs 2, Action 2, etc.
             in_context_string = ""
-            for i in range(len(in_context_data[value_type[0]])):
-                for j in range(len(value_type)):
-                    if len(in_context_data[value_type[j]]) > i:
-                        in_context_string += value_type[j] + " " + str(i+1) + ": " + repr(in_context_data[value_type[j]][i]) + ", "
+            # For the things that are full-trajectory, stick them on first
+            interleaved_values = ["state", "reasoning", "action", "next_state"]
+            # Loop through value_types, first add all non-interleaved values
+            for value in value_type:
+                if value not in interleaved_values:
+                    in_context_string += value + ": " + repr(in_context_data[value]) + ", "
+            # Now add the interleaved values
+            if "state" in value_type:
+                for i in range(len(in_context_data["state"])):
+                    for j in range(len(value_type)):
+                        if len(in_context_data[value_type[j]]) > i:
+                            in_context_string += value_type[j] + " " + str(i+1) + ": " + repr(in_context_data[value_type[j]][i]) + ", "
             return in_context_string
 
     def get_in_context_data(self, key_type, key, value_type, outcome="winning", k=5) -> List[Dict]:
@@ -79,7 +88,7 @@ class BaseAgent:
     
     def store_episode(self, reflection, summary):
         """Store an episode in the database"""
-        self.db.store_episode(self.environment_id, self.goal, self.observation_history, self.reasoning_history, self.action_history, self.reward_history, self.plan, reflection, summary)
+        self.db.store_episode(self.environment_id, self.goal, self.category,self.observation_history, self.reasoning_history, self.action_history, self.reward_history, self.plan, reflection, summary)
 
     def create_conversation(self, conversation: List[Dict], observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None) -> List[Dict]:
         """Create a conversation with the observation and action history"""
