@@ -40,12 +40,13 @@ def ingest_alfworld_fewshots_expel():
 def ingest_alfworld_fewshots_trad():
     db = LearningDB("./data/alfworld_trad/learning.db")
     i = 0
-    for goal, obs_list, thought_list, act_list in FEWSHOTS_TRAD:
+    for goal, task_type, obs_list, thought_list, act_list in FEWSHOTS_TRAD:
         obs_list = [Observation(o) for o in obs_list]
         act_list = [Action(a) for a in act_list]
         db.store_episode(
             environment_id=f"trad_{i}",
             goal=goal,
+            category=task_type,
             observations=obs_list,
             reasoning=thought_list,
             actions=act_list,

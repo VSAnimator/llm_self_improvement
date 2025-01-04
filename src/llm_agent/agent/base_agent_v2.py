@@ -275,27 +275,17 @@ class BaseAgent:
 
     async def act(self, observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None, in_context_data= None) -> Tuple[Action, List[Dict]]:
         """Select an action from available actions given the current observation"""
-        # If the model is gemini, just get the action from the reasoning string
-        action = None
-        '''
-        if True or ("gemini" in self.llm.model.lower() or "together" in self.llm.model.lower()):
-            match = re.search(r"action:\s*(.*)", reasoning, re.IGNORECASE)
-            if match:
-                action = match.group(1).strip()
-                action = Action(text=action)
-        '''
-        if action is None:
-            # Create a conversation with observations and actions so far
-            conversation = []
-            # Want the system prompt to be standardized. Should have environment and goal info, as well as observation and action format. 
-            system_prompt = f"""You are an agent in an environment. Given the current observation, you must select an action to take towards achieving the goal: {self.goal}."""
-            if in_context_data:
-                system_prompt += self.data_driven_in_context_prompt(in_context_data)
-            conversation.append({"role": "system", "content": system_prompt})
-            conversation.append({"role": "user", "content": self.create_conversation(["goal", "plan", "observation", "reasoning", "action"], observation, available_actions, reasoning) + "action: "})
-            
-            # Select action
-            action = await select_action(conversation, observation, available_actions, self.llm, self.config)
+        # Create a conversation with observations and actions so far
+        conversation = []
+        # Want the system prompt to be standardized. Should have environment and goal info, as well as observation and action format. 
+        system_prompt = f"""You are an agent in an environment. Given the current observation, you must select an action to take towards achieving the goal: {self.goal}."""
+        if in_context_data:
+            system_prompt += self.data_driven_in_context_prompt(in_context_data)
+        conversation.append({"role": "system", "content": system_prompt})
+        conversation.append({"role": "user", "content": self.create_conversation(["goal", "plan", "observation", "reasoning", "action"], observation, available_actions, reasoning) + "action: "})
+        
+        # Select action
+        action = await select_action(conversation, observation, available_actions, self.llm, self.config)
 
         # Append observation, action to history
         self.observation_history.append(observation)
