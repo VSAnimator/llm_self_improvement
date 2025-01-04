@@ -109,7 +109,7 @@ def db(db_path):
 async def run_env(agent, env, log_file):
     # Goal: run the agent on the environment and log the results
     attempt_count = 0
-    num_attempts = 5 #env.num_attempts
+    num_attempts = 1 #env.num_attempts
     print("Num attempts", num_attempts)
     with open(log_file, "w") as f:
         for attempt in range(num_attempts):
@@ -159,7 +159,7 @@ async def main():
     parser.add_argument('--agent_type', required=True, help='Type of agent to use')
     args = parser.parse_args()
 
-    for i in range(0,134,2):
+    for i in range(44,134,2):
         cfg = config()
         cfg['benchmark']['problem_id'] = i
         cfg['llm']['model'] = args.llm

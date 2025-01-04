@@ -71,8 +71,6 @@ class AlfWorldEnv(BaseEnv):
             print("self.task", self.task)
                 
             config['problem'] = os.path.dirname(self.task['gamefile'])
-            print(self.task['goal'])
-            input()
             # Also cut off everything before "Your task is to: "
             self.goal = "Your task is to: " + self.task['goal'].split('Your task is to: ')[1].split('___')[0]
             self.category = get_task_type(self.goal)
@@ -148,6 +146,8 @@ class AlfWorldEnv(BaseEnv):
             - Info dict
         """
         self.steps += 1
+
+        action = action.replace(" in ", " in/on ").replace(" on ", " in/on ")
         
         obs, reward, done, info = self.env.step(action)
         self._observation = obs

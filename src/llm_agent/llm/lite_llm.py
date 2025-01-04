@@ -43,11 +43,15 @@ class LiteLLMWrapper:
                 #"api_base": "http://0.0.0.0:8000/v1"
                 #"mock_response": "test" if response_format is None else None
                 #"drop_params": True, # In case the model doesn't have some of the parameters
+                "stop": ["\n"]
             }
 
             # Add response format for models that support it
             if response_format: # and any(provider in self.model.lower() for provider in ["openai", "claude", "anthropic", "gemini", "together"]):
                 completion_kwargs["response_format"] = response_format
+
+            #print(messages)
+            #input("Waiting")
 
             response = await litellm.acompletion(**completion_kwargs)
 

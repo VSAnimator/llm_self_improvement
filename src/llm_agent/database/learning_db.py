@@ -228,31 +228,6 @@ class LearningDB:
         mappings = self.trajectory_id_mappings if is_trajectory else self.state_id_mappings
         cursor = self.trajectory_cursor if is_trajectory else self.state_cursor
 
-        # Get initial large set of candidates from first index
-        '''
-        initial_k = k * len(key_type)
-        D, I = indices[key_type[0]].search(key_embeddings[0].reshape(1, -1), initial_k)
-        
-        # Compute distances for remaining indices and aggregate
-        total_distances = D[0]
-        for kt, ke in zip(key_type[1:], key_embeddings[1:]):
-            for idx, candidate_id in enumerate(I[0]):
-                if candidate_id != -1:
-                    print(candidate_id)
-                    print("candidate type", type(candidate_id))
-                    print("kt", kt)
-                    print("ke", ke)
-                    input()
-                    candidate_embedding = indices[kt].reconstruct(candidate_id)
-                    dist = -np.dot(ke, candidate_embedding)
-                    total_distances[idx] += dist
-
-        # Rerank based on aggregated distances
-        ranked_indices = np.argsort(total_distances)
-        D = total_distances[ranked_indices][:k].reshape(1,-1)
-        I = I[0][ranked_indices][:k].reshape(1,-1)
-        '''
-
         D, I = self.compute_top_k_nearest_neighbors_by_avg_distance([indices[elem] for elem in key_type], key_embeddings, k)
 
         # Filter invalid results
@@ -446,14 +421,14 @@ class LearningDB:
                                 state_embedding = np.frombuffer(embedding_bytes, dtype=np.float32)
                                 elem_distances.append(np.dot(state_embedding, state_key_embeddings[state_key_type][0]))
                             else:
-                                elem_distances.append(float('inf'))
+                                elem_distances.append(-1.0)
                                 
                         # Aggregate distances for each state row
                         state_row_distances.append(np.mean(elem_distances))
-                    # Pick the row with the smallest distance
-                    min_index = np.argmin(state_row_distances)
-                    state_ids.append(state_rows[min_index][0])
-                    state_distances.append(state_row_distances[min_index])
+                    # Pick the row with the largest distance
+                    max_index = np.argmax(state_row_distances)
+                    state_ids.append(state_rows[max_index][0])
+                    state_distances.append(state_row_distances[max_index])
 
                 # Rerank by trajectory and state distances summed
                 summed_distances = [trajectory_distances[i] + state_distances[i] for i in range(len(trajectory_distances))]

@@ -11,13 +11,23 @@ from ..llm.lite_llm import LiteLLMWrapper
 
 logger = getLogger(__name__)
 
-async def reason(conversation: List[Dict], observation: Observation, available_actions: List[Action], llm: LiteLLMWrapper, config: Dict) -> List[Dict]:
+async def reason_old(conversation: List[Dict], observation: Observation, available_actions: List[Action], llm: LiteLLMWrapper, config: Dict) -> List[Dict]:
     # Take the last conversation message and add a string saying to reason
     conversation[-1]['content'] += "\n Think about the most appropriate action to take from the available actions. The task is not yet complete."
     response = await llm.generate_chat(conversation)
     return response
 
+async def reason(conversation: List[Dict], observation: Observation, available_actions: List[Action], llm: LiteLLMWrapper, config: Dict) -> List[Dict]:
+    # Take the last conversation message and add a string saying to reason
+    response = await llm.generate_chat(conversation)
+    return response
+
 async def select_action(conversation: List[Dict], observation: Observation, available_actions: List[Action], llm: LiteLLMWrapper, config: Dict) -> Action:
+    """Select an action from available actions given the current observation"""
+    response = await llm.generate_chat(conversation)
+    return Action(text=response)
+
+async def select_action_old(conversation: List[Dict], observation: Observation, available_actions: List[Action], llm: LiteLLMWrapper, config: Dict) -> Action:
     """Select an action from available actions given the current observation"""
     # Get config values
     max_retries = config.get('max_retries', 3)
