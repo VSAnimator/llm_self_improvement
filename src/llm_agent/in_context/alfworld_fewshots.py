@@ -127,12 +127,12 @@ def parse_fewshot_lists(fewshot):
     act_list = []
     
     for line in lines:
-        if line.startswith('> '):
+        if line.startswith('>'):
             # Parse the action
-            act = line[2:] # Remove '> ' prefix
+            act = line[1:].strip() # Remove '>' prefix
             if act.startswith('think:'):
                 if plan == "":
-                    plan = act[7:].strip()
+                    plan = act[6:].strip()
                 else:
                     # Add the thought
                     current_thought += act[7:].strip()

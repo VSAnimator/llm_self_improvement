@@ -70,9 +70,9 @@ class BaseAgent:
                             in_context_string += value_type[j] + " " + str(i+1) + ": " + repr(in_context_data[value_type[j]][i]) + ", "
             return in_context_string
 
-    def get_in_context_data(self, key_type, key, value_type, outcome="winning", k=5) -> List[Dict]:
+    def get_in_context_data(self, key_type, key, value_type, outcome="winning", k=5, window=20) -> List[Dict]:
         """Retrieve in context examples from the database"""
-        success_entries, failure_entries = self.db.get_similar_entries(key_type, key, outcome=outcome, k=k)
+        success_entries, failure_entries = self.db.get_similar_entries(key_type, key, outcome=outcome, k=k, window=window)
         # Now figure out which part of the examples to return in-context
         if not isinstance(value_type, list): # Check that this is a list, not a string
             value_type = [value_type]
@@ -388,7 +388,7 @@ class BaseAgent:
         self.reward_history = []
         self.plan = None
         self.in_context_data = None
-        
+
     def reset(self):
         """Reset agent state between episodes"""
         self.observation_history = []
