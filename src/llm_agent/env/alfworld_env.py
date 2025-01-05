@@ -150,6 +150,9 @@ class AlfWorldEnv(BaseEnv):
         action = action.replace(" in ", " in/on ").replace(" on ", " in/on ")
         
         obs, reward, done, info = self.env.step(action)
+        # Clean the obs following prior work
+        if obs.startswith('You arrive at '):
+            obs = obs[obs.find('. ')+2:]
         self._observation = obs
         
         # End episode if max steps reached
