@@ -159,16 +159,18 @@ async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--llm', required=True, help='LLM model to use')
     parser.add_argument('--db_path', help='Optional custom path for learning database')
+    parser.add_argument('--db_name', help='Optional custom name for learning database')
     parser.add_argument('--agent_type', required=True, help='Type of agent to use')
     args = parser.parse_args()
 
-    for i in range(44,134,2):
+    for i in range(0,134,2):
         cfg = config()
         cfg['benchmark']['problem_id'] = i
         cfg['llm']['model'] = args.llm
         
         agent_config = test_config(agent_type=args.agent_type)
-        log_dir = Path("logs/episodes") / f"{cfg['benchmark']['name']}/{cfg['benchmark']['split']}/{args.agent_type}/{args.llm}"
+        db_name = args.db_name if args.db_name else "default"
+        log_dir = Path("logs/episodes") / f"{cfg['benchmark']['name']}/{cfg['benchmark']['split']}/{args.agent_type}/{args.llm}/{db_name}"
         log_dir.mkdir(parents=True, exist_ok=True)
 
         # Save command line args on first iteration

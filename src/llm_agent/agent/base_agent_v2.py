@@ -42,7 +42,7 @@ class BaseAgent:
         self.environment_id: Optional[str] = env.id
         self.goal: Optional[str] = env.goal
         self.category: Optional[str] = env.category if hasattr(env, 'category') else None
-
+        self.action_space: Optional[str] = env.get_action_space() if hasattr(env, 'get_action_space') else None
         # Database
         self.db = db
 
@@ -279,6 +279,9 @@ class BaseAgent:
         conversation = []
         # Want the system prompt to be standardized. Should have environment and goal info, as well as observation and action format. 
         system_prompt = f"""You are an agent in an environment. Given the current observation, you must select an action to take towards achieving the goal: {self.goal}."""
+        # If this is a TRAD agent, we want to add the action space to the system prompt
+        if "trad" in self.config.get("agent_type", "").lower():
+            system_prompt += "\nHere is your action space:\n" + self.action_space['description']
         if in_context_data:
             system_prompt += self.data_driven_in_context_prompt(in_context_data)
         conversation.append({"role": "system", "content": system_prompt})
