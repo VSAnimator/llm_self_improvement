@@ -10,6 +10,7 @@ from llm_agent.agent.react import React
 from llm_agent.agent.reflexion import Reflexion
 from llm_agent.agent.reflection_collect import ReflectionCollect
 from llm_agent.agent.rap import RAP
+from llm_agent.agent.rap_noplan import RAPNoPlan
 from llm_agent.agent.synapse import Synapse
 from llm_agent.agent.autoguide import AutoGuide
 from llm_agent.agent.retrieval_test import RetrievalTest
@@ -21,6 +22,7 @@ from llm_agent.agent.trad import TRAD
 from llm_agent.env.base_env import Observation, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
 from llm_agent.env.alfworld_env import AlfWorldEnv
+from llm_agent.env.webshop_site_env import WebShopEnv
 from llm_agent.env.gym_env import GymEnv
 from llm_agent.database.learning_db import LearningDB
 import random
@@ -50,6 +52,12 @@ def config():
         'type': 'AlfredTWEnv',  # Required env type for alfworld
         'split': 'eval_out_of_distribution'  # Required split parameter # eval_out_of_distribution
     })
+    '''
+    env_config.update({
+        'type': 'WebShopEnv',  # Required env type for alfworld
+        'name': 'webshop'
+    })
+    '''
     
     # Update with benchmark config
     config['benchmark'] = env_config
@@ -62,6 +70,8 @@ def env(config):
     if use_gym:
         env_config = {"env_name": "CartPole-v1"}
         return GymEnv(env_config)
+    elif config['benchmark']['name'] == 'webshop':
+        return WebShopEnv(config['benchmark'])
     else:
         return AlfWorldEnv(config['benchmark'])
 
@@ -85,6 +95,8 @@ def test_agent(real_llm, db, env, test_config):
         return ReflectionCollect(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'rap':
         return RAP(real_llm, db, env, test_config)
+    elif test_config.get('agent_type', 'react') == 'rap_noplan':
+        return RAPNoPlan(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'synapse':
         return Synapse(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'autoguide':
@@ -125,9 +137,13 @@ async def run_env(agent, env, log_file):
 
             while not done and steps < env.max_steps:
                 # Get valid actions
-                valid_actions = env.get_available_actions(info)
-                valid_actions = [Action(text=action) for action in valid_actions]
-                f.write(f"Valid actions: {valid_actions}\n")
+                # Check if env has get_available_actions
+                if hasattr(env, 'get_available_actions'):
+                    valid_actions = env.get_available_actions(info)
+                    valid_actions = [Action(text=action) for action in valid_actions]
+                    f.write(f"Valid actions: {valid_actions}\n")
+                else:
+                    valid_actions = None
                 # Choose action
                 selected_action = await agent.choose_action(obs, valid_actions, log_file)
                 f.write(f"Selected action: {selected_action}\n")
@@ -163,7 +179,7 @@ async def main():
     parser.add_argument('--agent_type', required=True, help='Type of agent to use')
     args = parser.parse_args()
 
-    for i in range(44,134,2):
+    for i in range(3,134,1):
         cfg = config()
         cfg['benchmark']['problem_id'] = i
         cfg['llm']['model'] = args.llm
@@ -172,15 +188,6 @@ async def main():
         db_name = args.db_name if args.db_name else "default"
         log_dir = Path("logs/episodes") / f"{cfg['benchmark']['name']}/{cfg['benchmark']['split']}/{args.agent_type}/{args.llm}/{db_name}"
         log_dir.mkdir(parents=True, exist_ok=True)
-
-        # Save command line args on first iteration
-        if i == 1:
-            with open(log_dir / "run_config.json", "w") as f:
-                json.dump({
-                    "llm": args.llm,
-                    "db_path": args.db_path,
-                    "agent_type": args.agent_type
-                }, f, indent=2)
 
         log_file = log_dir / f"{i}.txt"
         environment = env(cfg)

@@ -133,78 +133,97 @@ def webshop_text(session, page_type, query_string='', page_num=1, asin='', optio
         return clean_str(observation), info
     
 class WebShopEnv:
-  def __init__(self):
+  def __init__(self, config):
     self.sessions = {}
+    self.id = config['problem_id']
+    # Run reset once to get the goal
+    obs, info = self.reset()
+    self.goal = obs.split('Instruction: ')[1].split('[')[0].strip()
+    self.max_steps = config['max_steps']
 
   # In this case reset just calls 
-  def reset(self, session):
-    return self.step(session, 'reset')
+  def reset(self):
+    obs, _, _, info = self.step('reset')
+    return obs, info
   
-  def step(self, session, action):
+  def step(self, action):
     done = False
     observation_ = None
-    if action == 'reset':
-      self.sessions[session] = {'session': session, 'page_type': 'init'}
-    elif action.startswith('think['):
-      observation = 'OK.'
-    elif action.startswith('search['):
-      assert self.sessions[session]['page_type'] == 'init'
-      query = action[7:-1]
-      self.sessions[session] = {'session': session, 'page_type': 'search',
-                                'query_string': query, 'page_num': 1}
-    elif action.startswith('click['):
-      button = action[6:-1]
-      if button == 'Buy Now':
-        assert self.sessions[session]['page_type'] == 'item'
-        # Help URI Encoding, as WSGI error thrown when option has '#'
-        if 'options' in self.sessions[session]:
-            for option_type in self.sessions[session]['options']:
-                self.sessions[session]['options'][option_type] = quote(self.sessions[session]['options'][option_type])
-        self.sessions[session]['page_type'] = 'end'
-        done = True
-      elif button == 'Back to Search':
-        assert self.sessions[session]['page_type'] in ['search', 'item_sub', 'item']
-        self.sessions[session] = {'session': session, 'page_type': 'init'}
-      elif button == 'Next >':
-        assert False # ad hoc page limitation
-        assert self.sessions[session]['page_type'] == 'search'
-        self.sessions[session]['page_num'] += 1
-      elif button == '< Prev':
-        assert self.sessions[session]['page_type'] in ['search', 'item_sub', 'item']
-        if self.sessions[session]['page_type'] == 'search':
-          assert False
-          self.sessions[session]['page_num'] -= 1
-        elif self.sessions[session]['page_type'] == 'item_sub':
-          self.sessions[session]['page_type'] = 'item'
-        elif self.sessions[session]['page_type'] == 'item':
-          self.sessions[session]['page_type'] = 'search'
-          self.sessions[session]['options'] = {}
-      elif button in ACTION_TO_TEMPLATE:
-        assert self.sessions[session]['page_type'] == 'item'
-        self.sessions[session]['page_type'] = 'item_sub'
-        self.sessions[session]['subpage'] = button
+    try:
+      if action == 'reset':
+        self.sessions[self.id] = {'session': self.id, 'page_type': 'init'}
+      elif action.startswith('search['):
+        assert self.sessions[self.id]['page_type'] == 'init'
+        query = action[7:-1]
+        self.sessions[self.id] = {'session': self.id, 'page_type': 'search',
+                                  'query_string': query, 'page_num': 1}
+      elif action.startswith('click['):
+        button = action[6:-1]
+        if button == 'Buy Now':
+          assert self.sessions[self.id]['page_type'] == 'item'
+          # Help URI Encoding, as WSGI error thrown when option has '#'
+          if 'options' in self.sessions[self.id]:
+              for option_type in self.sessions[self.id]['options']:
+                  self.sessions[self.id]['options'][option_type] = quote(self.sessions[self.id]['options'][option_type])
+          self.sessions[self.id]['page_type'] = 'end'
+          done = True
+        elif button == 'Back to Search':
+          assert self.sessions[self.id]['page_type'] in ['search', 'item_sub', 'item']
+          self.sessions[self.id] = {'session': self.id, 'page_type': 'init'}
+        elif button == 'Next >':
+          assert False # ad hoc page limitation
+          assert self.sessions[self.id]['page_type'] == 'search'
+          self.sessions[self.id]['page_num'] += 1
+        elif button == '< Prev':
+          assert self.sessions[self.id]['page_type'] in ['search', 'item_sub', 'item']
+          if self.sessions[self.id]['page_type'] == 'search':
+            assert False
+            self.sessions[self.id]['page_num'] -= 1
+          elif self.sessions[self.id]['page_type'] == 'item_sub':
+            self.sessions[self.id]['page_type'] = 'item'
+          elif self.sessions[self.id]['page_type'] == 'item':
+            self.sessions[self.id]['page_type'] = 'search'
+            self.sessions[self.id]['options'] = {}
+        elif button in ACTION_TO_TEMPLATE:
+          assert self.sessions[self.id]['page_type'] == 'item'
+          self.sessions[self.id]['page_type'] = 'item_sub'
+          self.sessions[self.id]['subpage'] = button
+        else:
+          if self.sessions[self.id]['page_type'] == 'search':
+            assert button in self.sessions[self.id].get('asins', [])  # must be asins
+            print("All asins:", self.sessions[self.id]['asins'])
+            self.sessions[self.id]['page_type'] = 'item'
+            self.sessions[self.id]['asin'] = button
+          elif self.sessions[self.id]['page_type'] == 'item':
+            assert 'option_types' in self.sessions[self.id]
+            assert button in self.sessions[self.id]['option_types'], (button, self.sessions[self.id]['option_types'])  # must be options
+            print("All options:", self.sessions[self.id]['option_types'])
+            option_type = self.sessions[self.id]['option_types'][button]
+            if not 'options' in self.sessions[self.id]:
+              self.sessions[self.id]['options'] = {}
+            self.sessions[self.id]['options'][option_type] = button
+            observation_ = f'You have clicked {button}.'
       else:
-        if self.sessions[session]['page_type'] == 'search':
-          assert button in self.sessions[session].get('asins', [])  # must be asins
-          self.sessions[session]['page_type'] = 'item'
-          self.sessions[session]['asin'] = button
-        elif self.sessions[session]['page_type'] == 'item':
-          assert 'option_types' in self.sessions[session]
-          assert button in self.sessions[session]['option_types'], (button, self.sessions[session]['option_types'])  # must be options
-          option_type = self.sessions[session]['option_types'][button]
-          if not 'options' in self.sessions[session]:
-            self.sessions[session]['options'] = {}
-          self.sessions[session]['options'][option_type] = button
-          observation_ = f'You have clicked {button}.'
-    else:
-      assert False
-    observation, info = webshop_text(**self.sessions[session])
-    if observation_:
-      observation = observation_
-    self.sessions[session].update(info)
-    reward = info.get('reward', 0.0)
+        assert False
+      observation, info = webshop_text(**self.sessions[self.id])
+      if observation_:
+        observation = observation_
+      self.sessions[self.id].update(info)
+      reward = info.get('reward', 0.0)
+    except Exception as e:
+      print(e)
+      # Return "Invalid action!" as observation
+      observation = "Invalid action! Either the syntax is incorrect or the action is not valid in the current state."
+      reward = 0.0
+      done = False
+      info = {}
+
+    print("Page type:", self.sessions[self.id]['page_type'])
+    
     return observation, reward, done, info
 
+'''
 env = webshopEnv()
 x = env.step('1', 'reset')
 print(x)
+'''

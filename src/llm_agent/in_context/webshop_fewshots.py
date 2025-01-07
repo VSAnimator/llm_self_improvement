@@ -87,7 +87,9 @@ def get_webshop_fewshots():
     # Goal is in first obs
     goal = observations[0].split('Instruction: ')[1].split('[')[0].strip()
             
-    return goal, observations, thoughts, actions
+    return [(goal, observations, thoughts, actions)]
+
+WEBSHOP_FEWSHOTS = get_webshop_fewshots()
 
 '''
 goal, observations, thoughts, actions = get_webshop_fewshots()

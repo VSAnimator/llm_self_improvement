@@ -8,21 +8,14 @@ class VanillaTrain(BaseAgent):
 
     async def choose_action(self, obs, valid_actions, log_file):
         """Choose an action from available actions given the current observation"""
-        # Use the previos reflections as in-context data
-        expel_in_context = get_fewshots_for_goal(self.goal)
-        expel_in_context = [repr(entry) for entry in expel_in_context]
-        in_context_data = {}
-        in_context_data['low_level'] = (True, expel_in_context)
+        data = self.get_in_context_data(key_type=["goal"], key=[self.goal], value_type=["goal", "observation", "reasoning", "action"], k=2, window=20) # Window should have no effect here but just in case get the full trajectory
         if not self.plan:
-            await self.create_plan(obs, valid_actions, in_context_data) 
-        reasoning = await self.reason(obs, valid_actions, in_context_data)
-        action = await self.act(obs, valid_actions, reasoning, in_context_data) 
+            await self.create_plan(obs, valid_actions, in_context_data=data)
+        reasoning = await self.reason(obs, valid_actions, in_context_data=data)
+        action = await self.act(obs, valid_actions, reasoning, in_context_data=data) 
         return action
     
     async def process_feedback(self, new_obs, reward, done, log_file):
         """Process feedback from the environment"""
         self.reward_history.append(reward)
-        if done:
-            reflection = await self.reflect(new_obs, reward)
-            self.store_episode(reflection, None)
         return

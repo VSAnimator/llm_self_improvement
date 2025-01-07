@@ -13,6 +13,8 @@ print("Folders containing txt files:")
 average_success_rates = {}
 cumulative_success_rates = {}
 for folder in sorted(txt_folders):
+    if "webshop" not in folder:
+        continue
     print(folder)
     # Get all episode files
     episode_files = glob.glob(f'{folder}/*.txt')
@@ -24,11 +26,17 @@ for folder in sorted(txt_folders):
     failure_count_dict = {}
     attempt_dict = {}
     success_attempts_dict = {}
+    final_rewards = []
 
     # Process each episode file
     for episode_file in episode_files:
         with open(episode_file, 'r') as f:
             content = f.read()
+            # Get final reward in file
+            final_reward = content.split('Reward: ')[-1].split('\n')[0]
+            # Cast to float if valid, otherwise 0
+            final_reward = float(final_reward) if final_reward.replace('.', '', 1).isdigit() else 0
+            final_rewards.append(final_reward)
             # Look for final reward of 1 
             if 'Reward: 1' in content:
                 successful_episodes += 1
@@ -96,6 +104,8 @@ for folder in sorted(txt_folders):
             cumulative_success_rate_dict[k] = cumulative_success_rate
     print("Cumulative success rate dict:", cumulative_success_rate_dict)
     cumulative_success_rates[folder] = cumulative_success_rate_dict
+
+    print("Avg final reward:", sum(final_rewards)/len(final_rewards))
 
 # Plot average and cumulative success rates in two separate plots
 import matplotlib.pyplot as plt
