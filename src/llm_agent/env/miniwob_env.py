@@ -39,7 +39,7 @@ class MiniWoBEnv(BaseEnv):
         """
         if self.env is None:
             gymnasium.register_envs(miniwob)
-            self.env = gymnasium.make(f'miniwob/{self.task_name}', render_mode='human')
+            self.env = gymnasium.make(f'miniwob/{self.task_name}')
             
         obs, info = self.env.reset()
         self.steps = 0
