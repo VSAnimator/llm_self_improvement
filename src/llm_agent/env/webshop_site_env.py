@@ -203,6 +203,10 @@ class WebShopEnv:
               self.sessions[self.id]['options'] = {}
             self.sessions[self.id]['options'][option_type] = button
             observation_ = f'You have clicked {button}.'
+          # Vishnu modification--not covering the else situation
+          else:
+            # This is invalid from item_sub...
+            assert False
       else:
         assert False
       observation, info = webshop_text(**self.sessions[self.id])
@@ -213,7 +217,7 @@ class WebShopEnv:
     except Exception as e:
       print(e)
       # Return "Invalid action!" as observation
-      observation = "Invalid action! Either the syntax is incorrect or the action is not valid in the current state."
+      observation = "Invalid action!"
       reward = 0.0
       done = False
       info = {}

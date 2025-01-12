@@ -48,6 +48,7 @@ def config():
         env_config = yaml.safe_load(f)
         
     # Ensure required alfworld configuration exists
+    '''
     env_config.update({
         'type': 'AlfredTWEnv',  # Required env type for alfworld
         'split': 'eval_out_of_distribution'  # Required split parameter # eval_out_of_distribution
@@ -55,9 +56,9 @@ def config():
     '''
     env_config.update({
         'type': 'WebShopEnv',  # Required env type for alfworld
-        'name': 'webshop'
+        'name': 'webshop',
+        'max_steps': 10,
     })
-    '''
     
     # Update with benchmark config
     config['benchmark'] = env_config
@@ -179,7 +180,7 @@ async def main():
     parser.add_argument('--agent_type', required=True, help='Type of agent to use')
     args = parser.parse_args()
 
-    for i in range(3,134,1):
+    for i in range(27,100,1):
         cfg = config()
         cfg['benchmark']['problem_id'] = i
         cfg['llm']['model'] = args.llm
