@@ -1,6 +1,6 @@
 from llm_agent.agent.base_agent_v2 import BaseAgent
-from ..env.base_env import Observation, Action
-from ..in_context.alfworld_fewshots import get_fewshots_for_goal
+from ...env.base_env import Observation, Action
+from ...in_context.alfworld_fewshots import get_fewshots_for_goal
 
 class VanillaTrain(BaseAgent):
     def __init__(self, *args):

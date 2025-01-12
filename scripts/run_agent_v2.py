@@ -6,19 +6,14 @@ import shutil
 from pathlib import Path
 from types import SimpleNamespace
 from llm_agent.agent.base_agent_v2 import BaseAgent
-from llm_agent.agent.react import React
-from llm_agent.agent.reflexion import Reflexion
-from llm_agent.agent.reflection_collect import ReflectionCollect
-from llm_agent.agent.rap import RAP
-from llm_agent.agent.rap_noplan import RAPNoPlan
-from llm_agent.agent.synapse import Synapse
-from llm_agent.agent.autoguide import AutoGuide
-from llm_agent.agent.retrieval_test import RetrievalTest
-from llm_agent.agent.expel_train import ExpelTrain
-from llm_agent.agent.expel_summary_train import ExpelSummaryTrain
-from llm_agent.agent.vanilla_train import VanillaTrain
-from llm_agent.agent.vanilla_test import VanillaTest
-from llm_agent.agent.trad import TRAD
+from llm_agent.agent.agents.react import React
+from llm_agent.agent.agents.reflexion import Reflexion
+from llm_agent.agent.agents.rap import RAP
+from llm_agent.agent.agents.rap_noplan import RAPNoPlan
+from llm_agent.agent.agents.synapse import Synapse
+from llm_agent.agent.agents.expel_train import ExpelTrain
+from llm_agent.agent.agents.vanilla_train import VanillaTrain
+from llm_agent.agent.agents.trad import TRAD
 from llm_agent.env.base_env import Observation, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
 from llm_agent.env.alfworld_env import AlfWorldEnv
@@ -92,28 +87,16 @@ def test_agent(real_llm, db, env, test_config):
         return React(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'reflexion':
         return Reflexion(real_llm, db, env, test_config)
-    elif test_config.get('agent_type', 'react') == 'reflection_collect':
-        return ReflectionCollect(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'rap':
         return RAP(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'rap_noplan':
         return RAPNoPlan(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'synapse':
         return Synapse(real_llm, db, env, test_config)
-    elif test_config.get('agent_type', 'react') == 'autoguide':
-        return AutoGuide(real_llm, db, env, test_config)
-    elif test_config.get('agent_type', 'react') == 'retrieval_test':
-        return RetrievalTest(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'expel_train':
         return ExpelTrain(real_llm, db, env, test_config)
-    elif test_config.get('agent_type', 'react') == 'expel_summary_train':
-        return ExpelSummaryTrain(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'vanilla_train':
         return VanillaTrain(real_llm, db, env, test_config)
-    elif test_config.get('agent_type', 'react') == 'vanilla_test':
-        return VanillaTest(real_llm, db, env, test_config)
-    elif test_config.get('agent_type', 'react') == 'vanilla_test_2':
-        return VanillaTest(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'trad':
         return TRAD(real_llm, db, env, test_config)
     else:

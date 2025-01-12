@@ -1,5 +1,5 @@
 from llm_agent.agent.base_agent_v2 import BaseAgent
-from ..env.base_env import Observation, Action
+from ...env.base_env import Observation, Action
 
 class RAP(BaseAgent):
     def __init__(self, *args):
