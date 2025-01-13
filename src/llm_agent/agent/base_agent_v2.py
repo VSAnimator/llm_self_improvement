@@ -2,12 +2,9 @@ import os
 from typing import Dict, List, Optional, Tuple, Any, Union
 from enum import Enum
 from logging import getLogger
-import re
 from ..env.base_env import Observation, Action
-from ..llm.lite_llm import LiteLLMWrapper
 from ..agent.generate_plan import generate_plan
 from ..agent.trajectory_reflection import trajectory_summary, observation_summary
-from ..in_context.alfworld_fewshots import get_fewshots_for_goal
 
 logger = getLogger(__name__)
 
@@ -119,9 +116,7 @@ class BaseAgent:
 
         return system_prompt
     
-    """ Main components used by agent's choose_action function """
-
-    def get_in_context_data(self, key_type, key, value_type, outcome="winning", k=5, window=20) -> List[Dict]:
+    def _get_in_context_data(self, key_type, key, value_type, outcome="winning", k=5, window=20) -> List[Dict]:
         """Retrieve in context examples from the database"""
         success_entries, failure_entries = self.db.get_similar_entries(key_type, key, outcome=outcome, k=k, window=window)
         # Now figure out which part of the examples to return in-context
@@ -131,6 +126,21 @@ class BaseAgent:
         success_entries = [{k: v for k, v in entry.items() if k in value_type} for entry in success_entries]
         failure_entries = [{k: v for k, v in entry.items() if k in value_type} for entry in failure_entries]
         return success_entries, failure_entries
+    
+    """ Main components used by agent's choose_action function """
+
+    # A wrapper function for the get_in_context_data function when getting state-level data with a window
+    def get_state_data(self, trajectory_key_types, trajectory_keys, state_key_types, state_keys, value_types, outcome, k, window) -> List[Dict]:
+        # Combine the trajectory and state keys for now since the wrapped function will split them back out
+        key = trajectory_keys + state_keys
+        key_type = trajectory_key_types + state_key_types
+        """Retrieve state-level in-context examples from the database"""
+        return self._get_in_context_data(key_type, key, value_types, outcome, k, window)
+    
+    # A wrapper function for the get_in_context_data function when getting trajectory-level data
+    def get_trajectory_data(self, key_types, keys, value_types, outcome, k) -> List[Dict]:
+        """Retrieve trajectory-level in-context examples from the database"""
+        return self._get_in_context_data(key_types, keys, value_types, outcome, k)
     
     async def create_plan(self, observation: Observation, available_actions: List[Action], in_context_data = None) -> str:
         """Generate a plan for the agent to follow"""

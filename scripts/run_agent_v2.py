@@ -6,13 +6,12 @@ import shutil
 from pathlib import Path
 from types import SimpleNamespace
 from llm_agent.agent.base_agent_v2 import BaseAgent
-from llm_agent.agent.agents.react import React
+from llm_agent.agent.agents.react import ReAct
 from llm_agent.agent.agents.reflexion import Reflexion
 from llm_agent.agent.agents.rap import RAP
 from llm_agent.agent.agents.rap_noplan import RAPNoPlan
 from llm_agent.agent.agents.synapse import Synapse
 from llm_agent.agent.agents.expel_train import ExpelTrain
-from llm_agent.agent.agents.vanilla_train import VanillaTrain
 from llm_agent.agent.agents.trad import TRAD
 from llm_agent.env.base_env import Observation, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
@@ -84,7 +83,7 @@ def test_config(agent_type):
 
 def test_agent(real_llm, db, env, test_config):
     if test_config.get('agent_type', 'react') == 'react':
-        return React(real_llm, db, env, test_config)
+        return ReAct(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'reflexion':
         return Reflexion(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'rap':
@@ -95,8 +94,6 @@ def test_agent(real_llm, db, env, test_config):
         return Synapse(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'expel_train':
         return ExpelTrain(real_llm, db, env, test_config)
-    elif test_config.get('agent_type', 'react') == 'vanilla_train':
-        return VanillaTrain(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'trad':
         return TRAD(real_llm, db, env, test_config)
     else:

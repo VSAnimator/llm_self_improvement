@@ -8,7 +8,7 @@ class Reflexion(BaseAgent):
     async def choose_action(self, obs, valid_actions, log_file):
         """Choose an action from available actions given the current observation"""
         # Use the previos reflections as in-context data
-        in_context_data = self.get_in_context_data(key_type="environment_id", key=self.environment_id, value_type="reflection")
+        in_context_data = self.get_trajectory_data(key_types=["environment_id"], keys=[self.environment_id], value_types=["reflection"], outcome="losing", k=5)
         # Agent config should control the behavior here, reflect all algorithms we want to encompass
         if not self.plan:
             await self.create_plan(obs, valid_actions, in_context_data) # Re-planning based off reflection can go in here

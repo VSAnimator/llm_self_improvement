@@ -7,7 +7,7 @@ class Synapse(BaseAgent):
 
     async def choose_action(self, obs, valid_actions, log_file):
         """Choose an action from available actions given the current observation"""
-        in_context_data = self.get_in_context_data(key_type="goal", key=self.goal, value_type=["observation", "reasoning", "action"], outcome="winning", k=2) # key=repr(obs.structured)
+        in_context_data = self.get_trajectory_data(key_types=["goal"], keys=[self.goal], value_types=["observation", "reasoning", "action"], outcome="winning", k=2)
         if not self.plan:
             await self.create_plan(obs, valid_actions, in_context_data)
         reasoning = await self.reason(obs, valid_actions, in_context_data)

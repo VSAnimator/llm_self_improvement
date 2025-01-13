@@ -1,6 +1,4 @@
 from llm_agent.agent.base_agent_v2 import BaseAgent
-from ...env.base_env import Observation, Action
-from ...in_context.alfworld_fewshots import get_fewshots_for_goal
 
 class ZeroShotReact(BaseAgent):
     def __init__(self, *args):
@@ -18,6 +16,5 @@ class ZeroShotReact(BaseAgent):
         """Process feedback from the environment"""
         self.reward_history.append(reward)
         if done:
-            reflection = await self.reflect(new_obs, reward)
-            self.store_episode(reflection, None)
+            self.store_episode(None, None)
         return
