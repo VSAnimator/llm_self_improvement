@@ -43,7 +43,6 @@ def config():
         env_config = yaml.safe_load(f)
         
     # Ensure required alfworld configuration exists
-    '''
     env_config.update({
         'type': 'AlfredTWEnv',  # Required env type for alfworld
         'split': 'eval_out_of_distribution'  # Required split parameter # eval_out_of_distribution
@@ -54,6 +53,7 @@ def config():
         'name': 'webshop',
         'max_steps': 10,
     })
+    '''
     
     # Update with benchmark config
     config['benchmark'] = env_config

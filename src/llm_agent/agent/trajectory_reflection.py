@@ -8,7 +8,7 @@ from ..llm.lite_llm import LiteLLMWrapper
 
 logger = getLogger(__name__)
 
-async def trajectory_reflection(goal: str, trajectory: List[Tuple[Observation, Action]], llm: LiteLLMWrapper, reflection_type: str = "whole") -> Union[str, List[str]]: # Output either text reflecting on the whole trajectory, or a list of text reflecting on each step
+async def trajectory_reflection_old(goal: str, trajectory: List[Tuple[Observation, Action]], llm: LiteLLMWrapper, reflection_type: str = "whole") -> Union[str, List[str]]: # Output either text reflecting on the whole trajectory, or a list of text reflecting on each step
     """Reflect on a trajectory using an LLM"""
     # Format trajectory for LLM
     formatted_trajectory = format_trajectory(trajectory)
