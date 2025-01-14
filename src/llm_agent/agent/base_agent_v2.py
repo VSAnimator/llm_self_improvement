@@ -228,6 +228,16 @@ class BaseAgent:
         """Process feedback from the environment"""
         pass
 
+    """ Rule generation functions """
+
+    async def update_rules_offline(self):
+        """Update rules offline"""
+        pass
+    
+    async def update_rules_online(self, env_id):
+        """Update rules online"""
+        pass
+
     """ Between-episode functions for the outer loop """
         
     def clear_history(self):

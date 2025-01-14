@@ -9,10 +9,9 @@ class ExpelTrain(BaseAgent):
     async def choose_action(self, obs, valid_actions, log_file):
         """Choose an action from available actions given the current observation"""
         # Use the previos reflections as in-context data
-        expel_in_context = get_fewshots_for_goal(self.goal)
-        expel_in_context = [repr(entry) for entry in expel_in_context]
-        in_context_data = self.get_in_context_data(key_type="environment_id", key=self.environment_id, value_type="reflection", outcome="losing")
-        in_context_data['low_level'] = (True, expel_in_context)
+        example_data = self.get_trajectory_data(key_types=["category"], keys=[self.category], value_types=["goal", "observation", "reasoning", "action"], outcome="winning", k=2)
+        reflection_data = self.get_in_context_data(key_type="environment_id", key=self.environment_id, value_type="reflection", outcome="losing")
+        in_context_data = {'low_level': (True, example_data), 'high_level': (True, reflection_data)}
         if not self.plan:
             await self.create_plan(obs, valid_actions, in_context_data) # Re-planning based off reflection can go in here
         reasoning = await self.reason(obs, valid_actions, in_context_data)

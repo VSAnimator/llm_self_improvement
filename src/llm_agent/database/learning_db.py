@@ -73,7 +73,7 @@ class LearningDB:
                 context TEXT,
                 context_embedding BLOB,
                 trajectory_ids TEXT,
-                state_ids TEXT,
+                state_ids TEXT
             )
         """)
         

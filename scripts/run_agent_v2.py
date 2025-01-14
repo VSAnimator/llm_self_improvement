@@ -23,15 +23,6 @@ import random
 import argparse
 import json
 
-def dict_to_namespace(d):
-    """Convert dictionary to namespace recursively"""
-    if not isinstance(d, dict):
-        return d
-    for key, value in d.items():
-        if isinstance(value, dict):
-            d[key] = dict_to_namespace(value)
-    return SimpleNamespace(**d)
-
 def config():
     # Load default config first
     with open('config/default.yaml', 'r') as f:
@@ -102,12 +93,11 @@ def test_agent(real_llm, db, env, test_config):
 def db(db_path):
     return LearningDB(db_path)
 
-async def run_env(agent, env, log_file):
+async def run_env(agent, env, log_file, num_attempts):
     # Goal: run the agent on the environment and log the results
     attempt_count = 0
-    num_attempts = 1 #env.num_attempts
     print("Num attempts", num_attempts)
-    with open(log_file, "w") as f:
+    with open(log_file, "a" if os.path.exists(log_file) else "w") as f:
         for attempt in range(num_attempts):
             # Initial reset
             obs, info = env.reset()
@@ -148,7 +138,9 @@ async def run_env(agent, env, log_file):
                 attempt_count += 1 
                 agent.clear_history()
             else:
+                agent.clear_history()
                 break
+        await agent.update_rules_online(env.id)
 
 # Run the environment
 async def main():
@@ -158,26 +150,34 @@ async def main():
     parser.add_argument('--db_path', help='Optional custom path for learning database')
     parser.add_argument('--db_name', help='Optional custom name for learning database')
     parser.add_argument('--agent_type', required=True, help='Type of agent to use')
+    parser.add_argument('--num_passes', type=int, default=1, help='Number of passes to run')
+    parser.add_argument('--num_attempts', type=int, default=1)
+    parser.add_argument('--run_offline_rules', action='store_true', help='Run offline rules')
     args = parser.parse_args()
 
-    for i in range(27,100,1):
-        cfg = config()
-        cfg['benchmark']['problem_id'] = i
-        cfg['llm']['model'] = args.llm
-        
-        agent_config = test_config(agent_type=args.agent_type)
-        db_name = args.db_name if args.db_name else "default"
-        log_dir = Path("logs/episodes") / f"{cfg['benchmark']['name']}/{cfg['benchmark']['split']}/{args.agent_type}/{args.llm}/{db_name}"
-        log_dir.mkdir(parents=True, exist_ok=True)
+    for j in range(args.num_passes):
+        for i in range(27,134,1):
+            cfg = config()
+            cfg['benchmark']['problem_id'] = i
+            cfg['llm']['model'] = args.llm
 
-        log_file = log_dir / f"{i}.txt"
-        environment = env(cfg)
-        llm = real_llm(cfg)
-        default_db_path = f"{log_dir}/learning.db"
-        db_path = args.db_path if args.db_path else default_db_path
-        learning_db = db(db_path=db_path)
-        agent = test_agent(llm, learning_db, environment, agent_config)
-        await run_env(agent, environment, log_file)
+            agent_config = test_config(agent_type=args.agent_type)
+            db_name = args.db_name if args.db_name else "default"
+            log_dir = Path("logs/episodes") / f"{cfg['benchmark']['name']}/{cfg['benchmark']['split']}/{args.agent_type}/{args.llm}/{db_name}"
+            log_dir.mkdir(parents=True, exist_ok=True)
+
+            log_file = log_dir / f"{i}.txt"
+            environment = env(cfg)
+            llm = real_llm(cfg)
+            default_db_path = f"{log_dir}/learning.db"
+            db_path = args.db_path if args.db_path else default_db_path
+            learning_db = db(db_path=db_path)
+            agent = test_agent(llm, learning_db, environment, agent_config)
+            if args.run_offline_rules:
+                # Only need to run offline rules once
+                await agent.update_rules_offline()
+                return
+            await run_env(agent, environment, log_file, args.num_attempts)
 
 if __name__ == "__main__":
     asyncio.run(main())
