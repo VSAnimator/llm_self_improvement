@@ -68,6 +68,8 @@ class LearningDB:
         self.rule_cursor.execute("""
             CREATE TABLE IF NOT EXISTS rules (
                 id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                name_embedding BLOB,
                 rule_content TEXT NOT NULL,
                 rule_embedding BLOB,
                 context TEXT,
@@ -105,6 +107,7 @@ class LearningDB:
         
         # Rule indices
         self.rule_indices = {
+            'name': self._load_or_create_index('rule_name'),
             'context': self._load_or_create_index('rule_context'),
             'content': self._load_or_create_index('rule_content')
         }
@@ -222,7 +225,7 @@ class LearningDB:
         
         # Determine if this is a trajectory or state level search
         trajectory_keys = {'environment_id', 'goal', 'category', 'plan', 'reflection', 'summary'} 
-        rule_keys = {'context', 'content'}
+        rule_keys = {'name', 'context', 'content'}
         is_trajectory = any(kt in trajectory_keys for kt in key_type)
         is_rule = any(kt in rule_keys for kt in key_type)
 
@@ -261,20 +264,22 @@ class LearningDB:
 
     """ Storing in the database """
 
-    def store_rule(self, rule_content: str, context: str, trajectory_ids: List[int], state_ids: List[int]):
+    def store_rule(self, name: str, rule_content: str, context: str, trajectory_ids: List[int], state_ids: List[int]):
         """Store a rule in the rule database"""
+        name_embedding = self.model.encode([name])[0].tobytes()
         rule_embedding = self.model.encode([rule_content])[0].tobytes()
         context_embedding = self.model.encode([context])[0].tobytes()
         self.rule_cursor.execute("""
-            INSERT INTO rules (rule_content, rule_embedding, context, context_embedding, trajectory_ids, state_ids)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (rule_content, rule_embedding, context, context_embedding, trajectory_ids, state_ids))
+            INSERT INTO rules (name, name_embedding, rule_content, rule_embedding, context, context_embedding, trajectory_ids, state_ids)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (name, name_embedding, rule_content, rule_embedding, context, context_embedding, trajectory_ids, state_ids))
 
         rule_id = self.rule_cursor.lastrowid
         self.rule_conn.commit()
 
         # Add rule embeddings to FAISS indices
         rule_fields = {
+            'name': (name, name_embedding),
             'context': (context, context_embedding),
             'content': (rule_content, rule_embedding)
         }
@@ -381,13 +386,13 @@ class LearningDB:
     def get_rules(self, key_types: List[str], keys: List[str], k: int = 5) -> List[Dict]:
         # If key_types is an empty list, search for all rules
         if not key_types:
-            self.rule_cursor.execute("SELECT id, rule_content, context, trajectory_ids, state_ids FROM rules")
+            self.rule_cursor.execute("SELECT id, name, rule_content, context, trajectory_ids, state_ids FROM rules")
             rules = self.rule_cursor.fetchall()
             rule_ids = [rule[0] for rule in rules]
         else:
             # Otherwise, use embeddings to search for rules
             rule_ids, rule_distances = self._get_top_k_by_keys(key_types, keys, k)
-            self.rule_cursor.execute("SELECT id, rule_content, context, trajectory_ids, state_ids FROM rules WHERE id IN ({})".format(', '.join(map(str, rule_ids))))
+            self.rule_cursor.execute("SELECT id, name, rule_content, context, trajectory_ids, state_ids FROM rules WHERE id IN ({})".format(', '.join(map(str, rule_ids))))
             rules = self.rule_cursor.fetchall()
 
         # Turn rules into a list of dictionaries
@@ -407,6 +412,76 @@ class LearningDB:
                 rule['states'] = states
 
         return rules
+
+    def get_contrastive_pairs(self):
+        """Fetch contrastive pairs of successful and failed episodes for each environment_id"""
+        # Get all environment IDs
+        self.trajectory_cursor.execute("""
+            SELECT DISTINCT environment_id 
+            FROM trajectories
+        """)
+        env_ids = self.trajectory_cursor.fetchall()
+
+        contrastive_pairs = []
+        
+        # For each environment ID, get one successful and one failed episode
+        for env_id in env_ids:
+            env_id = env_id[0]
+            
+            # Get shortest successful episode
+            self.trajectory_cursor.execute("""
+                SELECT id, environment_id, goal, category, observations, reasoning, actions, rewards, plan, reflection, summary, LENGTH(observations) as traj_len
+                FROM trajectories 
+                WHERE environment_id = ? 
+                AND json_array_length(rewards) > 0 
+                AND rewards LIKE '%1%'
+                ORDER BY traj_len ASC
+                LIMIT 1
+            """, (env_id,))
+            success_row = self.trajectory_cursor.fetchone()
+            
+            # Get shortest failed episode
+            self.trajectory_cursor.execute("""
+                SELECT id, environment_id, goal, category, observations, reasoning, actions, rewards, plan, reflection, summary, LENGTH(observations) as traj_len
+                FROM trajectories 
+                WHERE environment_id = ?
+                AND (json_array_length(rewards) = 0 OR rewards NOT LIKE '%1%')
+                ORDER BY traj_len ASC
+                LIMIT 1
+            """, (env_id,))
+            failure_row = self.trajectory_cursor.fetchone()
+            
+            # Only add if we have both success and failure
+            if success_row and failure_row:
+                success_entry = {
+                    'environment_id': success_row[1],
+                    'goal': success_row[2], 
+                    'category': success_row[3],
+                    'observation': json.loads(success_row[4]),
+                    'reasoning': json.loads(success_row[5]) if success_row[5] else None,
+                    'action': json.loads(success_row[6]),
+                    'rewards': json.loads(success_row[7]),
+                    'plan': success_row[8],
+                    'reflection': success_row[9],
+                    'summary': success_row[10]
+                }
+                
+                failure_entry = {
+                    'environment_id': failure_row[1],
+                    'goal': failure_row[2],
+                    'category': failure_row[3], 
+                    'observation': json.loads(failure_row[4]),
+                    'reasoning': json.loads(failure_row[5]) if failure_row[5] else None,
+                    'action': json.loads(failure_row[6]),
+                    'rewards': json.loads(failure_row[7]),
+                    'plan': failure_row[8],
+                    'reflection': failure_row[9],
+                    'summary': failure_row[10]
+                }
+                
+                contrastive_pairs.append((success_entry, failure_entry))
+                
+        return contrastive_pairs
 
     def get_similar_entries(self, key_type: Union[str, List[str]], key: Union[str, List[str]], k: int = 5, outcome: str = None, window: int = 1) -> List[Dict]:
         # For environment_id, use exact matching instead of embedding search

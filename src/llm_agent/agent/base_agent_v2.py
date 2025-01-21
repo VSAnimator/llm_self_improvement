@@ -218,6 +218,14 @@ class BaseAgent:
         """Store an episode in the database"""
         self.db.store_episode(self.environment_id, self.goal, self.category,self.observation_history, self.reasoning_history, self.action_history, self.reward_history, self.plan, reflection, summary)
 
+    """ For updating rules offline """
+
+    def get_contrastive_pairs(self):
+        """Get contrastive pairs of episodes"""
+        # Fetch contrastive pairs from database and return
+        contrastive_pairs = self.db.get_contrastive_pairs()
+        return contrastive_pairs
+
     """ Placeholder functions for agent's choose_action and process_feedback functions """
     
     async def choose_action(self, obs, valid_actions, log_file):

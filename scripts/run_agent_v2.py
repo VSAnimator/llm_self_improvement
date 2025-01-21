@@ -11,7 +11,9 @@ from llm_agent.agent.agents.reflexion import Reflexion
 from llm_agent.agent.agents.rap import RAP
 from llm_agent.agent.agents.rap_noplan import RAPNoPlan
 from llm_agent.agent.agents.synapse import Synapse
-from llm_agent.agent.agents.expel_train import ExpelTrain
+from llm_agent.agent.agents.expel import Expel
+from llm_agent.agent.agents.autoguide import AutoGuide
+from llm_agent.agent.agents.automanual import AutoManual
 from llm_agent.agent.agents.trad import TRAD
 from llm_agent.env.base_env import Observation, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
@@ -84,9 +86,13 @@ def test_agent(real_llm, db, env, test_config):
     elif test_config.get('agent_type', 'react') == 'synapse':
         return Synapse(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'expel_train':
-        return ExpelTrain(real_llm, db, env, test_config)
+        return Expel(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'trad':
         return TRAD(real_llm, db, env, test_config)
+    elif test_config.get('agent_type', 'react') == 'autoguide':
+        return AutoGuide(real_llm, db, env, test_config)
+    elif test_config.get('agent_type', 'react') == 'automanual':
+        return AutoManual(real_llm, db, env, test_config)
     else:
         raise ValueError(f"Invalid agent type: {test_config.get('agent_type', 'react')}")
 
