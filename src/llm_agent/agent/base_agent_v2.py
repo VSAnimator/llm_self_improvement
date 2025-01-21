@@ -44,6 +44,16 @@ class BaseAgent:
 
     """ Helper functions """
 
+    def _trajectory_to_string(self, trajectory):
+        """Convert a trajectory to a string"""
+        # First roll up the trajectory
+        trajectory = self._roll_up_trajectory([trajectory])[0]
+        # Now convert to a string
+        trajectory_string = "\n"
+        for key in trajectory:
+            trajectory_string += f"{key}: {trajectory[key]}\n"
+        return trajectory_string
+
     def _create_conversation(self, keys: List[str], available_actions: List[Action]) -> List[Dict]:
         """Create a conversation with the observation and action history"""
         # First create a dictionary of the current trajectory. Valid keys are "plan", "observation", "reasoning", "action"
@@ -64,13 +74,7 @@ class BaseAgent:
                 trajectory_dict[key] = [self.action_history[i].text for i in range(len(self.action_history))]
             elif key == "available_actions":
                 trajectory_dict[key] = repr([f"{i+1}. {a.text}" for i, a in enumerate(available_actions)])
-        # Create a string of the current trajectory by rolling up the trajectory_dict
-        trajectory_dict = self._roll_up_trajectory([trajectory_dict])[0]
-        # Create a string of the current trajectory
-        trajectory_string = "Current trajectory:\n"
-        for key in trajectory_dict:
-            trajectory_string += f"{key}: {trajectory_dict[key]}\n"
-        return trajectory_string
+        return self._trajectory_to_string(trajectory_dict)
     
     def _roll_up_trajectory(self, entries):
         interleaved_keys = ["observation", "reasoning", "action"]
@@ -198,7 +202,17 @@ class BaseAgent:
     async def reflect(self, observation: Observation, reward: float) -> List[Dict]:
         """Reflect on the conversation and observation"""
         user_prompt = self._create_conversation(["goal", "plan", "observation", "reasoning", "action"], [])
-        response = await self.llm.generate_chat([{"role": "system", "content": f"You are an agent in an environment. Given the goal: {self.goal}, your task is to reflect on the trajectory of observations and actions taken. Identify any mistakes or areas for improvement in the plan or execution."}, {"role": "user", "content": user_prompt}]) 
+        # Identify success or failure
+        if reward == 1:
+            success = True
+        else:
+            success = False
+        # Create success vs failure reflection prompt
+        if success: 
+            reflection_prompt = f"Your task is to reflect on the trajectory of observations and actions taken. Identify key aspects of this successful trajectory, in both the plan and execution."
+        else:
+            reflection_prompt = f"Your task is to reflect on the trajectory of observations and actions taken. Identify any mistakes or areas for improvement in the plan or execution."
+        response = await self.llm.generate_chat([{"role": "system", "content": f"You are an agent in an environment. Given the goal: {self.goal}, {reflection_prompt}"}, {"role": "user", "content": user_prompt}]) 
         return response
     
     async def summarize(self, obs=None) -> str:
@@ -220,11 +234,48 @@ class BaseAgent:
 
     """ For updating rules offline """
 
-    def get_contrastive_pairs(self):
+    def _get_contrastive_pairs(self):
         """Get contrastive pairs of episodes"""
         # Fetch contrastive pairs from database and return
         contrastive_pairs = self.db.get_contrastive_pairs()
         return contrastive_pairs
+    
+    def _get_similar_sets(self, n, k):
+        """Get similar sets of episodes"""
+        # Fetch similar sets from database and return
+        similar_sets = self.db.get_similar_sets(n, k)
+        return similar_sets
+    
+    async def _generate_rule(self, data, mode):
+        """Generate a rule from the given data"""
+        if mode == "pair":
+            sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given trajectories from both a successful attempt and a failed attempt at the same task. Given the key divergence in the actions taken between the two trajectories, create a rule that helps the agent successfully achieve similar goals in the future."
+            user_prompt = f"Successful trajectory: {data[0]}\nFailed trajectory: {data[1]}\n Rule: "
+        elif mode == "similar":
+            sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given trajectories from agents that successfully achieved a set of similar goals. Create a rule that generalizes the shared strategies used to achieve these goals, helping the agent successfully achieve similar goals in the future."
+            user_prompt = f"Successful trajectories: {data}\n Rule: "
+        elif mode == "vanilla":
+            # Generate a rule from the relevant episode
+            pass
+    
+    async def generate_rules(self, mode, environment_id):
+        if mode == "pair":
+            contrastive_pairs = self._get_contrastive_pairs()
+            for pair in contrastive_pairs:
+                pair[0] = self._roll_up_trajectory([pair[0]])[0]
+                pair[1] = self._roll_up_trajectory([pair[1]])[0]
+                self._generate_rule(pair, mode)
+        elif mode == "similar":
+            contrastive_pairs = self._get_contrastive_pairs()
+            similar_sets = self._get_similar_sets(n = 5, k = 3)
+            print("Similar sets", similar_sets)
+            for set in similar_sets:
+                self._generate_rule(set, mode)
+        elif mode == "vanilla":
+            # Get latest episode for environment ID
+            relevant_episode = self.get_trajectory_data(key_types=["environment_id"], keys=[environment_id], value_types=["goal", "category","observation","reasoning"], outcome="winning", k=1)
+            # What rules apply to this trajectory? Do match on goal/category/observation/reasoning? 
+            self._generate_rule(num_relevant_rules=2) # Either an update or a new rule
 
     """ Placeholder functions for agent's choose_action and process_feedback functions """
     

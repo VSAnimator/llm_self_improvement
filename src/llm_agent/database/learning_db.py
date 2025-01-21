@@ -413,6 +413,73 @@ class LearningDB:
 
         return rules
 
+    def get_similar_sets(self, n, k):
+        """Get similar sets of episodes by finding trajectories with similar goals using embeddings"""
+        # Get all successful trajectories
+        self.trajectory_cursor.execute("""
+            SELECT id, goal, category, observations, reasoning, actions, plan
+            FROM trajectories
+            WHERE json_array_length(rewards) > 0 
+            AND rewards LIKE '%1%'
+            ORDER BY RANDOM()
+            LIMIT ?
+        """, (n,))
+        base_trajectories = self.trajectory_cursor.fetchall()
+
+        similar_sets = []
+        
+        # For each base trajectory, find k similar ones using goal embeddings
+        for base_traj in base_trajectories:
+            base_goal = base_traj[1]
+            base_category = base_traj[2]
+            
+            similar_set = [dict(zip(
+                ['goal', 'observations', 'reasoning', 'actions', 'plan'],
+                [base_traj[1], json.loads(base_traj[3]), 
+                 json.loads(base_traj[4]) if base_traj[4] else None,
+                 json.loads(base_traj[5]), base_traj[6]]
+            ))]
+
+            # Search for similar goals using search helper
+            similar_traj_ids, _ = self._get_top_k_by_keys(['goal','category'],[base_goal, base_category], k)
+            
+            # Get trajectories corresponding to similar goals
+            similar_trajs = []
+            for traj_id in similar_traj_ids:
+                if traj_id != base_traj[0]:  # Skip the base trajectory
+                    self.trajectory_cursor.execute("""
+                        SELECT id, goal, observations, reasoning, actions, plan
+                        FROM trajectories 
+                        WHERE id = ?
+                        AND json_array_length(rewards) > 0 
+                        AND rewards LIKE '%1%'
+                        LIMIT 1
+                    """, (traj_id,))
+                    similar_traj = self.trajectory_cursor.fetchone()
+                    if similar_traj:
+                        similar_trajs.append(similar_traj)
+                if len(similar_trajs) == k-1:
+                    break
+
+            # Add similar trajectories to set
+            for traj in similar_trajs:
+                similar_set.append(dict(zip(
+                    ['goal', 'observations', 'reasoning', 'actions', 'plan'],
+                    [traj[1], json.loads(traj[2]),
+                     json.loads(traj[3]) if traj[3] else None,
+                     json.loads(traj[4]), traj[5]]
+                )))
+
+            # Print all goals in the similar set
+            print("Base goal:", base_goal)
+            print("\nSimilar goals:")
+            for traj in similar_set:  # Skip first since it's the base
+                print(traj['goal'])
+            print('--------------------------------')
+            input()
+            similar_sets.append(similar_set)
+
+        return similar_sets
     def get_contrastive_pairs(self):
         """Fetch contrastive pairs of successful and failed episodes for each environment_id"""
         # Get all environment IDs
@@ -430,7 +497,7 @@ class LearningDB:
             
             # Get shortest successful episode
             self.trajectory_cursor.execute("""
-                SELECT id, environment_id, goal, category, observations, reasoning, actions, rewards, plan, reflection, summary, LENGTH(observations) as traj_len
+                SELECT goal, observations, reasoning, actions, plan, LENGTH(observations) as traj_len
                 FROM trajectories 
                 WHERE environment_id = ? 
                 AND json_array_length(rewards) > 0 
@@ -442,7 +509,7 @@ class LearningDB:
             
             # Get shortest failed episode
             self.trajectory_cursor.execute("""
-                SELECT id, environment_id, goal, category, observations, reasoning, actions, rewards, plan, reflection, summary, LENGTH(observations) as traj_len
+                SELECT goal, observations, reasoning, actions, plan, LENGTH(observations) as traj_len
                 FROM trajectories 
                 WHERE environment_id = ?
                 AND (json_array_length(rewards) = 0 OR rewards NOT LIKE '%1%')
@@ -454,29 +521,19 @@ class LearningDB:
             # Only add if we have both success and failure
             if success_row and failure_row:
                 success_entry = {
-                    'environment_id': success_row[1],
-                    'goal': success_row[2], 
-                    'category': success_row[3],
-                    'observation': json.loads(success_row[4]),
-                    'reasoning': json.loads(success_row[5]) if success_row[5] else None,
-                    'action': json.loads(success_row[6]),
-                    'rewards': json.loads(success_row[7]),
-                    'plan': success_row[8],
-                    'reflection': success_row[9],
-                    'summary': success_row[10]
+                    'goal': success_row[0],
+                    'observation': json.loads(success_row[1]),
+                    'reasoning': json.loads(success_row[2]) if success_row[2] else None,
+                    'action': json.loads(success_row[3]),
+                    'plan': success_row[4]
                 }
                 
                 failure_entry = {
-                    'environment_id': failure_row[1],
-                    'goal': failure_row[2],
-                    'category': failure_row[3], 
-                    'observation': json.loads(failure_row[4]),
-                    'reasoning': json.loads(failure_row[5]) if failure_row[5] else None,
-                    'action': json.loads(failure_row[6]),
-                    'rewards': json.loads(failure_row[7]),
-                    'plan': failure_row[8],
-                    'reflection': failure_row[9],
-                    'summary': failure_row[10]
+                    'goal': failure_row[0],
+                    'observation': json.loads(failure_row[1]),
+                    'reasoning': json.loads(failure_row[2]) if failure_row[2] else None,
+                    'action': json.loads(failure_row[3]),
+                    'plan': failure_row[4]
                 }
                 
                 contrastive_pairs.append((success_entry, failure_entry))

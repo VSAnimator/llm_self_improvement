@@ -26,10 +26,15 @@ class Expel(BaseAgent):
     async def update_rules_offline(self):
         """For Expel, leverage both contrastive pairs and similar sets"""
         # We loop through contrastive pairs of episodes, and generate rules for each pair
+        '''
         contrastive_pairs = self.get_contrastive_pairs()
         similar_sets = self.get_similar_sets(n = len(contrastive_pairs), k = 3)
         for pair in contrastive_pairs:
             self.generate_rule(pair, update_system="vote") # Add/update/delete rule
         for set in similar_sets:
             self.generate_rule(set, update_system="vote") # Add/update/delete rule
+        '''
+        await self.generate_rules(mode="pair", environment_id="all")
+        await self.generate_rules(mode="similar", environment_id="all")
+        await self.consolidate_rules()
     pass

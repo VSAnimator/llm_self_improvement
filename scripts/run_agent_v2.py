@@ -85,7 +85,7 @@ def test_agent(real_llm, db, env, test_config):
         return RAPNoPlan(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'synapse':
         return Synapse(real_llm, db, env, test_config)
-    elif test_config.get('agent_type', 'react') == 'expel_train':
+    elif test_config.get('agent_type', 'react') == 'expel':
         return Expel(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'trad':
         return TRAD(real_llm, db, env, test_config)

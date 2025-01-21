@@ -28,10 +28,11 @@ class AutoGuide(BaseAgent):
     async def update_rules_offline(self):
         """For AutoGuide, this is where we generate context-aware guidelines"""
         # We loop through contrastive pairs of episodes, and generate rules for each pair
-        contrastive_pairs = self.get_contrastive_pairs()
-        for pair in contrastive_pairs:
-            self.generate_rule(pair) # This also takes into account existing rules in the database
+        #contrastive_pairs = self.get_contrastive_pairs()
+        #for pair in contrastive_pairs:
+        #    self.generate_rule(pair) # This also takes into account existing rules in the database
             # Find most similar rules in database (or this could be done internally in the consolidate call...)
             #similar_rules = self.get_rule_data(key_types=["name"], keys=[rule['name']], value_types=["name", "context", "rule_content"], outcome="winning", k=2)
-        self.consolidate_rules() # Basically identifies shared contexts/names and consolidates the lists. Store under the same context/name if similar enough, and can modify existing names/contexts to match if needed. 
+        await self.generate_rules(mode="pair", environment_id="all")
+        await self.consolidate_rules() # Basically identifies shared contexts/names and consolidates the lists. Store under the same context/name if similar enough, and can modify existing names/contexts to match if needed. 
         pass
