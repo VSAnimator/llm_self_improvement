@@ -34,7 +34,7 @@ class Expel(BaseAgent):
         for set in similar_sets:
             self.generate_rule(set, update_system="vote") # Add/update/delete rule
         '''
-        await self.generate_rules(mode="pair", environment_id="all")
+        #await self.generate_rules(mode="pair", environment_id="all")
         await self.generate_rules(mode="similar", environment_id="all")
         await self.consolidate_rules()
     pass

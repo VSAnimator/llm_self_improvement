@@ -48,10 +48,12 @@ class BaseAgent:
         """Convert a trajectory to a string"""
         # First roll up the trajectory
         trajectory = self._roll_up_trajectory([trajectory])[0]
-        # Now convert to a string
+        key_order = ["goal", "plan", "trajectory", "available_actions"]
+        # Now convert to a string following key order
         trajectory_string = "\n"
-        for key in trajectory:
-            trajectory_string += f"{key}: {trajectory[key]}\n"
+        for key in key_order:
+            if key in trajectory:
+                trajectory_string += f"{key}: {trajectory[key]}\n"
         return trajectory_string
 
     def _create_conversation(self, keys: List[str], available_actions: List[Action]) -> List[Dict]:
@@ -252,30 +254,51 @@ class BaseAgent:
             sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given trajectories from both a successful attempt and a failed attempt at the same task. Given the key divergence in the actions taken between the two trajectories, create a rule that helps the agent successfully achieve similar goals in the future."
             user_prompt = f"Successful trajectory: {data[0]}\nFailed trajectory: {data[1]}\n Rule: "
         elif mode == "similar":
-            sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given trajectories from agents that successfully achieved a set of similar goals. Create a rule that generalizes the shared strategies used to achieve these goals, helping the agent successfully achieve similar goals in the future."
-            user_prompt = f"Successful trajectories: {data}\n Rule: "
+            sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given trajectories from agents that successfully achieved a set of similar goals. Create a rule that generalizes the shared strategies used to achieve these goals, helping the agent successfully achieve similar goals in the future. Make the rule as specific as possible to the set of trajectories provided." # Can ask for it to be general if we want...
+            user_prompt = f"Successful trajectories: "
+            for i, elem in enumerate(data):
+                user_prompt += f"Example {i+1}: {elem}\n"
+            user_prompt += "Rule: " # Can ask for this to be single line if we want...
         elif mode == "vanilla":
-            # Generate a rule from the relevant episode
-            pass
+            sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given a trajectory from an agent that successfully achieved a goal, as well as a set of existing rules that may apply to this trajectory. Would you like to update an existing rule or create a new one?"
+            user_prompt = f"Trajectory: {data[0]}\nExisting rules: {data[1]}\n Update or create a new rule? (update/create): "
+            response = await self.llm.generate_chat([{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}])
+            if response == "update":
+                # Update the rule
+                sys_prompt = f"You are an evaluator that updates rules on how to successfully achieve a goal. You are given a trajectory from an agent that successfully achieved a goal, as well as a set of existing rules that may apply to this trajectory. You must update the rule that is most relevant to the trajectory, refining the rule by correcting any errors or adding any missing information."
+                user_prompt = f"Trajectory: {data[0]}\nExisting rules: {data[1]}\n Update the rule that best matches the trajectory (rule_id: rule_content): "
+            elif response == "create":
+                # Create a new rule
+                sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given a trajectory from an agent that successfully achieved a goal, as well as a set of existing rules that may apply to this trajectory. Create a new rule that helps the agent successfully achieve similar goals in the future."
+                user_prompt = f"Trajectory: {data[0]}\nExisting rules: {data[1]}\n Create a new rule that helps the agent successfully achieve similar goals in the future. Rule: "
+        print(sys_prompt)
+        print(user_prompt)
+        input()
+        response = await self.llm.generate_chat([{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}], stop=None)
+        print(response)
+        return response
     
     async def generate_rules(self, mode, environment_id):
         if mode == "pair":
             contrastive_pairs = self._get_contrastive_pairs()
             for pair in contrastive_pairs:
-                pair[0] = self._roll_up_trajectory([pair[0]])[0]
-                pair[1] = self._roll_up_trajectory([pair[1]])[0]
+                pair[0] = self._trajectory_to_string(pair[0])
+                pair[1] = self._trajectory_to_string(pair[1])
                 self._generate_rule(pair, mode)
         elif mode == "similar":
             contrastive_pairs = self._get_contrastive_pairs()
             similar_sets = self._get_similar_sets(n = 5, k = 3)
             print("Similar sets", similar_sets)
             for set in similar_sets:
-                self._generate_rule(set, mode)
+                for i in range(len(set)):
+                    set[i] = self._trajectory_to_string(set[i])
+                await self._generate_rule(set, mode)
         elif mode == "vanilla":
-            # Get latest episode for environment ID
-            relevant_episode = self.get_trajectory_data(key_types=["environment_id"], keys=[environment_id], value_types=["goal", "category","observation","reasoning"], outcome="winning", k=1)
             # What rules apply to this trajectory? Do match on goal/category/observation/reasoning? 
-            self._generate_rule(num_relevant_rules=2) # Either an update or a new rule
+            # Let's assume we can return rules in the "value_types"
+            current_trajectory = self._create_conversation(keys=["goal", "plan", "observation", "reasoning", "action"], available_actions=[])
+            relevant_rules = self.get_trajectory_data(key_types=["goal", "category"], keys=[self.goal, self.category], value_types=["rule_content"], k=3)
+            self._generate_rule([current_trajectory, relevant_rules], mode) # Either an update or a new rule
 
     """ Placeholder functions for agent's choose_action and process_feedback functions """
     

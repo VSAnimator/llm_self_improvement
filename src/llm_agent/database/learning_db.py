@@ -433,53 +433,43 @@ class LearningDB:
             base_goal = base_traj[1]
             base_category = base_traj[2]
             
-            similar_set = [dict(zip(
-                ['goal', 'observations', 'reasoning', 'actions', 'plan'],
-                [base_traj[1], json.loads(base_traj[3]), 
-                 json.loads(base_traj[4]) if base_traj[4] else None,
-                 json.loads(base_traj[5]), base_traj[6]]
-            ))]
-
-            # Search for similar goals using search helper
-            similar_traj_ids, _ = self._get_top_k_by_keys(['goal','category'],[base_goal, base_category], k)
+            # Get similar trajectories using get_similar_entries
+            success_entries, _ = self.get_similar_entries(
+                key_type=['goal', 'category'],
+                key=[base_goal, base_category], 
+                outcome='winning',
+                k=k
+            )
             
-            # Get trajectories corresponding to similar goals
-            similar_trajs = []
-            for traj_id in similar_traj_ids:
-                if traj_id != base_traj[0]:  # Skip the base trajectory
-                    self.trajectory_cursor.execute("""
-                        SELECT id, goal, observations, reasoning, actions, plan
-                        FROM trajectories 
-                        WHERE id = ?
-                        AND json_array_length(rewards) > 0 
-                        AND rewards LIKE '%1%'
-                        LIMIT 1
-                    """, (traj_id,))
-                    similar_traj = self.trajectory_cursor.fetchone()
-                    if similar_traj:
-                        similar_trajs.append(similar_traj)
-                if len(similar_trajs) == k-1:
-                    break
-
-            # Add similar trajectories to set
-            for traj in similar_trajs:
-                similar_set.append(dict(zip(
-                    ['goal', 'observations', 'reasoning', 'actions', 'plan'],
-                    [traj[1], json.loads(traj[2]),
-                     json.loads(traj[3]) if traj[3] else None,
-                     json.loads(traj[4]), traj[5]]
-                )))
-
+            # Skip if no similar entries found
+            if not success_entries:
+                continue
+                
+            # Format entries into similar set
+            similar_set = []
+            for entry in success_entries:
+                similar_set.append({
+                    'goal': entry['goal'],
+                    'observation': entry['observation'],
+                    'reasoning': entry['reasoning'],
+                    'action': entry['action'],
+                    'plan': entry['plan']
+                })
+            
             # Print all goals in the similar set
+            '''
             print("Base goal:", base_goal)
             print("\nSimilar goals:")
-            for traj in similar_set:  # Skip first since it's the base
+            for traj in similar_set:
                 print(traj['goal'])
             print('--------------------------------')
             input()
+            '''
+            
             similar_sets.append(similar_set)
 
         return similar_sets
+    
     def get_contrastive_pairs(self):
         """Fetch contrastive pairs of successful and failed episodes for each environment_id"""
         # Get all environment IDs

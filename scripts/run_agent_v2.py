@@ -162,7 +162,7 @@ async def main():
     args = parser.parse_args()
 
     for j in range(args.num_passes):
-        for i in range(27,134,1):
+        for i in range(0,134,1):
             cfg = config()
             cfg['benchmark']['problem_id'] = i
             cfg['llm']['model'] = args.llm

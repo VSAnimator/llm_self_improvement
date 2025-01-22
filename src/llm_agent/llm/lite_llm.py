@@ -26,7 +26,8 @@ class LiteLLMWrapper:
     async def _generate_raw(
         self, 
         messages: List[Dict[str, str]], 
-        response_format: Optional[Dict[str, str]] = None
+        response_format: Optional[Dict[str, str]] = None,
+        stop: Optional[List[str]] = ["\n"]
     ) -> Dict[str, Any]:
         """Base generation method"""
         try:
@@ -43,7 +44,7 @@ class LiteLLMWrapper:
                 #"api_base": "http://0.0.0.0:8000/v1"
                 #"mock_response": "test" if response_format is None else None
                 #"drop_params": True, # In case the model doesn't have some of the parameters
-                "stop": ["\n"]
+                "stop": stop
             }
 
             # Add response format for models that support it
@@ -64,21 +65,7 @@ class LiteLLMWrapper:
             logger.error(f"Error generating response: {str(e)}")
             raise
 
-    async def generate_text(self, prompt: str) -> str:
-        """
-        Generate free-form text response from a single prompt
-        
-        Args:
-            prompt: Input text prompt
-            
-        Returns:
-            Generated text response
-        """
-        messages = [{"role": "user", "content": prompt}]
-        response = await self._generate_raw(messages)
-        return response.choices[0].message.content
-
-    async def generate_chat(self, messages: List[Dict[str, str]]) -> str:
+    async def generate_chat(self, messages: List[Dict[str, str]], stop: Optional[List[str]] = ["\n"]) -> str:
         """
         Generate text response from a conversation history
         
@@ -88,7 +75,7 @@ class LiteLLMWrapper:
         Returns:
             Generated text response
         """
-        response = await self._generate_raw(messages)
+        response = await self._generate_raw(messages, stop=stop)
         return response.choices[0].message.content
 
     async def generate_structured(
