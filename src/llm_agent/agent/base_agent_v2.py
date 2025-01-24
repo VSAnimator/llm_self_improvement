@@ -148,6 +148,14 @@ class BaseAgent:
         """Retrieve trajectory-level in-context examples from the database"""
         return self._get_in_context_data(key_types, keys, value_types, outcome, k)
     
+    # A wrapper function for the get_in_context_data function when getting rule-level data
+    def get_rule_data(self, trajectory_key_types, trajectory_keys, state_key_types, state_keys, value_types, outcome, k, window) -> List[Dict]:
+        """Retrieve rule-level in-context examples from the database"""
+        # Rules can apply to any state, so we need to combine the trajectory and state keys
+        key = trajectory_keys + state_keys
+        key_type = trajectory_key_types + state_key_types
+        return self._get_in_context_data(key_type, key, value_types, outcome, k)
+
     async def create_plan(self, observation: Observation, available_actions: List[Action], in_context_data = None) -> str:
         """Generate a plan for the agent to follow"""
         conversation = []
@@ -248,7 +256,7 @@ class BaseAgent:
         similar_sets = self.db.get_similar_sets(n, k)
         return similar_sets
     
-    async def _generate_rule(self, data, mode):
+    async def _generate_rule(self, data, mode, success = None):
         """Generate a rule from the given data"""
         if mode == "pair":
             sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given trajectories from both a successful attempt and a failed attempt at the same task. Given the key divergence in the actions taken between the two trajectories, create a rule that helps the agent successfully achieve similar goals in the future."
@@ -260,16 +268,17 @@ class BaseAgent:
                 user_prompt += f"Example {i+1}: {elem}\n"
             user_prompt += "Rule: " # Can ask for this to be single line if we want...
         elif mode == "vanilla":
-            sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given a trajectory from an agent that successfully achieved a goal, as well as a set of existing rules that may apply to this trajectory. Would you like to update an existing rule or create a new one?"
+            success_string = "successfully achieved" if success else "failed to achieve"
+            sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given a trajectory from an agent that {success_string} a goal, as well as a set of existing rules that may apply to this trajectory. Would you like to update an existing rule or create a new one?"
             user_prompt = f"Trajectory: {data[0]}\nExisting rules: {data[1]}\n Update or create a new rule? (update/create): "
             response = await self.llm.generate_chat([{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}])
             if response == "update":
                 # Update the rule
-                sys_prompt = f"You are an evaluator that updates rules on how to successfully achieve a goal. You are given a trajectory from an agent that successfully achieved a goal, as well as a set of existing rules that may apply to this trajectory. You must update the rule that is most relevant to the trajectory, refining the rule by correcting any errors or adding any missing information."
+                sys_prompt = f"You are an evaluator that updates rules on how to successfully achieve a goal. You are given a trajectory from an agent that {success_string} a goal, as well as a set of existing rules that may apply to this trajectory. You must update the rule that is most relevant to the trajectory, refining the rule by correcting any errors or adding any missing information."
                 user_prompt = f"Trajectory: {data[0]}\nExisting rules: {data[1]}\n Update the rule that best matches the trajectory (rule_id: rule_content): "
             elif response == "create":
                 # Create a new rule
-                sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given a trajectory from an agent that successfully achieved a goal, as well as a set of existing rules that may apply to this trajectory. Create a new rule that helps the agent successfully achieve similar goals in the future."
+                sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given a trajectory from an agent that {success_string} a goal, as well as a set of existing rules that may apply to this trajectory. Create a new rule that helps the agent successfully achieve similar goals in the future."
                 user_prompt = f"Trajectory: {data[0]}\nExisting rules: {data[1]}\n Create a new rule that helps the agent successfully achieve similar goals in the future. Rule: "
         print(sys_prompt)
         print(user_prompt)
@@ -296,9 +305,15 @@ class BaseAgent:
         elif mode == "vanilla":
             # What rules apply to this trajectory? Do match on goal/category/observation/reasoning? 
             # Let's assume we can return rules in the "value_types"
+            # Check if success or failure by seeing if 1 in reward_history
+            success = 1 in self.reward_history
             current_trajectory = self._create_conversation(keys=["goal", "plan", "observation", "reasoning", "action"], available_actions=[])
             relevant_rules = self.get_trajectory_data(key_types=["goal", "category"], keys=[self.goal, self.category], value_types=["rule_content"], k=3)
-            self._generate_rule([current_trajectory, relevant_rules], mode) # Either an update or a new rule
+            self._generate_rule([current_trajectory, relevant_rules], mode, success) # Either an update or a new rule
+
+    async def consolidate_rules(self):
+        """Consolidate rules"""
+        pass
 
     """ Placeholder functions for agent's choose_action and process_feedback functions """
     

@@ -140,13 +140,13 @@ async def run_env(agent, env, log_file, num_attempts):
                 f.write("\nEpisode timed out after reaching max steps\n")
                 f.flush()
 
+            await agent.update_rules_online(env.id)
             if reward < 1:
                 attempt_count += 1 
                 agent.clear_history()
             else:
                 agent.clear_history()
                 break
-        await agent.update_rules_online(env.id)
 
 # Run the environment
 async def main():

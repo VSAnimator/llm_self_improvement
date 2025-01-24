@@ -530,6 +530,14 @@ class LearningDB:
                 
         return contrastive_pairs
 
+    def _get_rules_for_id(self, trajectory_id: int) -> List[Dict]:
+        """Helper function to get rules for a trajectory ID"""
+        self.rule_cursor.execute("""
+            SELECT name, rule_content, context FROM rules 
+            WHERE trajectory_ids LIKE ?
+        """, (f'%{trajectory_id}%',))
+        return [{'name': r[0], 'content': r[1], 'context': r[2]} for r in self.rule_cursor.fetchall()]
+
     def get_similar_entries(self, key_type: Union[str, List[str]], key: Union[str, List[str]], k: int = 5, outcome: str = None, window: int = 1) -> List[Dict]:
         # For environment_id, use exact matching instead of embedding search
         if key_type == 'environment_id':
@@ -570,6 +578,8 @@ class LearningDB:
             similar_entries = []
             success_labels = []
             for row in rows:
+                rules = self._get_rules_for_id(row[0])
+
                 entry = {
                     'environment_id': row[1],
                     'goal': row[2],
@@ -580,7 +590,8 @@ class LearningDB:
                     'rewards': json.loads(row[7]),
                     'plan': row[8],
                     'reflection': row[9],
-                    'summary': row[10]
+                    'summary': row[10],
+                    'rules': rules
                 }
                 similar_entries.append(entry)
                 success_labels.append(1 if max(json.loads(row[7])) == 1 else 0)
@@ -675,6 +686,8 @@ class LearningDB:
                 self.trajectory_cursor.execute("SELECT id, environment_id, goal, category, observations, reasoning, actions, rewards, plan, reflection, summary FROM trajectories WHERE id = ?", (trajectory_id,))
                 row = self.trajectory_cursor.fetchone()
                 if row:
+                    rules = self._get_rules_for_id(row[0])
+
                     entry = {
                         'environment_id': row[1],
                         'goal': row[2], 
@@ -685,7 +698,8 @@ class LearningDB:
                         'rewards': json.loads(row[7]),
                         'plan': row[8],
                         'reflection': row[9],
-                        'summary': row[10]
+                        'summary': row[10],
+                        'rules': rules
                     }
                     
                     if not outcome or ('rewards' in entry and entry['rewards'][-1] == outcome_flag) or ('trajectory' in entry and entry['trajectory']['rewards'][-1] == outcome_flag):
@@ -715,6 +729,8 @@ class LearningDB:
                     self.trajectory_cursor.execute("SELECT id, environment_id, goal, category, observations, reasoning, actions, rewards, plan, reflection, summary FROM trajectories WHERE id = ?", (trajectory_id,))
                     trajectory_row = self.trajectory_cursor.fetchone()
 
+                    rules = self._get_rules_for_id(trajectory_row[0])
+
                     # Find the id of the state in the trajectory
                     self.state_cursor.execute("SELECT id FROM states WHERE trajectory_id = ?", (trajectory_id,))
                     state_ids = [row[0] for row in self.state_cursor.fetchall()]
@@ -733,7 +749,8 @@ class LearningDB:
                         'rewards': json.loads(trajectory_row[7])[window_start:window_end],
                         'plan': trajectory_row[8],
                         'reflection': trajectory_row[9],
-                        'summary': trajectory_row[10]
+                        'summary': trajectory_row[10],
+                        'rules': rules
                     }
 
                     rewards = json.loads(trajectory_row[7]) # Don't want to filter for this

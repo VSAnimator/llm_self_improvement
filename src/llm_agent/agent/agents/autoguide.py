@@ -10,9 +10,15 @@ class AutoGuide(BaseAgent):
         """Choose an action from available actions given the current observation"""
         # Use the previos reflections as in-context data
         example_data = self.get_trajectory_data(key_types=["category"], keys=[self.category], value_types=["goal", "observation", "reasoning", "action"], outcome="winning", k=2) # TODO: revisit keys for this call...
+        '''
         summary_data = self.get_rule_data(key_types=["observation"], keys=[obs.structured], value_types=["context", "observation","reasoning", "action"], outcome="winning", k=3) # Get a rule corresponding to a state similar to the current state
         curr_context = self.summarize(obs, summary_data)
         rule_data = self.get_rule_data(key_types=["context"], keys=[curr_context], value_types=["name", "context", "rule_content", "example_data"], outcome="winning", k=3)
+        '''
+        rule_data = self.get_rule_data(trajectory_key_types=["category", "goal"], trajectory_keys=[self.category, self.goal], state_key_types=["observation"], state_keys=[obs.structured], value_types=["rules"], outcome=None, k=3, window=20) # Rules come from successes and failures # Should bring back the actual example data for positive rules, not sure what to do when fetching both positive and negative rules
+        print("Example data: ", example_data)
+        print("Rule data: ", rule_data)
+        input()
         in_context_data = [example_data, rule_data]
         if not self.plan:
             await self.create_plan(obs, valid_actions, in_context_data)
