@@ -16,7 +16,8 @@ class RAP(BaseAgent):
         action = await self.act(obs, valid_actions, reasoning, in_context_data=self.in_context_data) 
         return action
     
-    async def process_feedback(self, new_obs, reward, done, log_file):
+    async def analyze_episode(self):
         """Process feedback from the environment"""
-        self.reward_history.append(reward)
+        # Maybe filter out steps that resulted in nothing happening
+        pass
         

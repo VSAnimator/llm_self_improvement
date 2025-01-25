@@ -90,6 +90,7 @@ def test_agent(real_llm, db, env, test_config):
     elif test_config.get('agent_type', 'react') == 'expel':
         return Expel(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'trad':
+        test_config['give_action_space'] = True
         return TRAD(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'autoguide':
         return AutoGuide(real_llm, db, env, test_config)
@@ -131,7 +132,7 @@ async def run_env(agent, env, log_file, num_attempts):
                 f.write(f"Obs: {obs}, Reward: {reward}\n")
                 obs = Observation(structured=obs)
                 # Pass feedback to agent
-                await agent.process_feedback(obs, reward, done, log_file)
+                agent.reward_history.append(reward) # Add to reward history
                 # Increment step count
                 steps += 1
                 f.write(f"Step {steps} of {env.max_steps}\n")
@@ -142,7 +143,13 @@ async def run_env(agent, env, log_file, num_attempts):
                 f.write("\nEpisode timed out after reaching max steps\n")
                 f.flush()
 
-            await agent.update_rules_online(env.id)
+            # Analyze episode
+            await agent.analyze_episode()
+
+            # Store episode if store_episodes is True
+            if agent.config.get("store_episodes", False):
+                agent.store_episode()
+
             if reward < 1:
                 attempt_count += 1 
                 agent.clear_history()
@@ -161,6 +168,7 @@ async def main():
     parser.add_argument('--num_passes', type=int, default=1, help='Number of passes to run')
     parser.add_argument('--num_attempts', type=int, default=1)
     parser.add_argument('--run_offline_rules', action='store_true', help='Run offline rules')
+    parser.add_argument('--store_episodes', action='store_true', help='Store episodes')
     args = parser.parse_args()
 
     for j in range(args.num_passes):
@@ -170,6 +178,7 @@ async def main():
             cfg['llm']['model'] = args.llm
 
             agent_config = test_config(agent_type=args.agent_type)
+            agent_config['store_episodes'] = args.store_episodes
             db_name = args.db_name if args.db_name else "default"
             log_dir = Path("logs/episodes") / f"{cfg['benchmark']['name']}/{cfg['benchmark']['split']}/{args.agent_type}/{args.llm}/{db_name}"
             log_dir.mkdir(parents=True, exist_ok=True)

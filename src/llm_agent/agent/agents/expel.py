@@ -18,12 +18,7 @@ class Expel(BaseAgent):
         action = await self.act(obs, valid_actions, reasoning, in_context_data) 
         return action
     
-    async def process_feedback(self, new_obs, reward, done, log_file):
-        """Process feedback from the environment"""
-        self.reward_history.append(reward)
-        return
-    
-    async def update_rules_offline(self):
+    async def batch_analyze_episodes(self):
         """For Expel, leverage both contrastive pairs and similar sets"""
         # We loop through contrastive pairs of episodes, and generate rules for each pair
         '''

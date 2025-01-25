@@ -33,6 +33,8 @@ class BaseAgent:
         self.reward_history: List[float] = []
         self.plan: Optional[str] = None
         self.in_context_data: Optional[Dict] = None
+        self.reflection: Optional[str] = None
+        self.summary: Optional[str] = None
         
         # Environment info
         self.environment_id: Optional[str] = env.id
@@ -189,7 +191,7 @@ class BaseAgent:
         # Want the system prompt to be standardized. Should have environment and goal info, as well as observation and action format. 
         system_prompt = f"""You are an agent in an environment. Given the current observation, you must select an action to take towards achieving the goal: {self.goal}."""
         # If this is a TRAD agent, we want to add the action space to the system prompt
-        if "trad" in self.config.get("agent_type", "").lower():
+        if self.config.get("give_action_space", False):
             system_prompt += "\nHere is your action space:\n" + self.action_space['description']
         if in_context_data:
             system_prompt += self._in_context_prompt(in_context_data)
@@ -209,10 +211,11 @@ class BaseAgent:
     
     """ Main components used by agent's process_feedback function """
     
-    async def reflect(self, observation: Observation, reward: float) -> List[Dict]:
+    async def reflect(self) -> List[Dict]:
         """Reflect on the conversation and observation"""
         user_prompt = self._create_conversation(["goal", "plan", "observation", "reasoning", "action"], [])
         # Identify success or failure
+        reward = self.reward_history[-1]
         if reward == 1:
             success = True
         else:
@@ -223,6 +226,7 @@ class BaseAgent:
         else:
             reflection_prompt = f"Your task is to reflect on the trajectory of observations and actions taken. Identify any mistakes or areas for improvement in the plan or execution."
         response = await self.llm.generate_chat([{"role": "system", "content": f"You are an agent in an environment. Given the goal: {self.goal}, {reflection_prompt}"}, {"role": "user", "content": user_prompt}]) 
+        self.reflection = response
         return response
     
     async def summarize(self, obs=None) -> str:
@@ -235,12 +239,13 @@ class BaseAgent:
             prev_obs = self.observation_history[-1] if len(self.observation_history) > 0 else Observation(None)
             summary = await observation_summary(self.goal, obs, prev_obs, self.llm)
         # Create an observation object again
+        self.summary = summary
         summary = Observation(summary)
         return summary
     
-    def store_episode(self, reflection, summary):
+    def store_episode(self):
         """Store an episode in the database"""
-        self.db.store_episode(self.environment_id, self.goal, self.category,self.observation_history, self.reasoning_history, self.action_history, self.reward_history, self.plan, reflection, summary)
+        self.db.store_episode(self.environment_id, self.goal, self.category,self.observation_history, self.reasoning_history, self.action_history, self.reward_history, self.plan, self.reflection, self.summary)
 
     """ For updating rules offline """
 
@@ -317,22 +322,18 @@ class BaseAgent:
 
     """ Placeholder functions for agent's choose_action and process_feedback functions """
     
-    async def choose_action(self, obs, valid_actions, log_file):
+    async def choose_action(self, obs, valid_actions):
         """Choose an action from available actions given the current observation"""
         pass
     
-    async def process_feedback(self, new_obs, reward, done, log_file):
+    async def analyze_episode(self):
         """Process feedback from the environment"""
         pass
 
     """ Rule generation functions """
 
-    async def update_rules_offline(self):
+    async def batch_analyze_episodes(self):
         """Update rules offline"""
-        pass
-    
-    async def update_rules_online(self, env_id):
-        """Update rules online"""
         pass
 
     """ Between-episode functions for the outer loop """
@@ -345,6 +346,8 @@ class BaseAgent:
         self.reward_history = []
         self.plan = None
         self.in_context_data = None
+        self.reflection = None
+        self.summary = None
 
     def reset(self):
         """Reset agent state between episodes"""
@@ -353,5 +356,6 @@ class BaseAgent:
         self.reasoning_history = []
         self.reward_history = []
         self.plan = None
-        self.reflections = None
+        self.reflection = None
+        self.summary = None
         self.in_context_data = None

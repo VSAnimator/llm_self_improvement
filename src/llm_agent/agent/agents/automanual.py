@@ -27,20 +27,12 @@ class AutoManual(BaseAgent):
         action = await self.act(obs, valid_actions, reasoning, in_context_data) 
         return action
     
-    async def process_feedback(self, new_obs, reward, done, log_file):
-        """Process feedback from the environment"""
-        self.reward_history.append(reward)
-        if done:
-            reflection = self.reflect(new_obs, reward)
-            self.store_episode(reflection, None)
-        return
-    
-    async def update_rules_online(self, environment_id):
-        """ For AutoManual, this is the builder"""
-        #relevant_rules = self.get_rule_data(key_types=["trajectory"], keys=[self.trajectory], value_types=["name", "context", "rule_content"], outcome="winning", k=2)
-        await self.generate_rules(mode="vanilla", environment_id=environment_id) # Either an update or a new rule
-        return
+    async def analyze_episode(self):
+        """The builder"""
+        self.reflect()
+        # Builder
+        await self.generate_rules(mode="vanilla", environment_id=self.env_id) # Either an update or a new rule
         
-    async def update_rules_offline(self):
-        """For AutoManual, this is the consolidator"""
+    async def batch_analyze_episodes(self):
+        """The consolidator"""
         await self.consolidate_rules()
