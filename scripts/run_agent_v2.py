@@ -6,15 +6,17 @@ import shutil
 from pathlib import Path
 from types import SimpleNamespace
 from llm_agent.agent.base_agent_v2 import BaseAgent
-from llm_agent.agent.agents.react import ReAct
-from llm_agent.agent.agents.reflexion import Reflexion
-from llm_agent.agent.agents.rap import RAP
-from llm_agent.agent.agents.rap_noplan import RAPNoPlan
-from llm_agent.agent.agents.synapse import Synapse
-from llm_agent.agent.agents.expel import Expel
-from llm_agent.agent.agents.autoguide import AutoGuide
-from llm_agent.agent.agents.automanual import AutoManual
-from llm_agent.agent.agents.trad import TRAD
+from llm_agent.agent.agents import (
+    ReAct,
+    Reflexion,
+    RAP,
+    RAPNoPlan,
+    Synapse,
+    Expel,
+    AutoGuide,
+    AutoManual,
+    TRAD
+)
 from llm_agent.env.base_env import Observation, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
 from llm_agent.database.learning_db import LearningDB
