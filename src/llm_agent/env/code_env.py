@@ -58,17 +58,24 @@ class CodeEnv(BaseEnv):
         Returns:
             JSON schema for Python code actions
         """
+        # Get action space from wrapped env
+        wrapped_action_space = self.env.get_action_space()
+        
         return {
-            "type": "string", 
-            "description": """
+            "type": "string",
+            "description": f"""
                 Valid Python code that can contain one or more calls to the sub-environment.
                 The sub-environment is available as 'env' in the code namespace.
                 The code MUST assign the following variables:
-                - obs: The final observation
+                - obs: The final observation  
                 - reward: The final reward
                 - done: Whether the episode is done
                 - info: Additional info dictionary
+                
+                The wrapped environment accepts actions with this schema:
+                {wrapped_action_space}
+                
                 Example:
-                    obs, reward, done, info = env.step(some_action)
+                    obs, reward, done, info = env.step(some_action) # where action matches the above schema
             """.strip()
         }
