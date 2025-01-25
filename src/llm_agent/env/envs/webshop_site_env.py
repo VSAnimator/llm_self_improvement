@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 from bs4.element import Comment
 from urllib.parse import quote
+from ..base_env import BaseEnv, Observation, Action
 
 WEBSHOP_URL = f"http://localhost:3000/"
 
@@ -132,8 +133,9 @@ def webshop_text(session, page_type, query_string='', page_num=1, asin='', optio
         info['category'] = category if category is not None else ''
         return clean_str(observation), info
     
-class WebShopEnv:
+class WebShopEnv(BaseEnv):
   def __init__(self, config):
+    super().__init__(config)
     self.sessions = {}
     self.id = config['problem_id']
     # Run reset once to get the goal
@@ -225,7 +227,6 @@ class WebShopEnv:
     print("Page type:", self.sessions[self.id]['page_type'])
     
     return observation, reward, done, info
-
 '''
 env = webshopEnv()
 x = env.step('1', 'reset')

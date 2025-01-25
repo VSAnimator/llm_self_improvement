@@ -17,9 +17,6 @@ from llm_agent.agent.agents.automanual import AutoManual
 from llm_agent.agent.agents.trad import TRAD
 from llm_agent.env.base_env import Observation, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
-from llm_agent.env.alfworld_env import AlfWorldEnv
-from llm_agent.env.webshop_site_env import WebShopEnv
-from llm_agent.env.gym_env import GymEnv
 from llm_agent.database.learning_db import LearningDB
 import random
 import argparse
@@ -56,11 +53,14 @@ use_gym = False
 
 def env(config):
     if use_gym:
+        from llm_agent.env.envs.gym_env import GymEnv
         env_config = {"env_name": "CartPole-v1"}
         return GymEnv(env_config)
     elif config['benchmark']['name'] == 'webshop':
+        from llm_agent.env.envs.webshop_site_env import WebShopEnv
         return WebShopEnv(config['benchmark'])
     else:
+        from llm_agent.env.envs.alfworld_env import AlfWorldEnv
         return AlfWorldEnv(config['benchmark'])
 
 def real_llm(config):
