@@ -61,14 +61,6 @@ class BaseEnv(ABC):
         """
         return []  # Default implementation returns empty list
         
-    def render(self) -> str:
-        """Render environment observation as text
-        
-        Returns:
-            Text description of current observation
-        """
-        return ""  # Default implementation returns empty string
-
     @property
     def current_observation(self) -> Observation:
         """Get current environment observation"""
