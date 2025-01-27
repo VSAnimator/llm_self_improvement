@@ -736,7 +736,7 @@ class LearningDB:
                     state_ids = [row[0] for row in self.state_cursor.fetchall()]
                     state_id_index = state_ids.index(state_id)
                     window_start = max(0, state_id_index - window)
-                    window_end = min(len(state_ids), state_id_index + window + 1)
+                    window_end = min(len(state_ids) + 1, state_id_index + window + 1) # Fixed off-by-one error
 
                     # Get the window of states around the target state
                     entry = {
