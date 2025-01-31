@@ -31,6 +31,8 @@ class LiteLLMWrapper:
     ) -> Dict[str, Any]:
         """Base generation method"""
         try:
+            if "human" in self.model.lower():
+                print(messages)
             completion_kwargs = {
                 "model": self.model, #"openai/meta-llama/Llama-3.1-8B-Instruct",#self.model,
                 "messages": messages,
@@ -42,7 +44,7 @@ class LiteLLMWrapper:
                 "timeout": self.timeout,
                 "stream": False,
                 #"api_base": "http://0.0.0.0:8000/v1"
-                #"mock_response": "test" if response_format is None else None
+                "mock_response": input("Human: ") if "human" in self.model.lower() else None,
                 #"drop_params": True, # In case the model doesn't have some of the parameters
                 "stop": stop
             }
@@ -51,13 +53,7 @@ class LiteLLMWrapper:
             if response_format: # and any(provider in self.model.lower() for provider in ["openai", "claude", "anthropic", "gemini", "together"]):
                 completion_kwargs["response_format"] = response_format
 
-            #print(messages)
-            #input("Waiting")
-
             response = await litellm.acompletion(**completion_kwargs)
-
-            #print(response)
-            #input("Waiting")
 
             return response
 
