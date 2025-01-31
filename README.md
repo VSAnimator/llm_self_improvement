@@ -35,7 +35,7 @@ This repository contains code for an LLM-powered agent that can interact with th
     ```bash
     uv pip install -vvv "textworld[pddl]>=1.6.1"
     uv pip install alfworld==0.3.5
-    export ALFWORLD_DATA=~/data/alfworld
+    export ALFWORLD_DATA=./data/alfworld
     alfworld-download
     ```
 - [WebShop](https://github.com/princeton-nlp/WebShop) (flag --env webshop): follow the instructions to set up the server, the env assumes it is running on port 3000.
