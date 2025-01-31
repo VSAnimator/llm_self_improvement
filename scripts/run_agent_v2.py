@@ -36,8 +36,16 @@ def config():
     # Ensure required alfworld configuration exists
     env_config.update({
         'type': 'AlfredTWEnv',  # Required env type for alfworld
-        'split': 'eval_out_of_distribution'  # Required split parameter # eval_out_of_distribution
+        'split': 'eval_out_of_distribution',#'eval_out_of_distribution'  # Required split parameter # eval_out_of_distribution
+        'name': 'alfworld_test'
     })
+    '''
+    env_config.update({
+        'type': 'AlfredTWEnv',  # Required env type for alfworld
+        'split': 'eval_in_distribution',#'eval_out_of_distribution'  # Required split parameter # eval_out_of_distribution
+        'name': 'alfworld'
+    })
+    '''
     '''
     env_config.update({
         'type': 'WebShopEnv',  # Required env type for alfworld
@@ -61,9 +69,14 @@ def env(config):
     elif config['benchmark']['name'] == 'webshop':
         from llm_agent.env.envs.webshop_site_env import WebShopEnv
         return WebShopEnv(config['benchmark'])
-    else:
+    elif config['benchmark']['name'] == 'alfworld':
+        from llm_agent.env.envs.alfworld_train_env import AlfWorldTrainEnv
+        return AlfWorldTrainEnv(config['benchmark'])
+    elif config['benchmark']['name'] == 'alfworld_test':
         from llm_agent.env.envs.alfworld_env import AlfWorldEnv
         return AlfWorldEnv(config['benchmark'])
+    else:
+        raise ValueError(f"Invalid environment name: {config['benchmark']['name']}")
 
 def real_llm(config):
     return LiteLLMWrapper(config)
@@ -72,7 +85,7 @@ def test_config(agent_type):
     return {
         "max_retries": 1,
         "memory_size": 50,
-        "temperature": 0.7,
+        "temperature": 0.1,
         "agent_type": agent_type
     }
 
@@ -110,6 +123,11 @@ async def run_env(agent, env, log_file, num_attempts):
         for attempt in range(num_attempts):
             # Initial reset
             obs, info = env.reset()
+            # Set agent goal
+            agent.goal = env.goal
+            agent.category = env.category
+            agent.environment_id = env.id
+            # Continue to logging
             f.write(f"Initial observation: {obs}\n")
             obs = Observation(structured=obs)
             done = False
@@ -172,6 +190,7 @@ async def main():
     args = parser.parse_args()
 
     for j in range(args.num_passes):
+        environment = None
         for i in range(0,134,1):
             cfg = config()
             cfg['benchmark']['problem_id'] = i
@@ -184,7 +203,8 @@ async def main():
             log_dir.mkdir(parents=True, exist_ok=True)
 
             log_file = log_dir / f"{i}.txt"
-            environment = env(cfg)
+            if environment is None or cfg['benchmark']['name'] != 'alfworld':
+                environment = env(cfg)
             llm = real_llm(cfg)
             default_db_path = f"{log_dir}/learning.db"
             db_path = args.db_path if args.db_path else default_db_path

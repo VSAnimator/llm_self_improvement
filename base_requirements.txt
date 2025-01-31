@@ -3,7 +3,6 @@ aiohappyeyeballs
 aiohttp
 aiosignal
 alembic
-alfworld==0.3.5
 annotated-types
 anyio
 attrs
@@ -21,15 +20,10 @@ cymem
 dataset
 distro
 faiss-cpu
-farama-notifications
-fast-downward-textworld
 filelock
 flask
 frozenlist
 fsspec
-gym
-gym-notices
-gymnasium
 h11
 hashids
 httpcore
@@ -39,7 +33,6 @@ idna
 importlib-metadata
 iniconfig
 itsdangerous
-jericho
 jinja2
 jiter
 joblib
@@ -48,7 +41,6 @@ jsonschema-specifications
 langcodes
 language-data
 litellm
-llm-agent
 mako
 marisa-trie
 markdown-it-py
@@ -98,7 +90,6 @@ srsly
 sympy
 tatsu
 termcolor
-textworld
 tiktoken
 tokenizers
 torch

@@ -23,7 +23,7 @@ class BaseAgent:
         # LLM
         self.llm = llm
         self.max_retries = config.get('max_retries', 3)
-        self.memory_size = config.get('memory_size', 20)
+        self.memory_size = config.get('memory_size', 50)
         self.temperature = config.get('temperature', 0.7)
         
         # Trajectory history
@@ -38,7 +38,7 @@ class BaseAgent:
         
         # Environment info
         self.environment_id: Optional[str] = env.id
-        self.goal: Optional[str] = env.goal
+        self.goal: Optional[str] = env.goal if hasattr(env, 'goal') else None
         self.category: Optional[str] = env.category if hasattr(env, 'category') else None
         self.action_space: Optional[str] = env.get_action_space() if hasattr(env, 'get_action_space') else None
         # Database
@@ -285,9 +285,6 @@ class BaseAgent:
                 # Create a new rule
                 sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given a trajectory from an agent that {success_string} a goal, as well as a set of existing rules that may apply to this trajectory. Create a new rule that helps the agent successfully achieve similar goals in the future."
                 user_prompt = f"Trajectory: {data[0]}\nExisting rules: {data[1]}\n Create a new rule that helps the agent successfully achieve similar goals in the future. Rule: "
-        print(sys_prompt)
-        print(user_prompt)
-        input()
         response = await self.llm.generate_chat([{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}], stop=None)
         print(response)
         return response
