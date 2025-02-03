@@ -6,7 +6,7 @@ class AutoManual(BaseAgent):
     def __init__(self, *args):
         super().__init__(*args)
 
-    async def choose_action(self, obs, valid_actions, log_file):
+    async def choose_action(self, obs, valid_actions):
         """Choose an action from available actions given the current observation"""
         # Use the previos reflections as in-context data
         '''

@@ -24,7 +24,7 @@ import random
 import argparse
 import json
 
-def config():
+def config(env, gym_env_name):
     # Load default config first
     with open('config/default.yaml', 'r') as f:
         config = yaml.safe_load(f)
@@ -34,25 +34,32 @@ def config():
         env_config = yaml.safe_load(f)
         
     # Ensure required alfworld configuration exists
-    env_config.update({
-        'type': 'AlfredTWEnv',  # Required env type for alfworld
-        'split': 'eval_out_of_distribution',#'eval_out_of_distribution'  # Required split parameter # eval_out_of_distribution
-        'name': 'alfworld_test'
-    })
-    '''
-    env_config.update({
-        'type': 'AlfredTWEnv',  # Required env type for alfworld
-        'split': 'eval_in_distribution',#'eval_out_of_distribution'  # Required split parameter # eval_out_of_distribution
-        'name': 'alfworld'
-    })
-    '''
-    '''
-    env_config.update({
-        'type': 'WebShopEnv',  # Required env type for alfworld
-        'name': 'webshop',
-        'max_steps': 10,
-    })
-    '''
+    if env == 'alfworld_test':
+        env_config.update({
+            'type': 'AlfredTWEnv',  # Required env type for alfworld
+            'split': 'eval_out_of_distribution',#'eval_out_of_distribution'  # Required split parameter # eval_out_of_distribution
+            'name': 'alfworld_test'
+        })
+    elif env == 'alfworld':
+        env_config.update({
+            'type': 'AlfredTWEnv',  # Required env type for alfworld
+            'split': 'eval_in_distribution',#'eval_out_of_distribution'  # Required split parameter # eval_out_of_distribution
+            'name': 'alfworld'
+        })
+    elif env == 'webshop':
+        env_config.update({
+            'type': 'WebShopEnv',  # Required env type for alfworld
+            'name': 'webshop',
+            'max_steps': 10,
+        })
+    elif env == 'gymnasium':
+        env_config.update({
+            'type': 'GymEnv',
+            'name': gym_env_name,
+            'max_steps': 10,
+        })
+    else:
+        raise ValueError(f"Invalid environment name: {env}")
     
     # Update with benchmark config
     config['benchmark'] = env_config
@@ -143,7 +150,8 @@ async def run_env(agent, env, log_file, num_attempts):
                 else:
                     valid_actions = None
                 # Choose action
-                selected_action = await agent.choose_action(obs, valid_actions, log_file)
+                selected_action = await agent.choose_action(obs, valid_actions)
+                f.write(f"Reasoning: {agent.reasoning_history[-1]}\n")
                 f.write(f"Selected action: {selected_action}\n")
                 # Take step in env
                 obs, reward, done, info = env.step(selected_action.text) # This feedback needs to be looped anyways
@@ -187,12 +195,14 @@ async def main():
     parser.add_argument('--num_attempts', type=int, default=1)
     parser.add_argument('--run_offline_rules', action='store_true', help='Run offline rules')
     parser.add_argument('--store_episodes', action='store_true', help='Store episodes')
+    parser.add_argument('--env', default='alfworld_test', help='Environment to use (alfworld, alfworld_test, webshop, gymnasium)')
+    parser.add_argument('--gym_env_name', help='Name of gymnasium environment if using gymnasium')
     args = parser.parse_args()
 
     for j in range(args.num_passes):
         environment = None
         for i in range(0,134,1):
-            cfg = config()
+            cfg = config(args.env, args.gym_env_name)
             cfg['benchmark']['problem_id'] = i
             cfg['llm']['model'] = args.llm
 

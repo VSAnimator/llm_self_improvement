@@ -13,7 +13,7 @@ print("Folders containing txt files:")
 average_success_rates = {}
 cumulative_success_rates = {}
 for folder in sorted(txt_folders):
-    if "alfworld" not in folder:
+    if "webshop" not in folder:
         continue
     print(folder)
     # Get all episode files

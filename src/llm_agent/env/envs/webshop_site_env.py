@@ -142,6 +142,7 @@ class WebShopEnv(BaseEnv):
     obs, info = self.reset()
     self.goal = obs.split('Instruction: ')[1].split('[')[0].strip()
     self.max_steps = config['max_steps']
+    self.category = None
 
   # In this case reset just calls 
   def reset(self):
@@ -173,13 +174,13 @@ class WebShopEnv(BaseEnv):
           assert self.sessions[self.id]['page_type'] in ['search', 'item_sub', 'item']
           self.sessions[self.id] = {'session': self.id, 'page_type': 'init'}
         elif button == 'Next >':
-          assert False # ad hoc page limitation
+          #assert False # ad hoc page limitation
           assert self.sessions[self.id]['page_type'] == 'search'
           self.sessions[self.id]['page_num'] += 1
         elif button == '< Prev':
           assert self.sessions[self.id]['page_type'] in ['search', 'item_sub', 'item']
           if self.sessions[self.id]['page_type'] == 'search':
-            assert False
+            # assert False
             self.sessions[self.id]['page_num'] -= 1
           elif self.sessions[self.id]['page_type'] == 'item_sub':
             self.sessions[self.id]['page_type'] = 'item'
@@ -227,8 +228,16 @@ class WebShopEnv(BaseEnv):
     print("Page type:", self.sessions[self.id]['page_type'])
     
     return observation, reward, done, info
-'''
-env = webshopEnv()
-x = env.step('1', 'reset')
-print(x)
-'''
+
+  def get_action_space(self):
+    return {
+      "type": "string",
+      "description": """
+        * search[query]: Search for products matching the given query. Available when [search] in observation.
+        * click[button]: Click on a button to interact with the webshop. Button names indicated as [button] in observation, with the exception of [search].
+        If the last observation does not have a [button] or [search], then use the actions indicated as available by the previous observation.
+      """.strip("\n")
+    }
+  
+  def get_available_actions(self, info):
+    return ['reset', 'search[query]', 'click[button]']

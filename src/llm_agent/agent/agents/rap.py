@@ -5,7 +5,7 @@ class RAP(BaseAgent):
     def __init__(self, *args):
         super().__init__(*args)
 
-    async def choose_action(self, obs, valid_actions, log_file):
+    async def choose_action(self, obs, valid_actions):
         if not self.plan:
             plan_data = self.get_trajectory_data(key_types=["goal", "category"], keys=[self.goal, self.category], value_types=["goal", "plan"], outcome="winning", k=3)
             await self.create_plan(obs, valid_actions, in_context_data=plan_data) 

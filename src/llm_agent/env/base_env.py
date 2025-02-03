@@ -53,7 +53,7 @@ class BaseEnv(ABC):
         """
         pass
     
-    def get_available_actions(self) -> List[Action]:
+    def get_available_actions(self, info: Optional[Dict] = None) -> List[Action]:
         """Get list of available actions
             
         Returns:

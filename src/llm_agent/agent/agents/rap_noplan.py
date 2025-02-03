@@ -5,7 +5,7 @@ class RAPNoPlan(BaseAgent):
     def __init__(self, *args):
         super().__init__(*args)
 
-    async def choose_action(self, obs, valid_actions, log_file):
+    async def choose_action(self, obs, valid_actions):
         if self.in_context_data is None:
             self.in_context_data = self.get_trajectory_data(key_types=["goal", "observation"], keys=[self.goal, obs.structured], value_types=["goal", "observation", "reasoning", "action"], outcome="winning", k=4)
         reasoning = await self.reason(obs, valid_actions, in_context_data=self.in_context_data)
