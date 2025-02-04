@@ -37,13 +37,14 @@ class LiteLLMWrapper:
             self,
             messages: List[Dict[str, str]],
             response_format: Optional[Dict[str, str]] = None,
+            stop: Optional[List[str]] = ["\n"],
         ) -> Dict[str, Any]:
             """Base generation method"""
             try:
                 response = await SGLangBackend.generate(
                     messages=messages,
                     max_tokens=self.max_tokens,
-                    stop="\n",
+                    stop=stop,
                     response_format=response_format,
                 )
                 return response
