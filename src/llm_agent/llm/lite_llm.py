@@ -3,6 +3,7 @@ import json
 from typing import Dict, List, Optional, Any, Union
 from logging import getLogger
 from pydantic import BaseModel
+from .sglang import SGLangBackend
 
 logger = getLogger(__name__)
 
@@ -23,7 +24,35 @@ class LiteLLMWrapper:
         self.presence_penalty = config['llm']['presence_penalty']
         self.timeout = config['llm']['timeout_seconds']
 
-    async def _generate_raw(
+        
+        if config['llm']['backend'] == "litellm":
+            self._generate_raw = self.__generate_raw
+        elif config['llm']['backend'] == "sglang":
+            self._generate_raw = self._generate_raw_sglang
+        else:
+            raise ValueError(f"Invalid backend: {config['llm']['backend']}")
+
+
+    async def _generate_raw_sglang(
+            self,
+            messages: List[Dict[str, str]],
+            response_format: Optional[Dict[str, str]] = None,
+        ) -> Dict[str, Any]:
+            """Base generation method"""
+            try:
+                response = await SGLangBackend.generate(
+                    messages=messages,
+                    max_tokens=self.max_tokens,
+                    stop="\n",
+                    response_format=response_format,
+                )
+                return response
+
+            except Exception as e:
+                logger.error(f"Error generating response: {str(e)}")
+                raise
+
+    async def __generate_raw(
         self, 
         messages: List[Dict[str, str]], 
         response_format: Optional[Dict[str, str]] = None
@@ -58,7 +87,7 @@ class LiteLLMWrapper:
             #print(response)
             #input("Waiting")
 
-            return response
+            return response.choices[0].message.content
 
         except Exception as e:
             logger.error(f"Error generating response: {str(e)}")
@@ -76,7 +105,7 @@ class LiteLLMWrapper:
         """
         messages = [{"role": "user", "content": prompt}]
         response = await self._generate_raw(messages)
-        return response.choices[0].message.content
+        return response
 
     async def generate_chat(self, messages: List[Dict[str, str]]) -> str:
         """
@@ -89,7 +118,8 @@ class LiteLLMWrapper:
             Generated text response
         """
         response = await self._generate_raw(messages)
-        return response.choices[0].message.content
+        return response
+
 
     async def generate_structured(
         self, 
@@ -109,15 +139,12 @@ class LiteLLMWrapper:
         response_format = None
         
         # Handle different model capabilities for structured output
-        if "gpt" in self.model.lower() or "openai" in self.model.lower():
-            response_format = output_schema
-
-        elif "gemini" in self.model.lower() or "together" in self.model.lower():
+        if "gemini" in self.model.lower() or "together" in self.model.lower():
             response_format = {"type": "json_object", "response_schema": output_schema.model_json_schema(), "enforce_validation": True}
         
-        elif "claude" in self.model.lower():
+        else:
             response_format = output_schema
-
+        
         response = await self._generate_raw(messages, response_format)
         
         return response

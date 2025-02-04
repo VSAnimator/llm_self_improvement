@@ -174,6 +174,7 @@ async def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('--llm', required=True, help='LLM model to use')
+    parser.add_argument('--backend', default='litellm', help='Backend to use for LLM')
     parser.add_argument('--db_path', help='Optional custom path for learning database')
     parser.add_argument('--db_name', help='Optional custom name for learning database')
     parser.add_argument('--agent_type', required=True, help='Type of agent to use')
@@ -183,6 +184,7 @@ async def main():
         cfg = config()
         cfg['benchmark']['problem_id'] = i
         cfg['llm']['model'] = args.llm
+        cfg['llm']['backend'] = args.backend
         
         agent_config = test_config(agent_type=args.agent_type)
         db_name = args.db_name if args.db_name else "default"
