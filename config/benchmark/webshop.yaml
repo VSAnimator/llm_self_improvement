@@ -8,3 +8,5 @@ eval_configs:
   k_folds_seed: 42
 ai_name: webshop
 num_tasks: 100
+type: 'WebShopEnv'
+name: 'webshop'

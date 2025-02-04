@@ -55,10 +55,13 @@ class LiteLLMWrapper:
     async def __generate_raw(
         self, 
         messages: List[Dict[str, str]], 
-        response_format: Optional[Dict[str, str]] = None
+        response_format: Optional[Dict[str, str]] = None,
+        stop: Optional[List[str]] = ["\n"]
     ) -> Dict[str, Any]:
         """Base generation method"""
         try:
+            if "human" in self.model.lower():
+                print(messages)
             completion_kwargs = {
                 "model": self.model, #"openai/meta-llama/Llama-3.1-8B-Instruct",#self.model,
                 "messages": messages,
@@ -70,22 +73,16 @@ class LiteLLMWrapper:
                 "timeout": self.timeout,
                 "stream": False,
                 #"api_base": "http://0.0.0.0:8000/v1"
-                #"mock_response": "test" if response_format is None else None
+                "mock_response": input("Human: ") if "human" in self.model.lower() else None,
                 #"drop_params": True, # In case the model doesn't have some of the parameters
-                "stop": ["\n"]
+                "stop": stop
             }
 
             # Add response format for models that support it
             if response_format: # and any(provider in self.model.lower() for provider in ["openai", "claude", "anthropic", "gemini", "together"]):
                 completion_kwargs["response_format"] = response_format
 
-            #print(messages)
-            #input("Waiting")
-
             response = await litellm.acompletion(**completion_kwargs)
-
-            #print(response)
-            #input("Waiting")
 
             return response.choices[0].message.content
 
@@ -107,7 +104,7 @@ class LiteLLMWrapper:
         response = await self._generate_raw(messages)
         return response
 
-    async def generate_chat(self, messages: List[Dict[str, str]]) -> str:
+    async def generate_chat(self, messages: List[Dict[str, str]], stop: Optional[List[str]] = ["\n"]) -> str:
         """
         Generate text response from a conversation history
         
@@ -117,7 +114,7 @@ class LiteLLMWrapper:
         Returns:
             Generated text response
         """
-        response = await self._generate_raw(messages)
+        response = await self._generate_raw(messages, stop=stop)
         return response
 
 

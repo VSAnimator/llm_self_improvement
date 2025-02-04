@@ -51,7 +51,7 @@ for folder in sorted(txt_folders):
             attempts = []
             lines = content.split('\n')
             for i, line in enumerate(lines):
-                if 'Step 20 of 20' in line or 'Reward: 1' in line:
+                if 'Step 20 of 20' in line or 'Step 30 of 30' in line or 'Reward: 1' in line:
                     # Check if previous line had Reward: 1 or 0
                     prev_line = lines[i-1]
                     if 'Reward: 1' in line:

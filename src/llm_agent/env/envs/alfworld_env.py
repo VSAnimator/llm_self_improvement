@@ -11,8 +11,8 @@ import glob
 import random
 from os.path import join as pjoin
 
-from .base_env import BaseEnv, Observation, Action
-from ..in_context.alfworld_fewshots import get_task_type
+from ..base_env import BaseEnv, Observation, Action
+from ...in_context.alfworld_fewshots import get_task_type
 
 class AlfWorldEnv(BaseEnv):
     """Environment wrapper for ALFWorld text-based environments"""

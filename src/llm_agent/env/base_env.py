@@ -53,7 +53,7 @@ class BaseEnv(ABC):
         """
         pass
     
-    def get_available_actions(self) -> List[Action]:
+    def get_available_actions(self, info: Optional[Dict] = None) -> List[Action]:
         """Get list of available actions
             
         Returns:
@@ -61,14 +61,6 @@ class BaseEnv(ABC):
         """
         return []  # Default implementation returns empty list
         
-    def render(self) -> str:
-        """Render environment observation as text
-        
-        Returns:
-            Text description of current observation
-        """
-        return ""  # Default implementation returns empty string
-
     @property
     def current_observation(self) -> Observation:
         """Get current environment observation"""

@@ -1,5 +1,5 @@
 import time
-from llm_agent.env.miniwob_env import MiniWoBEnv
+from llm_agent.env.envs.miniwob_env import MiniWoBEnv
 import ast
 import json
 from miniwob.action import ActionTypes

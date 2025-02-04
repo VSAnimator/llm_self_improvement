@@ -1,6 +1,6 @@
 import gymnasium as gym
 from typing import Dict, List, Tuple, Optional
-from .base_env import BaseEnv, Observation, Action
+from ..base_env import BaseEnv, Observation, Action
 
 class GymEnv(BaseEnv):
     """Environment wrapper for OpenAI Gym/Gymnasium environments"""

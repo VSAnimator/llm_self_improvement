@@ -1,9 +1,9 @@
 import pytest
 import yaml
 #from llm_agent.envs import ENVS, INIT_TASKS_FN
-from llm_agent.env.alfworld_env import AlfWorldEnv
+from llm_agent.env.envs.alfworld_env import AlfWorldEnv
 from types import SimpleNamespace
-from llm_agent.env.gym_env import GymEnv
+from llm_agent.env.envs.gym_env import GymEnv
 import numpy as np
 def dict_to_namespace(d):
     """Convert dictionary to namespace recursively"""

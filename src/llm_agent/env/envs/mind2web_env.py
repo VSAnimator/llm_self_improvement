@@ -6,7 +6,7 @@ import os
 import string
 
 from typing import Dict, List, Optional, Tuple
-from .base_env import BaseEnv, Observation, Action
+from ..base_env import BaseEnv, Observation, Action
 
 class Mind2WebEnv(BaseEnv):
     """Environment wrapper for Mind2Web environments"""

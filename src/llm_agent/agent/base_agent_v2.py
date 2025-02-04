@@ -2,13 +2,9 @@ import os
 from typing import Dict, List, Optional, Tuple, Any, Union
 from enum import Enum
 from logging import getLogger
-import re
 from ..env.base_env import Observation, Action
-from ..llm.lite_llm import LiteLLMWrapper
 from ..agent.generate_plan import generate_plan
-from ..agent.choose_action import select_action, reason
-from ..agent.trajectory_reflection import trajectory_reflection, conversation_reflection, trajectory_summary, observation_summary
-from ..in_context.alfworld_fewshots import get_fewshots_for_goal
+from ..agent.trajectory_reflection import trajectory_summary, observation_summary
 
 logger = getLogger(__name__)
 
@@ -27,7 +23,7 @@ class BaseAgent:
         # LLM
         self.llm = llm
         self.max_retries = config.get('max_retries', 3)
-        self.memory_size = config.get('memory_size', 20)
+        self.memory_size = config.get('memory_size', 50)
         self.temperature = config.get('temperature', 0.7)
         
         # Trajectory history
@@ -37,98 +33,38 @@ class BaseAgent:
         self.reward_history: List[float] = []
         self.plan: Optional[str] = None
         self.in_context_data: Optional[Dict] = None
+        self.reflection: Optional[str] = None
+        self.summary: Optional[str] = None
         
         # Environment info
         self.environment_id: Optional[str] = env.id
-        self.goal: Optional[str] = env.goal
+        self.goal: Optional[str] = env.goal if hasattr(env, 'goal') else None
         self.category: Optional[str] = env.category if hasattr(env, 'category') else None
         self.action_space: Optional[str] = env.get_action_space() if hasattr(env, 'get_action_space') else None
         # Database
         self.db = db
 
-    def create_in_context_string(self, in_context_data, value_type):
-        """Create a string for the in context data"""
-        #print("In context data", in_context_data)
-        #print("Value type", value_type)
-        # So we basically want to unroll the examples into a string
-        if len(value_type) == 1:
-            return value_type[0] + ": " + repr(in_context_data[value_type[0]])
-        else:
-            # If there are multiple value types, we want to interleave them. Ex. Obs 1, Action 1, Obs 2, Action 2, etc.
-            in_context_string = ""
-            # For the things that are full-trajectory, stick them on first
-            interleaved_values = ["state", "reasoning", "action", "next_state"]
-            # Loop through value_types, first add all non-interleaved values
-            for value in value_type:
-                if value not in interleaved_values:
-                    in_context_string += value + ": " + repr(in_context_data[value]) + ", "
-            # Now add the interleaved values
-            if "state" in value_type:
-                for i in range(len(in_context_data["state"])):
-                    for j in range(len(value_type)):
-                        if len(in_context_data[value_type[j]]) > i:
-                            in_context_string += value_type[j] + " " + str(i+1) + ": " + repr(in_context_data[value_type[j]][i]) + ", "
-            return in_context_string
+    """ Helper functions """
 
-    def get_in_context_data(self, key_type, key, value_type, outcome="winning", k=5, window=20) -> List[Dict]:
-        """Retrieve in context examples from the database"""
-        success_entries, failure_entries = self.db.get_similar_entries(key_type, key, outcome=outcome, k=k, window=window)
-        # Now figure out which part of the examples to return in-context
-        if not isinstance(value_type, list): # Check that this is a list, not a string
-            value_type = [value_type]
-        # Filter out the keys that are not in the value_type
-        success_entries = [{k: v for k, v in entry.items() if k in value_type} for entry in success_entries]
-        failure_entries = [{k: v for k, v in entry.items() if k in value_type} for entry in failure_entries]
-        return success_entries, failure_entries
-        in_context_examples_success = [self.create_in_context_string(entry, value_type) for entry in success_entries]
-        in_context_examples_failure = [self.create_in_context_string(entry, value_type) for entry in failure_entries]
-        # Now we return a dict where the keys are low/high level, then the values have success labels with list of examples
-        in_context_data = {}
-        value_abstraction = "low_level" if "state" in value_type or "action" in value_type else "high_level"
-        if len(success_entries) > 0:
-            in_context_data[value_abstraction] = (True, in_context_examples_success)
-        if len(failure_entries) > 0:
-            in_context_data[value_abstraction] = (False, in_context_examples_failure)
-        return in_context_data
-    
-    def store_episode(self, reflection, summary):
-        """Store an episode in the database"""
-        self.db.store_episode(self.environment_id, self.goal, self.category,self.observation_history, self.reasoning_history, self.action_history, self.reward_history, self.plan, reflection, summary)
+    def _trajectory_to_string(self, trajectory):
+        """Convert a trajectory to a string"""
+        # First roll up the trajectory
+        trajectory = self._roll_up_trajectory([trajectory])[0]
+        key_order = ["goal", "plan", "trajectory", "available_actions"]
+        # Now convert to a string following key order
+        trajectory_string = "\n"
+        for key in key_order:
+            if key in trajectory:
+                trajectory_string += f"{key}: {trajectory[key]}\n"
+        return trajectory_string
 
-    def create_conversation_old(self, conversation: List[Dict], observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None) -> List[Dict]:
-        """Create a conversation with the observation and action history"""
-        # Add on plan
-        if self.plan:
-            conversation.append({"role": "user", "content": "Plan of action: " + self.plan})
-        for i in range(len(self.observation_history)):
-            conversation.append({"role": "user", "content": f"Observation {i+1}: " + repr(self.observation_history[i].structured)}) # Also have image observation option
-            #if self.reasoning_history and len(self.reasoning_history) > i:
-            #    conversation.append({"role": "user", "content": f"Reasoning {i+1}: " + self.reasoning_history[i]}) # Unclear if reasoning should be included in the conversation history
-            conversation.append({"role": "assistant", "content": f"Action {i+1}: " + repr(self.action_history[i].text)})
-        if observation is not None:
-            curr_prompt = f"Observation {len(self.observation_history)+1}: " + repr(observation.structured) # Also have image observation option
-            if available_actions and len(available_actions) > 0:
-                curr_prompt += "\n Available actions: \n"
-                for i, action in enumerate(available_actions):
-                    curr_prompt += f"{i+1}. {action.text}, "
-            if reasoning:
-                curr_prompt += "\n Follow this reasoning: " + reasoning
-            conversation.append({"role": "user", "content": curr_prompt})
-        if True:
-            # Collapse everything after the system prompt into a single user message
-            for i in range(len(conversation)-2, -1, -1):
-                if conversation[i]['role'] == 'system':
-                    break
-                else:
-                    conversation[i]['content'] += ". " + conversation[i+1]['content']
-                    del conversation[i+1]
-        return conversation
-
-    # User message reflecting the current trajectory (system reflects goal and in-context data)
-    def create_conversation(self, keys: List[str], observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None) -> List[Dict]:
+    def _create_conversation(self, keys: List[str], available_actions: List[Action]) -> List[Dict]:
         """Create a conversation with the observation and action history"""
         # First create a dictionary of the current trajectory. Valid keys are "plan", "observation", "reasoning", "action"
         trajectory_dict = {}
+        # Sort keys according to the following order: goal, plan, observation, reasoning, action, available_actions
+        key_order = ["goal", "plan", "observation", "reasoning", "action", "available_actions"]
+        keys = [key for key in key_order if key in keys]
         for key in keys:
             if key == "goal":
                 trajectory_dict[key] = self.goal
@@ -136,41 +72,15 @@ class BaseAgent:
                 trajectory_dict[key] = self.plan
             elif key == "observation":
                 trajectory_dict[key] = [self.observation_history[i].structured for i in range(len(self.observation_history))]
-                if observation is not None:
-                    trajectory_dict[key].append(observation.structured)
             elif key == "reasoning":
                 trajectory_dict[key] = [self.reasoning_history[i] for i in range(len(self.reasoning_history))]
-                if reasoning is not None:
-                    trajectory_dict[key].append(reasoning)
             elif key == "action":
                 trajectory_dict[key] = [self.action_history[i].text for i in range(len(self.action_history))]
-                #if available_actions is not None:
-                #    trajectory_dict[key].append(repr([f"{i+1}. {a.text}" for i, a in enumerate(available_actions)]))
             elif key == "available_actions":
                 trajectory_dict[key] = repr([f"{i+1}. {a.text}" for i, a in enumerate(available_actions)])
-        # Create a string of the current trajectory by rolling up the trajectory_dict
-        trajectory_dict = self.roll_up_trajectory([trajectory_dict])[0]
-        # Create a string of the current trajectory
-        trajectory_string = "Current trajectory:\n"
-        for key in trajectory_dict:
-            trajectory_string += f"{key}: {trajectory_dict[key]}\n"
-        return trajectory_string
+        return self._trajectory_to_string(trajectory_dict)
     
-    def in_context_prompt(self, system_prompt, in_context_data): # We should integrate the value type into the prompt
-        """Create a prompt for the in context data"""
-        if "low_level" in in_context_data:
-            success, data = in_context_data["low_level"]
-            system_prompt += f"\nHere are some low-level examples from episodes that {'successfully achieved' if success else 'failed to achieve'} similar goals:"
-            for i, elem in enumerate(data):
-                system_prompt += f"\nExample {i+1}:\n" + elem
-        if "high_level" in in_context_data:
-            success, data = in_context_data["high_level"]
-            system_prompt += f"\nHere is some higher-level analysis examples from episodes that {'successfully achieved' if success else 'failed to achieve'} similar goals:"
-            for i, elem in enumerate(data):
-                system_prompt += f"\nExample {i+1}:\n" + elem
-        return system_prompt
-    
-    def roll_up_trajectory(self, entries):
+    def _roll_up_trajectory(self, entries):
         interleaved_keys = ["observation", "reasoning", "action"]
         """Roll up the trajectory into a single string"""
         value_type = list(entries[0].keys())
@@ -187,7 +97,8 @@ class BaseAgent:
                     del entries[i][k]
         return entries
     
-    def data_driven_in_context_prompt(self, in_context_data):
+    # Level of abstraction of the in-context data should come in here
+    def _in_context_prompt(self, in_context_data):
         """Create a system prompt containing in-context examples from similar episodes"""
         # Determine which set of entries to use
         success_entries, failure_entries = in_context_data[0], in_context_data[1]
@@ -197,17 +108,9 @@ class BaseAgent:
         if len(entries) == 0:
             return ""
         
-        # So if there are trajectory type keys, we want to interleave them with the other keys
-        # If there are any interleaved keys, generate a new key called "trajectory" that contains a string generated from interleaving the elements of the lists corresponding to the interleaved keys
-        entries = self.roll_up_trajectory(entries)
+        entries = self._roll_up_trajectory(entries)
         value_type = list(entries[0].keys()) # Keys from entries
-        
-        #in_context_inputs = [k for k in value_type if k != output_type]
-        #in_context_outputs = [output_type]
 
-        # Create description of what we're showing
-        #system_prompt = f"Given {', '.join(in_context_inputs)}, generate {', '.join(in_context_outputs)}."
-        #system_prompt += f"\nHere are some examples of {', '.join(in_context_inputs)} and corresponding {', '.join(in_context_outputs)} from episodes that {outcome} similar goals:\n"
         system_prompt = f"\nHere are some examples of {', '.join(value_type)} from episodes that {outcome} similar goals:\n"
 
         # Add each example
@@ -221,56 +124,64 @@ class BaseAgent:
 
         return system_prompt
     
-    async def create_plan_old(self, observation: Observation, available_actions: List[Action], in_context_data = None) -> str:
-        """Generate a plan for the agent to follow"""
-        conversation = []
-        system_prompt = f"You are an expert at generating high-level plans of actions to achieve a goal."
-        if in_context_data:
-            system_prompt = self.in_context_prompt(system_prompt, in_context_data)
-        conversation.append({"role": "system", "content": system_prompt})
-        #print("Observation", observation)
-        conversation = self.create_conversation(conversation, observation, available_actions)
-        plan = await generate_plan(conversation, self.goal, observation, self.llm)
-        self.plan = plan
-        return plan
+    def _get_in_context_data(self, key_type, key, value_type, outcome="winning", k=5, window=20) -> List[Dict]:
+        """Retrieve in context examples from the database"""
+        success_entries, failure_entries = self.db.get_similar_entries(key_type, key, outcome=outcome, k=k, window=window)
+        # Now figure out which part of the examples to return in-context
+        if not isinstance(value_type, list): # Check that this is a list, not a string
+            value_type = [value_type]
+        # Filter out the keys that are not in the value_type
+        success_entries = [{k: v for k, v in entry.items() if k in value_type} for entry in success_entries]
+        failure_entries = [{k: v for k, v in entry.items() if k in value_type} for entry in failure_entries]
+        return success_entries, failure_entries
     
+    """ Main components used by agent's choose_action function """
+
+    # A wrapper function for the get_in_context_data function when getting state-level data with a window
+    def get_state_data(self, trajectory_key_types, trajectory_keys, state_key_types, state_keys, value_types, outcome, k, window) -> List[Dict]:
+        # Combine the trajectory and state keys for now since the wrapped function will split them back out
+        key = trajectory_keys + state_keys
+        key_type = trajectory_key_types + state_key_types
+        """Retrieve state-level in-context examples from the database"""
+        return self._get_in_context_data(key_type, key, value_types, outcome, k, window)
+    
+    # A wrapper function for the get_in_context_data function when getting trajectory-level data
+    def get_trajectory_data(self, key_types, keys, value_types, outcome, k) -> List[Dict]:
+        """Retrieve trajectory-level in-context examples from the database"""
+        return self._get_in_context_data(key_types, keys, value_types, outcome, k)
+    
+    # A wrapper function for the get_in_context_data function when getting rule-level data
+    def get_rule_data(self, trajectory_key_types, trajectory_keys, state_key_types, state_keys, value_types, outcome, k, window) -> List[Dict]:
+        """Retrieve rule-level in-context examples from the database"""
+        # Rules can apply to any state, so we need to combine the trajectory and state keys
+        key = trajectory_keys + state_keys
+        key_type = trajectory_key_types + state_key_types
+        return self._get_in_context_data(key_type, key, value_types, outcome, k)
+
     async def create_plan(self, observation: Observation, available_actions: List[Action], in_context_data = None) -> str:
         """Generate a plan for the agent to follow"""
         conversation = []
         system_prompt = f"You are an expert at generating high-level plans of actions to achieve a goal. "
         if in_context_data:
-            system_prompt += self.data_driven_in_context_prompt(in_context_data)
+            system_prompt += self._in_context_prompt(in_context_data)
         conversation.append({"role": "system", "content": system_prompt})
-        #print("Observation", observation)
-        #conversation = self.create_conversation(conversation, observation, available_actions)
-        plan = await generate_plan(conversation, self.goal, observation, self.llm)
+        plan = await generate_plan(conversation, self.goal, self.llm)
         self.plan = plan
         return plan
-    
-    async def reason_old(self, observation: Observation, available_actions, in_context_data = None) -> List[Dict]:
-        """Reason about the conversation and observation"""
-        conversation = []
-        # Add system prompt
-        system_prompt = f"You are an agent in an environment. Given the current observation, you must reason about the most appropriate action to take towards achieving the goal: {self.goal}"
-        if in_context_data:
-            system_prompt = self.in_context_prompt(system_prompt, in_context_data)
-        conversation.append({"role": "system", "content": system_prompt})
-        # Add conversation history
-        conversation = self.create_conversation(conversation, observation, available_actions)
-        reasoning = await reason(conversation, observation, available_actions, self.llm, self.config)
-        return reasoning
 
     async def reason(self, observation: Observation, available_actions, in_context_data = None) -> List[Dict]:
         """Reason about the conversation and observation"""
+        self.observation_history.append(observation)
         conversation = []
         # Add system prompt
         system_prompt = f"You are an expert at reasoning about the most appropriate action to take towards achieving a goal. "
         if in_context_data:
-            system_prompt += self.data_driven_in_context_prompt(in_context_data)
+            system_prompt += self._in_context_prompt(in_context_data)
         conversation.append({"role": "system", "content": system_prompt})
         # Add conversation history
-        conversation.append({"role": "user", "content": self.create_conversation(["goal", "plan", "observation", "reasoning", "action"], observation, available_actions, None) + "reasoning: "})
-        reasoning = await reason(conversation, observation, available_actions, self.llm, self.config)
+        conversation.append({"role": "user", "content": self._create_conversation(["goal", "plan", "observation", "reasoning", "action"], available_actions) + "reasoning: "})
+        reasoning = await self.llm.generate_chat(conversation)
+        self.reasoning_history.append(reasoning)
         return reasoning
 
     async def act(self, observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None, in_context_data= None) -> Tuple[Action, List[Dict]]:
@@ -280,63 +191,16 @@ class BaseAgent:
         # Want the system prompt to be standardized. Should have environment and goal info, as well as observation and action format. 
         system_prompt = f"""You are an agent in an environment. Given the current observation, you must select an action to take towards achieving the goal: {self.goal}."""
         # If this is a TRAD agent, we want to add the action space to the system prompt
-        if "trad" in self.config.get("agent_type", "").lower():
+        if self.config.get("give_action_space", False):
             system_prompt += "\nHere is your action space:\n" + self.action_space['description']
         if in_context_data:
-            system_prompt += self.data_driven_in_context_prompt(in_context_data)
+            system_prompt += self._in_context_prompt(in_context_data)
         conversation.append({"role": "system", "content": system_prompt})
-        conversation.append({"role": "user", "content": self.create_conversation(["goal", "plan", "observation", "reasoning", "action"], observation, available_actions, reasoning) + "action: "})
+        conversation.append({"role": "user", "content": self._create_conversation(["goal", "plan", "observation", "reasoning", "action"], available_actions) + "action: "})
         
         # Select action
-        action = await select_action(conversation, observation, available_actions, self.llm, self.config)
-
-        # Append observation, action to history
-        self.observation_history.append(observation)
-        if reasoning:
-            print("Appending reasoning")
-            self.reasoning_history.append(reasoning)
-        else:
-            print("Not appending reasoning because", self.reasoning_history, reasoning)
-        self.action_history.append(action)
-
-        # Enforce memory size limit
-        self.observation_history = self.observation_history[-self.memory_size:]
-        self.action_history = self.action_history[-self.memory_size:]
-
-        return action
-
-    async def act_old(self, observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None, in_context_data= None) -> Tuple[Action, List[Dict]]:
-        """Select an action from available actions given the current observation"""
-        # If the model is gemini, just get the action from the reasoning string
-        if ("gemini" in self.llm.model.lower() or "together" in self.llm.model.lower()):
-            # Look for a number followed by a period
-            action = None #re.search(r'\d+\.', reasoning)
-            for op in available_actions:
-                if op.text in reasoning:
-                    action = op
-                    break
-            if action is None:
-                raise ValueError(f"No action found in reasoning: {reasoning}")
-            return action
-
-        # Create a conversation with observations and actions so far
-        conversation = []
-        # Want the system prompt to be standardized. Should have environment and goal info, as well as observation and action format. 
-        system_prompt = "You are an expert at selecting actions to achieve a goal. "
-        if in_context_data:
-            system_prompt += self.data_driven_in_context_prompt(in_context_data)
-        conversation.append({"role": "system", "content": system_prompt})
-        conversation.append({"role": "user", "content": self.create_conversation(["goal", "plan", "observation", "reasoning", "action", "available_actions"], observation, available_actions, reasoning) + "Action: "})
-        # Select action
-        action = await select_action(conversation, observation, available_actions, self.llm, self.config)
-
-        # Append observation, action to history
-        self.observation_history.append(observation)
-        if reasoning:
-            print("Appending reasoning")
-            self.reasoning_history.append(reasoning)
-        else:
-            print("Not appending reasoning because", self.reasoning_history, reasoning)
+        action = await self.llm.generate_chat(conversation)
+        action = Action(text=action)
         self.action_history.append(action)
 
         # Enforce memory size limit
@@ -345,33 +209,131 @@ class BaseAgent:
 
         return action
     
-    async def reflect(self, observation: Observation, reward: float) -> List[Dict]:
+    """ Main components used by agent's process_feedback function """
+    
+    async def reflect(self) -> List[Dict]:
         """Reflect on the conversation and observation"""
-        conversation = []
-        conversation = self.create_conversation(conversation, observation, [])
-        reflection = await conversation_reflection(self.goal, conversation, self.llm, reward)
-        return reflection
+        user_prompt = self._create_conversation(["goal", "plan", "observation", "reasoning", "action"], [])
+        # Identify success or failure
+        reward = self.reward_history[-1]
+        if reward == 1:
+            success = True
+        else:
+            success = False
+        # Create success vs failure reflection prompt
+        if success: 
+            reflection_prompt = f"Your task is to reflect on the trajectory of observations and actions taken. Identify key aspects of this successful trajectory, in both the plan and execution."
+        else:
+            reflection_prompt = f"Your task is to reflect on the trajectory of observations and actions taken. Identify any mistakes or areas for improvement in the plan or execution."
+        response = await self.llm.generate_chat([{"role": "system", "content": f"You are an agent in an environment. Given the goal: {self.goal}, {reflection_prompt}"}, {"role": "user", "content": user_prompt}]) 
+        self.reflection = response
+        return response
     
     async def summarize(self, obs=None) -> str:
         """Summarize the conversation and observation"""
         conversation = []
-        conversation = self.create_conversation(conversation, None, None, None)
+        conversation = self._create_conversation(conversation, None, None, None)
         if obs is None:
             summary = await trajectory_summary(self.goal, conversation, self.llm)
         else:
             prev_obs = self.observation_history[-1] if len(self.observation_history) > 0 else Observation(None)
             summary = await observation_summary(self.goal, obs, prev_obs, self.llm)
         # Create an observation object again
+        self.summary = summary
         summary = Observation(summary)
         return summary
     
-    async def choose_action(self, obs, valid_actions, log_file):
+    def store_episode(self):
+        """Store an episode in the database"""
+        self.db.store_episode(self.environment_id, self.goal, self.category,self.observation_history, self.reasoning_history, self.action_history, self.reward_history, self.plan, self.reflection, self.summary)
+
+    """ For updating rules offline """
+
+    def _get_contrastive_pairs(self):
+        """Get contrastive pairs of episodes"""
+        # Fetch contrastive pairs from database and return
+        contrastive_pairs = self.db.get_contrastive_pairs()
+        return contrastive_pairs
+    
+    def _get_similar_sets(self, n, k):
+        """Get similar sets of episodes"""
+        # Fetch similar sets from database and return
+        similar_sets = self.db.get_similar_sets(n, k)
+        return similar_sets
+    
+    async def _generate_rule(self, data, mode, success = None):
+        """Generate a rule from the given data"""
+        if mode == "pair":
+            sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given trajectories from both a successful attempt and a failed attempt at the same task. Given the key divergence in the actions taken between the two trajectories, create a rule that helps the agent successfully achieve similar goals in the future."
+            user_prompt = f"Successful trajectory: {data[0]}\nFailed trajectory: {data[1]}\n Rule: "
+        elif mode == "similar":
+            sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given trajectories from agents that successfully achieved a set of similar goals. Create a rule that generalizes the shared strategies used to achieve these goals, helping the agent successfully achieve similar goals in the future. Make the rule as specific as possible to the set of trajectories provided." # Can ask for it to be general if we want...
+            user_prompt = f"Successful trajectories: "
+            for i, elem in enumerate(data):
+                user_prompt += f"Example {i+1}: {elem}\n"
+            user_prompt += "Rule: " # Can ask for this to be single line if we want...
+        elif mode == "vanilla":
+            success_string = "successfully achieved" if success else "failed to achieve"
+            sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given a trajectory from an agent that {success_string} a goal, as well as a set of existing rules that may apply to this trajectory. Would you like to update an existing rule or create a new one?"
+            user_prompt = f"Trajectory: {data[0]}\nExisting rules: {data[1]}\n Update or create a new rule? (update/create): "
+            response = await self.llm.generate_chat([{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}])
+            if response == "update":
+                # Update the rule
+                sys_prompt = f"You are an evaluator that updates rules on how to successfully achieve a goal. You are given a trajectory from an agent that {success_string} a goal, as well as a set of existing rules that may apply to this trajectory. You must update the rule that is most relevant to the trajectory, refining the rule by correcting any errors or adding any missing information."
+                user_prompt = f"Trajectory: {data[0]}\nExisting rules: {data[1]}\n Update the rule that best matches the trajectory (rule_id: rule_content): "
+            elif response == "create":
+                # Create a new rule
+                sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given a trajectory from an agent that {success_string} a goal, as well as a set of existing rules that may apply to this trajectory. Create a new rule that helps the agent successfully achieve similar goals in the future."
+                user_prompt = f"Trajectory: {data[0]}\nExisting rules: {data[1]}\n Create a new rule that helps the agent successfully achieve similar goals in the future. Rule: "
+        response = await self.llm.generate_chat([{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}], stop=None)
+        print(response)
+        return response
+    
+    async def generate_rules(self, mode, environment_id):
+        if mode == "pair":
+            contrastive_pairs = self._get_contrastive_pairs()
+            for pair in contrastive_pairs:
+                pair[0] = self._trajectory_to_string(pair[0])
+                pair[1] = self._trajectory_to_string(pair[1])
+                self._generate_rule(pair, mode)
+        elif mode == "similar":
+            contrastive_pairs = self._get_contrastive_pairs()
+            similar_sets = self._get_similar_sets(n = 5, k = 3)
+            print("Similar sets", similar_sets)
+            for set in similar_sets:
+                for i in range(len(set)):
+                    set[i] = self._trajectory_to_string(set[i])
+                await self._generate_rule(set, mode)
+        elif mode == "vanilla":
+            # What rules apply to this trajectory? Do match on goal/category/observation/reasoning? 
+            # Let's assume we can return rules in the "value_types"
+            # Check if success or failure by seeing if 1 in reward_history
+            success = 1 in self.reward_history
+            current_trajectory = self._create_conversation(keys=["goal", "plan", "observation", "reasoning", "action"], available_actions=[])
+            relevant_rules = self.get_trajectory_data(key_types=["goal", "category"], keys=[self.goal, self.category], value_types=["rule_content"], k=3)
+            self._generate_rule([current_trajectory, relevant_rules], mode, success) # Either an update or a new rule
+
+    async def consolidate_rules(self):
+        """Consolidate rules"""
+        pass
+
+    """ Placeholder functions for agent's choose_action and process_feedback functions """
+    
+    async def choose_action(self, obs, valid_actions):
         """Choose an action from available actions given the current observation"""
         pass
     
-    async def process_feedback(self, new_obs, reward, done, log_file):
+    async def analyze_episode(self):
         """Process feedback from the environment"""
         pass
+
+    """ Rule generation functions """
+
+    async def batch_analyze_episodes(self):
+        """Update rules offline"""
+        pass
+
+    """ Between-episode functions for the outer loop """
         
     def clear_history(self):
         """Clear the agent's history"""
@@ -381,6 +343,8 @@ class BaseAgent:
         self.reward_history = []
         self.plan = None
         self.in_context_data = None
+        self.reflection = None
+        self.summary = None
 
     def reset(self):
         """Reset agent state between episodes"""
@@ -389,5 +353,6 @@ class BaseAgent:
         self.reasoning_history = []
         self.reward_history = []
         self.plan = None
-        self.reflections = None
+        self.reflection = None
+        self.summary = None
         self.in_context_data = None

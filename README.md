@@ -1,0 +1,97 @@
+# Reverie
+
+This repository contains code for an LLM-powered agent that can interact with the ALFWorld environment.
+
+## Installation
+
+1. Install [uv](https://docs.astral.sh/uv/)
+
+    ```
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    ```
+
+    or follow the instructions [here](https://docs.astral.sh/uv/getting-started/installation/)
+
+2. Clone this repository: 
+    ```bash
+    git clone git@github.com:VSAnimator/agent_algo_bench.git
+    cd agent_algo_bench
+    ```
+
+3. Install dependencies with uv:
+
+    ```bash
+    uv venv algoBench --python 3.11
+    source algoBench/bin/activate
+    uv pip install -r base_requirements.txt
+    uv pip install -e .
+    ```
+
+## Options
+
+### Environments supported
+
+- [Alfworld](https://github.com/alfworld/alfworld) (flag --env alfworld): text-based kitchen simulator. Download data:
+    ```bash
+    uv pip install -vvv "textworld[pddl]>=1.6.1"
+    uv pip install alfworld==0.3.5
+    export ALFWORLD_DATA=./data/alfworld
+    alfworld-download
+    ```
+- [WebShop](https://github.com/princeton-nlp/WebShop) (flag --env webshop): follow the instructions to set up the server, the env assumes it is running on port 3000.
+
+- [Gymnasium](https://gymnasium.farama.org) (flag --env gymnasium): Just pass the name of the gymnasium environment as an additional flag --gym_env_name
+
+- Add your own environment: see [Adding your own environment](#adding-your-own-environment)
+
+### LLM options
+
+We use the LiteLLM wrapper. 
+
+API LLMs tested:
+1. OpenAI (GPT-4o, GPT-4o-mini)
+2. Anthropic (Claude 3.5 Sonnet)
+3. Google (Gemini 2 Flash)
+4. Meta (Llama 3.1 8B)
+5. Together (Llama 3.1 70B)
+
+For API LLMs, make sure to set the API key in the appropriate environment variable.
+
+Local LLMs tested:
+1. Llama 3.1 8B
+
+For local LLMs, set up [VLLM](link), and point the script to the port via the flag --vllm_port.
+
+Feel free to try any other API or local LLMs that are supported by LiteLLM. Make sure that the LLM options chosen (ex. structured outputs) are supported by the LLM.
+
+### Data sources
+
+Many of the included agent algorithms leverage a database of in-context examples to learn. You have the option to start with an empty database or load a pre-existing database. The data sources for the included environments are:
+
+- Alfworld: ```python src/llm_agent/database/ingest_alfworld.py```
+- WebShop: ```python src/llm_agent/database/ingest_webshop.py```
+- Gymnasium: TODO
+
+### Agent algorithms
+
+TODO
+
+## Example usage
+
+```bash
+python scripts/run_agent_v2.py --llm openai/gpt-4o-mini --agent_type rap --db_path /data/rl/clone_test/data/alfworld_expel/learning.db --db_name expel_rap_testonly --num_passes 1
+```
+
+## Extensibility
+
+### Adding your own environment
+
+src/llm_agent/env/base_env.py defines the interface for environments. To add your own environment, you can either subclass the existing environment or implement the interface yourself.
+
+### Adding your own agent algorithm
+
+TODO
+
+### Creating your own database
+
+TODO

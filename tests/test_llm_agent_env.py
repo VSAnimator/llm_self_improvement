@@ -3,7 +3,7 @@ import yaml
 from llm_agent.agent.base_agent import BaseAgent
 from llm_agent.env.base_env import State, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
-from llm_agent.env.alfworld_env import AlfWorldEnv
+from llm_agent.env.envs.alfworld_env import AlfWorldEnv
 from types import SimpleNamespace
 
 def dict_to_namespace(d):

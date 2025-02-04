@@ -1,11 +1,12 @@
 name: alfworld
 task_prefix: ""
 task_file: data/alfworld/alfworld_tasks_suffix.json
-max_steps: 20
+max_steps: 30
 num_fewshots: 2
 eval_configs:
   k_folds: 2
   k_folds_seed: 42
+type: 'AlfredTWEnv' 
 split: eval_out_of_distribution
 ai_name: alfred
 

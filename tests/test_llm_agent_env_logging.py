@@ -7,7 +7,7 @@ from types import SimpleNamespace
 from llm_agent.agent.base_agent import BaseAgent
 from llm_agent.env.base_env import Observation, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
-from llm_agent.env.alfworld_env import AlfWorldEnv
+from llm_agent.env.envs.alfworld_env import AlfWorldEnv
 from llm_agent.logging.setup_db import LoggingDatabases
 
 def dict_to_namespace(d):

@@ -5,13 +5,13 @@ from miniwob.action import ActionTypes
 from typing import Dict, List, Tuple
 from selenium.webdriver.common.keys import Keys
 
-from ..synapse.envs.miniwob.action import (
+from ...synapse.envs.miniwob.action import (
     MiniWoBType,
     MiniWoBElementClickXpath,
     MiniWoBElementClickOption,
     MiniWoBMoveXpath,
 )
-from .base_env import Action, BaseEnv
+from ..base_env import Action, BaseEnv
 
 class MiniWoBEnv(BaseEnv):
     """Environment for MiniWoB++ tasks"""

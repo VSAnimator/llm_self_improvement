@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 from bs4.element import Comment
 from urllib.parse import quote
+from ..base_env import BaseEnv, Observation, Action
 
 WEBSHOP_URL = f"http://localhost:3000/"
 
@@ -132,14 +133,16 @@ def webshop_text(session, page_type, query_string='', page_num=1, asin='', optio
         info['category'] = category if category is not None else ''
         return clean_str(observation), info
     
-class WebShopEnv:
+class WebShopEnv(BaseEnv):
   def __init__(self, config):
+    super().__init__(config)
     self.sessions = {}
     self.id = config['problem_id']
     # Run reset once to get the goal
     obs, info = self.reset()
     self.goal = obs.split('Instruction: ')[1].split('[')[0].strip()
     self.max_steps = config['max_steps']
+    self.category = None
 
   # In this case reset just calls 
   def reset(self):
@@ -171,13 +174,13 @@ class WebShopEnv:
           assert self.sessions[self.id]['page_type'] in ['search', 'item_sub', 'item']
           self.sessions[self.id] = {'session': self.id, 'page_type': 'init'}
         elif button == 'Next >':
-          assert False # ad hoc page limitation
+          #assert False # ad hoc page limitation
           assert self.sessions[self.id]['page_type'] == 'search'
           self.sessions[self.id]['page_num'] += 1
         elif button == '< Prev':
           assert self.sessions[self.id]['page_type'] in ['search', 'item_sub', 'item']
           if self.sessions[self.id]['page_type'] == 'search':
-            assert False
+            # assert False
             self.sessions[self.id]['page_num'] -= 1
           elif self.sessions[self.id]['page_type'] == 'item_sub':
             self.sessions[self.id]['page_type'] = 'item'
@@ -203,6 +206,10 @@ class WebShopEnv:
               self.sessions[self.id]['options'] = {}
             self.sessions[self.id]['options'][option_type] = button
             observation_ = f'You have clicked {button}.'
+          # Vishnu modification--not covering the else situation
+          else:
+            # This is invalid from item_sub...
+            assert False
       else:
         assert False
       observation, info = webshop_text(**self.sessions[self.id])
@@ -213,7 +220,7 @@ class WebShopEnv:
     except Exception as e:
       print(e)
       # Return "Invalid action!" as observation
-      observation = "Invalid action! Either the syntax is incorrect or the action is not valid in the current state."
+      observation = "Invalid action!"
       reward = 0.0
       done = False
       info = {}
@@ -222,8 +229,15 @@ class WebShopEnv:
     
     return observation, reward, done, info
 
-'''
-env = webshopEnv()
-x = env.step('1', 'reset')
-print(x)
-'''
+  def get_action_space(self):
+    return {
+      "type": "string",
+      "description": """
+        * search[query]: Search for products matching the given query. Available when [search] in observation.
+        * click[button]: Click on a button to interact with the webshop. Button names indicated as [button] in observation, with the exception of [search].
+        If the last observation does not have a [button] or [search], then use the actions indicated as available by the previous observation.
+      """.strip("\n")
+    }
+  
+  def get_available_actions(self, info):
+    return ['reset', 'search[query]', 'click[button]']

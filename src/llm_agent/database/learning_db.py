@@ -23,6 +23,9 @@ class LearningDB:
         self.state_conn = sqlite3.connect(db_path.replace('.db', '_states.db'))
         self.state_cursor = self.state_conn.cursor()
         
+        self.rule_conn = sqlite3.connect(db_path.replace('.db', '_rules.db'))
+        self.rule_cursor = self.rule_conn.cursor()
+        
         # Create trajectory table
         self.trajectory_cursor.execute("""
             CREATE TABLE IF NOT EXISTS trajectories (
@@ -61,8 +64,24 @@ class LearningDB:
             )
         """)
         
+        # Create rule table
+        self.rule_cursor.execute("""
+            CREATE TABLE IF NOT EXISTS rules (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                name_embedding BLOB,
+                rule_content TEXT NOT NULL,
+                rule_embedding BLOB,
+                context TEXT,
+                context_embedding BLOB,
+                trajectory_ids TEXT,
+                state_ids TEXT
+            )
+        """)
+        
         self.trajectory_conn.commit()
         self.state_conn.commit()
+        self.rule_conn.commit()
         
         # Initialize sentence transformer
         self.model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -86,9 +105,17 @@ class LearningDB:
             'action': self._load_or_create_index('action')
         }
         
+        # Rule indices
+        self.rule_indices = {
+            'name': self._load_or_create_index('rule_name'),
+            'context': self._load_or_create_index('rule_context'),
+            'content': self._load_or_create_index('rule_content')
+        }
+        
         # Load id mappings
         self.trajectory_id_mappings = {}
         self.state_id_mappings = {}
+        self.rule_id_mappings = {}
         
         for field in self.trajectory_indices.keys():
             mapping_path = os.path.join(self.index_path, f"trajectory_{field}_id_mapping.json")
@@ -105,6 +132,14 @@ class LearningDB:
                     self.state_id_mappings[field] = json.load(f)
             else:
                 self.state_id_mappings[field] = {}
+                
+        for field in self.rule_indices.keys():
+            mapping_path = os.path.join(self.index_path, f"rule_{field}_id_mapping.json")
+            if os.path.exists(mapping_path):
+                with open(mapping_path, 'r') as f:
+                    self.rule_id_mappings[field] = json.load(f)
+            else:
+                self.rule_id_mappings[field] = {}
 
     def _load_or_create_index(self, field: str) -> faiss.IndexFlatIP:
         """Load existing FAISS index or create new one"""
@@ -123,6 +158,139 @@ class LearningDB:
         mappings = self.trajectory_id_mappings if is_trajectory else self.state_id_mappings
         with open(mapping_path, 'w') as f:
             json.dump(mappings[field], f)
+    
+    def _compute_top_k_nearest_neighbors_by_avg_distance(self, indices, query_embeddings, k):
+        """
+        Compute top-k nearest neighbors by averaging distances across several FAISS indices.
+        
+        Args:
+            indices (list): List of FAISS indices.
+            queries (np.ndarray): Query points (shape: [num_queries, dim]).
+            k (int): Number of nearest neighbors to retrieve.
+        
+        Returns:
+            np.ndarray: Indices of the top-k nearest neighbors (shape: [num_queries, k]).
+            np.ndarray: Averaged distances to the top-k nearest neighbors (shape: [num_queries, k]).
+        """
+        num_queries = 1
+        all_distances = []
+        all_neighbors = []
+        
+        # Query each index
+        for i in range(len(indices)):
+            distances, neighbors = indices[i].search(query_embeddings[i].reshape(1, -1), k)
+            all_distances.append(distances)
+            all_neighbors.append(neighbors)
+        
+        # Combine all results into a single list of candidates per query
+        top_k_distances = []
+        top_k_neighbors = []
+        
+        for i in range(num_queries):
+            # Collect all neighbors and their distances for query i
+            candidates = {}
+            for idx in range(len(indices)):
+                distances = all_distances[idx][i]
+                neighbors = all_neighbors[idx][i]
+                worst_distance = distances[-1]  # Worst distance in the top-k of this index
+                
+                for neighbor, distance in zip(neighbors, distances):
+                    if neighbor not in candidates:
+                        candidates[neighbor] = []
+                    candidates[neighbor].append(distance)
+                
+                # Add the worst-case distance for neighbors not in this index
+                for neighbor in candidates:
+                    if len(candidates[neighbor]) < idx + 1:  # If this neighbor didn't appear in the current index
+                        candidates[neighbor].append(worst_distance)
+            
+            # Compute average distances for all candidates
+            avg_distances = {neighbor: np.mean(distances) for neighbor, distances in candidates.items()}
+            
+            # Sort candidates by average distance and select top-k
+            sorted_candidates = sorted(avg_distances.items(), key=lambda x: x[1], reverse=True)
+            top_k = sorted_candidates[:k]
+            
+            top_k_neighbors.append([item[0] for item in top_k])
+            top_k_distances.append([item[1] for item in top_k])
+        
+        return np.array(top_k_distances), np.array(top_k_neighbors) 
+
+    def _get_top_k_by_keys(self, key_type: Union[str, List[str]], key: Union[str, List[str]], k: int = 5) -> List[Dict]:
+        """Get top k entries based on key_types and keys"""
+        # Encode all keys
+        key_embeddings = []
+        for elem in key:
+            key_embeddings.append(self.model.encode([elem])[0])
+        
+        # Determine if this is a trajectory or state level search
+        trajectory_keys = {'environment_id', 'goal', 'category', 'plan', 'reflection', 'summary'} 
+        rule_keys = {'name', 'context', 'content'}
+        is_trajectory = any(kt in trajectory_keys for kt in key_type)
+        is_rule = any(kt in rule_keys for kt in key_type)
+
+        if is_rule:
+            indices = self.rule_indices
+            mappings = self.rule_id_mappings
+        else:
+            indices = self.trajectory_indices if is_trajectory else self.state_indices
+            mappings = self.trajectory_id_mappings if is_trajectory else self.state_id_mappings
+
+        D, I = self._compute_top_k_nearest_neighbors_by_avg_distance([indices[elem] for elem in key_type], key_embeddings, k)
+
+        # Filter invalid results
+        D = [d for d, i in zip(D[0], I[0]) if i != -1]
+        I = [i for i in I[0] if i != -1]
+        
+        if not I:
+            return [], []
+        
+        entry_ids = [mappings[key_type[0]][str(i)] for i in I]
+        return entry_ids, D
+    
+    def _filter_by_outcome(self, ids, outcome):
+        cursor = self.trajectory_cursor
+        cursor.execute(f"""
+            SELECT * FROM trajectories WHERE id IN ({', '.join(map(str, ids))})
+            AND CASE 
+                WHEN json_array_length(rewards) > 0 AND rewards LIKE '%1%' THEN 1
+                ELSE 0
+            END = {1 if outcome == 'winning' else 0}
+        """)
+        trajectory_ids = [row[0] for row in cursor.fetchall()]
+        # Also get indices of each id in the original list
+        indices = [ids.index(id) for id in trajectory_ids]
+        return trajectory_ids, indices
+
+    """ Storing in the database """
+
+    def store_rule(self, name: str, rule_content: str, context: str, trajectory_ids: List[int], state_ids: List[int]):
+        """Store a rule in the rule database"""
+        name_embedding = self.model.encode([name])[0].tobytes()
+        rule_embedding = self.model.encode([rule_content])[0].tobytes()
+        context_embedding = self.model.encode([context])[0].tobytes()
+        self.rule_cursor.execute("""
+            INSERT INTO rules (name, name_embedding, rule_content, rule_embedding, context, context_embedding, trajectory_ids, state_ids)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (name, name_embedding, rule_content, rule_embedding, context, context_embedding, trajectory_ids, state_ids))
+
+        rule_id = self.rule_cursor.lastrowid
+        self.rule_conn.commit()
+
+        # Add rule embeddings to FAISS indices
+        rule_fields = {
+            'name': (name, name_embedding),
+            'context': (context, context_embedding),
+            'content': (rule_content, rule_embedding)
+        }
+        
+        for field, (value, embedding) in rule_fields.items():
+            if value is not None:
+                embedding_array = np.frombuffer(embedding, dtype=np.float32).reshape(1, -1)
+                self.rule_indices[field].add(embedding_array)
+                curr_size = self.rule_indices[field].ntotal - 1
+                self.rule_id_mappings[field][str(curr_size)] = rule_id
+                self._save_index(field, self.rule_indices[field], True)
 
     def store_episode(self, environment_id: str, goal: str, category: str, observations: List[str], reasoning: List[str], 
                      actions: List[str], rewards: List[float], plan: Optional[str],
@@ -213,104 +381,163 @@ class LearningDB:
                     
         self.state_conn.commit()
 
-    def get_top_k_by_keys(self, key_type: Union[str, List[str]], key: Union[str, List[str]], k: int = 5) -> List[Dict]:
-        """Get top k entries based on key_types and keys"""
-        # Encode all keys
-        key_embeddings = []
-        for elem in key:
-            key_embeddings.append(self.model.encode([elem])[0])
-        
-        # Determine if this is a trajectory or state level search
-        trajectory_keys = {'environment_id', 'goal', 'category', 'plan', 'reflection', 'summary'} 
-        is_trajectory = any(kt in trajectory_keys for kt in key_type)
+    """ Retrieving from the database """
 
-        indices = self.trajectory_indices if is_trajectory else self.state_indices
-        mappings = self.trajectory_id_mappings if is_trajectory else self.state_id_mappings
-        cursor = self.trajectory_cursor if is_trajectory else self.state_cursor
+    def get_rules(self, key_types: List[str], keys: List[str], k: int = 5) -> List[Dict]:
+        # If key_types is an empty list, search for all rules
+        if not key_types:
+            self.rule_cursor.execute("SELECT id, name, rule_content, context, trajectory_ids, state_ids FROM rules")
+            rules = self.rule_cursor.fetchall()
+            rule_ids = [rule[0] for rule in rules]
+        else:
+            # Otherwise, use embeddings to search for rules
+            rule_ids, rule_distances = self._get_top_k_by_keys(key_types, keys, k)
+            self.rule_cursor.execute("SELECT id, name, rule_content, context, trajectory_ids, state_ids FROM rules WHERE id IN ({})".format(', '.join(map(str, rule_ids))))
+            rules = self.rule_cursor.fetchall()
 
-        D, I = self.compute_top_k_nearest_neighbors_by_avg_distance([indices[elem] for elem in key_type], key_embeddings, k)
+        # Turn rules into a list of dictionaries
+        rules = [dict(zip(self.rule_cursor.description, rule)) for rule in rules]
 
-        # Filter invalid results
-        D = [d for d, i in zip(D[0], I[0]) if i != -1]
-        I = [i for i in I[0] if i != -1]
+        # Let's also fetch corresponding trajectories and states
+        for rule in rules:
+            trajectory_ids = rule['trajectory_ids']
+            state_ids = rule['state_ids']
+            for trajectory_id in trajectory_ids:
+                self.trajectory_cursor.execute("SELECT id, environment_id, goal, category, observations, reasoning, actions, rewards, plan, reflection, summary FROM trajectories WHERE id = ?", (trajectory_id,))
+                trajectories = self.trajectory_cursor.fetchall()
+                rule['trajectories'] = trajectories
+            for state_id in state_ids:
+                self.state_cursor.execute("SELECT id, state, reasoning, action, next_state FROM states WHERE id = ?", (state_id,))
+                states = self.state_cursor.fetchall()
+                rule['states'] = states
+
+        return rules
+
+    def get_similar_sets(self, n, k):
+        """Get similar sets of episodes by finding trajectories with similar goals using embeddings"""
+        # Get all successful trajectories
+        self.trajectory_cursor.execute("""
+            SELECT id, goal, category, observations, reasoning, actions, plan
+            FROM trajectories
+            WHERE json_array_length(rewards) > 0 
+            AND rewards LIKE '%1%'
+            ORDER BY RANDOM()
+            LIMIT ?
+        """, (n,))
+        base_trajectories = self.trajectory_cursor.fetchall()
+
+        similar_sets = []
         
-        if not I:
-            return [], []
-        
-        entry_ids = [mappings[key_type[0]][str(i)] for i in I]
-        return entry_ids, D
-    
-    def compute_top_k_nearest_neighbors_by_avg_distance(self, indices, query_embeddings, k):
-        """
-        Compute top-k nearest neighbors by averaging distances across several FAISS indices.
-        
-        Args:
-            indices (list): List of FAISS indices.
-            queries (np.ndarray): Query points (shape: [num_queries, dim]).
-            k (int): Number of nearest neighbors to retrieve.
-        
-        Returns:
-            np.ndarray: Indices of the top-k nearest neighbors (shape: [num_queries, k]).
-            np.ndarray: Averaged distances to the top-k nearest neighbors (shape: [num_queries, k]).
-        """
-        num_queries = 1
-        all_distances = []
-        all_neighbors = []
-        
-        # Query each index
-        for i in range(len(indices)):
-            distances, neighbors = indices[i].search(query_embeddings[i].reshape(1, -1), k)
-            all_distances.append(distances)
-            all_neighbors.append(neighbors)
-        
-        # Combine all results into a single list of candidates per query
-        top_k_distances = []
-        top_k_neighbors = []
-        
-        for i in range(num_queries):
-            # Collect all neighbors and their distances for query i
-            candidates = {}
-            for idx in range(len(indices)):
-                distances = all_distances[idx][i]
-                neighbors = all_neighbors[idx][i]
-                worst_distance = distances[-1]  # Worst distance in the top-k of this index
+        # For each base trajectory, find k similar ones using goal embeddings
+        for base_traj in base_trajectories:
+            base_goal = base_traj[1]
+            base_category = base_traj[2]
+            
+            # Get similar trajectories using get_similar_entries
+            success_entries, _ = self.get_similar_entries(
+                key_type=['goal', 'category'],
+                key=[base_goal, base_category], 
+                outcome='winning',
+                k=k
+            )
+            
+            # Skip if no similar entries found
+            if not success_entries:
+                continue
                 
-                for neighbor, distance in zip(neighbors, distances):
-                    if neighbor not in candidates:
-                        candidates[neighbor] = []
-                    candidates[neighbor].append(distance)
-                
-                # Add the worst-case distance for neighbors not in this index
-                for neighbor in candidates:
-                    if len(candidates[neighbor]) < idx + 1:  # If this neighbor didn't appear in the current index
-                        candidates[neighbor].append(worst_distance)
+            # Format entries into similar set
+            similar_set = []
+            for entry in success_entries:
+                similar_set.append({
+                    'goal': entry['goal'],
+                    'observation': entry['observation'],
+                    'reasoning': entry['reasoning'],
+                    'action': entry['action'],
+                    'plan': entry['plan']
+                })
             
-            # Compute average distances for all candidates
-            avg_distances = {neighbor: np.mean(distances) for neighbor, distances in candidates.items()}
+            # Print all goals in the similar set
+            '''
+            print("Base goal:", base_goal)
+            print("\nSimilar goals:")
+            for traj in similar_set:
+                print(traj['goal'])
+            print('--------------------------------')
+            input()
+            '''
             
-            # Sort candidates by average distance and select top-k
-            sorted_candidates = sorted(avg_distances.items(), key=lambda x: x[1], reverse=True)
-            top_k = sorted_candidates[:k]
-            
-            top_k_neighbors.append([item[0] for item in top_k])
-            top_k_distances.append([item[1] for item in top_k])
-        
-        return np.array(top_k_distances), np.array(top_k_neighbors) 
+            similar_sets.append(similar_set)
+
+        return similar_sets
     
-    def filter_by_outcome(self, ids, outcome):
-        cursor = self.trajectory_cursor
-        cursor.execute(f"""
-            SELECT * FROM trajectories WHERE id IN ({', '.join(map(str, ids))})
-            AND CASE 
-                WHEN json_array_length(rewards) > 0 AND rewards LIKE '%1%' THEN 1
-                ELSE 0
-            END = {1 if outcome == 'winning' else 0}
+    def get_contrastive_pairs(self):
+        """Fetch contrastive pairs of successful and failed episodes for each environment_id"""
+        # Get all environment IDs
+        self.trajectory_cursor.execute("""
+            SELECT DISTINCT environment_id 
+            FROM trajectories
         """)
-        trajectory_ids = [row[0] for row in cursor.fetchall()]
-        # Also get indices of each id in the original list
-        indices = [ids.index(id) for id in trajectory_ids]
-        return trajectory_ids, indices
-    
+        env_ids = self.trajectory_cursor.fetchall()
+
+        contrastive_pairs = []
+        
+        # For each environment ID, get one successful and one failed episode
+        for env_id in env_ids:
+            env_id = env_id[0]
+            
+            # Get shortest successful episode
+            self.trajectory_cursor.execute("""
+                SELECT goal, observations, reasoning, actions, plan, LENGTH(observations) as traj_len
+                FROM trajectories 
+                WHERE environment_id = ? 
+                AND json_array_length(rewards) > 0 
+                AND rewards LIKE '%1%'
+                ORDER BY traj_len ASC
+                LIMIT 1
+            """, (env_id,))
+            success_row = self.trajectory_cursor.fetchone()
+            
+            # Get shortest failed episode
+            self.trajectory_cursor.execute("""
+                SELECT goal, observations, reasoning, actions, plan, LENGTH(observations) as traj_len
+                FROM trajectories 
+                WHERE environment_id = ?
+                AND (json_array_length(rewards) = 0 OR rewards NOT LIKE '%1%')
+                ORDER BY traj_len ASC
+                LIMIT 1
+            """, (env_id,))
+            failure_row = self.trajectory_cursor.fetchone()
+            
+            # Only add if we have both success and failure
+            if success_row and failure_row:
+                success_entry = {
+                    'goal': success_row[0],
+                    'observation': json.loads(success_row[1]),
+                    'reasoning': json.loads(success_row[2]) if success_row[2] else None,
+                    'action': json.loads(success_row[3]),
+                    'plan': success_row[4]
+                }
+                
+                failure_entry = {
+                    'goal': failure_row[0],
+                    'observation': json.loads(failure_row[1]),
+                    'reasoning': json.loads(failure_row[2]) if failure_row[2] else None,
+                    'action': json.loads(failure_row[3]),
+                    'plan': failure_row[4]
+                }
+                
+                contrastive_pairs.append((success_entry, failure_entry))
+                
+        return contrastive_pairs
+
+    def _get_rules_for_id(self, trajectory_id: int) -> List[Dict]:
+        """Helper function to get rules for a trajectory ID"""
+        self.rule_cursor.execute("""
+            SELECT name, rule_content, context FROM rules 
+            WHERE trajectory_ids LIKE ?
+        """, (f'%{trajectory_id}%',))
+        return [{'name': r[0], 'content': r[1], 'context': r[2]} for r in self.rule_cursor.fetchall()]
+
     def get_similar_entries(self, key_type: Union[str, List[str]], key: Union[str, List[str]], k: int = 5, outcome: str = None, window: int = 1) -> List[Dict]:
         # For environment_id, use exact matching instead of embedding search
         if key_type == 'environment_id':
@@ -351,6 +578,8 @@ class LearningDB:
             similar_entries = []
             success_labels = []
             for row in rows:
+                rules = self._get_rules_for_id(row[0])
+
                 entry = {
                     'environment_id': row[1],
                     'goal': row[2],
@@ -361,7 +590,8 @@ class LearningDB:
                     'rewards': json.loads(row[7]),
                     'plan': row[8],
                     'reflection': row[9],
-                    'summary': row[10]
+                    'summary': row[10],
+                    'rules': rules
                 }
                 similar_entries.append(entry)
                 success_labels.append(1 if max(json.loads(row[7])) == 1 else 0)
@@ -381,10 +611,10 @@ class LearningDB:
         if trajectory_key_types:
             # Filter key to trajectory-level keys
             key_filtered = [key[i] for i in range(len(key)) if key_type[i] in trajectory_key_types]
-            trajectory_ids, trajectory_distances = self.get_top_k_by_keys(trajectory_key_types, key_filtered, k * (3 if outcome else 1) * (2 if len(state_key_types) > 0 else 1))
+            trajectory_ids, trajectory_distances = self._get_top_k_by_keys(trajectory_key_types, key_filtered, k * (3 if outcome else 1) * (2 if len(state_key_types) > 0 else 1))
             # Filter by outcome if specified
             if outcome:
-                trajectory_ids, indices = self.filter_by_outcome(trajectory_ids, outcome)
+                trajectory_ids, indices = self._filter_by_outcome(trajectory_ids, outcome)
                 trajectory_distances = [trajectory_distances[i] for i in indices]
                 # Sort by distances, high to low
                 trajectory_ids = [trajectory_ids[i] for i in np.argsort(trajectory_distances)[::-1]]
@@ -439,10 +669,10 @@ class LearningDB:
                 state_distances = [state_distances[i] for i in ranked_indices]
         else:
             # If no trajectory-level keys, do a state-level search
-            state_ids, state_distances = self.get_top_k_by_keys(state_key_types, key, k * (2 if outcome else 1))
+            state_ids, state_distances = self._get_top_k_by_keys(state_key_types, key, k * (2 if outcome else 1))
             # Filter by outcome if specified
             if outcome:
-                state_ids, indices = self.filter_by_outcome(state_ids, outcome)
+                state_ids, indices = self._filter_by_outcome(state_ids, outcome)
                 state_distances = [state_distances[i] for i in indices]
 
         similar_entries = []
@@ -456,6 +686,8 @@ class LearningDB:
                 self.trajectory_cursor.execute("SELECT id, environment_id, goal, category, observations, reasoning, actions, rewards, plan, reflection, summary FROM trajectories WHERE id = ?", (trajectory_id,))
                 row = self.trajectory_cursor.fetchone()
                 if row:
+                    rules = self._get_rules_for_id(row[0])
+
                     entry = {
                         'environment_id': row[1],
                         'goal': row[2], 
@@ -466,7 +698,8 @@ class LearningDB:
                         'rewards': json.loads(row[7]),
                         'plan': row[8],
                         'reflection': row[9],
-                        'summary': row[10]
+                        'summary': row[10],
+                        'rules': rules
                     }
                     
                     if not outcome or ('rewards' in entry and entry['rewards'][-1] == outcome_flag) or ('trajectory' in entry and entry['trajectory']['rewards'][-1] == outcome_flag):
@@ -496,12 +729,14 @@ class LearningDB:
                     self.trajectory_cursor.execute("SELECT id, environment_id, goal, category, observations, reasoning, actions, rewards, plan, reflection, summary FROM trajectories WHERE id = ?", (trajectory_id,))
                     trajectory_row = self.trajectory_cursor.fetchone()
 
+                    rules = self._get_rules_for_id(trajectory_row[0])
+
                     # Find the id of the state in the trajectory
                     self.state_cursor.execute("SELECT id FROM states WHERE trajectory_id = ?", (trajectory_id,))
                     state_ids = [row[0] for row in self.state_cursor.fetchall()]
                     state_id_index = state_ids.index(state_id)
                     window_start = max(0, state_id_index - window)
-                    window_end = min(len(state_ids), state_id_index + window + 1)
+                    window_end = min(len(state_ids) + 1, state_id_index + window + 1) # Fixed off-by-one error
 
                     # Get the window of states around the target state
                     entry = {
@@ -514,7 +749,8 @@ class LearningDB:
                         'rewards': json.loads(trajectory_row[7])[window_start:window_end],
                         'plan': trajectory_row[8],
                         'reflection': trajectory_row[9],
-                        'summary': trajectory_row[10]
+                        'summary': trajectory_row[10],
+                        'rules': rules
                     }
 
                     rewards = json.loads(trajectory_row[7]) # Don't want to filter for this
