@@ -1,5 +1,6 @@
 import os
 import glob
+import numpy as np
 
 # Get all nested subfolders containing txt files
 root_dir = "logs/episodes"
@@ -13,7 +14,7 @@ print("Folders containing txt files:")
 average_success_rates = {}
 cumulative_success_rates = {}
 for folder in sorted(txt_folders):
-    if "webshop" not in folder:
+    if "alfworld" not in folder:
         continue
     print(folder)
     # Get all episode files
@@ -29,6 +30,10 @@ for folder in sorted(txt_folders):
     final_rewards = []
 
     # Process each episode file
+    # Sort files numerically
+    # Try to cast file numbers to int, skip files where it fails
+    episode_files = [f for f in episode_files if f.split('/')[-1].split('.')[0].isdigit()]
+    episode_files = sorted(episode_files, key=lambda x: int(x.split('/')[-1].split('.')[0]))
     for episode_file in episode_files:
         with open(episode_file, 'r') as f:
             content = f.read()
@@ -106,6 +111,61 @@ for folder in sorted(txt_folders):
     cumulative_success_rates[folder] = cumulative_success_rate_dict
 
     print("Avg final reward:", sum(final_rewards)/len(final_rewards))
+
+    # Also print the average final reward over each segment of 100 episodes
+    '''
+    for i in range(0, len(final_rewards), 100):
+        print(f"Average final reward over {i+100} episodes:", np.mean(final_rewards[i:i+100]))
+
+    # Try a different version which is tracking squared hundreds
+    for i in range(10):
+        print(f"Average final reward over {i}th interval:", np.mean(np.array(final_rewards[(i**2)*50:((i+1)**2)*50])))
+
+    for i in range(0, len(final_rewards), 100):
+        print(f"Average success rate over {i+100} episodes:", np.mean(np.array(final_rewards[i:i+100]) > 0.99))
+
+    for i in range(5):
+        print(f"Average success rate over {i}th interval:", np.mean(np.array(final_rewards[(i**2)*100:((i+1)**2)*100]) > 0.99))
+    '''
+
+    # if there are 2000 episodes, plot a running average of the final rewards
+    if len(final_rewards) >= 28000:
+        final_rewards_array = np.array(final_rewards)
+        running_avg = np.array(final_rewards).copy()
+        start = 30
+        for i in range(start, len(running_avg)):
+            #running_avg[i] = alpha * final_rewards[i] + (1 - alpha) * running_avg[i-1]
+            running_avg[i] = np.mean(final_rewards_array[:i])
+        running_avg = running_avg[start:]
+        
+        import matplotlib.pyplot as plt
+        # Create plot
+        plt.figure(figsize=(10,5))
+        plt.plot(range(len(running_avg)), running_avg)
+        plt.xlabel('Episode')
+        plt.ylabel('Average Final Reward')
+        plt.title('Running Average of Final Rewards (Window Size 100)')
+        plt.grid(True)
+        plt.show()
+
+        # Also make plot for success rate
+        start=100
+        success_rate_array = (np.array(final_rewards) > 0.99).astype(int).astype(float)
+        print(success_rate_array)
+        print(np.mean(success_rate_array))
+        running_avg_success_rate = success_rate_array.copy()
+        for i in range(start, len(running_avg_success_rate)):
+            running_avg_success_rate[i] = np.mean(success_rate_array[:i])
+        running_avg_success_rate = running_avg_success_rate[start:]
+
+        # Create plot
+        plt.figure(figsize=(10,5))
+        plt.plot(range(len(running_avg_success_rate)), running_avg_success_rate)
+        plt.xlabel('Episode')
+        plt.ylabel('Average Success Rate')
+        plt.title('Running Average of Success Rate (Window Size 100)')
+        plt.grid(True)
+        plt.show()
 
 # Plot average and cumulative success rates in two separate plots
 import matplotlib.pyplot as plt
