@@ -24,7 +24,9 @@ import random
 import argparse
 import concurrent.futures
 from tqdm import tqdm
-from queue import Queue
+import multiprocessing
+import time
+import threading
 
 def config(env, gym_env_name):
     # Load default config first
@@ -204,7 +206,6 @@ async def main():
     parser.add_argument('--parallel', type=int, default=1, help='Number of threads to use')
     args = parser.parse_args()
 
-    task_queue = Queue()
     async def process_task(i, args, environment=None):
         cfg = config(args.env, args.gym_env_name)
         cfg["benchmark"]["problem_id"] = i
@@ -234,30 +235,47 @@ async def main():
             return
         await run_env(agent, environment, log_file, args.num_attempts)
 
-    def worker(pbar, args):
+    def worker(task_queue, args):
         """Worker function that fetches tasks from the queue and runs them sequentially."""
         while not task_queue.empty():
-            i = task_queue.get()
+            try:
+                i = task_queue.get_nowait()  # Non-blocking get to prevent hanging
+            except multiprocessing.queues.Empty:
+                break
             try:
                 asyncio.run(process_task(i, args))  # Run the async function
             except Exception as e:
                 print(f"Error processing task {i}: {e}")
-            pbar.update(1)  # Update the progress bar
 
-    total_tasks = args.num_passes * args.num_tasks
-    with tqdm(total=total_tasks, desc="Processing tasks", unit="task") as pbar:
-        for _ in range(args.num_passes):
+    def monitor_progress(task_queue, total_tasks):
+        """Thread function to update tqdm every second."""
+        with tqdm(total=total_tasks, desc="Processing tasks", unit="task") as pbar:
+            while not task_queue.empty():
+                remaining = task_queue.qsize()
+                pbar.n = total_tasks - remaining  # Update the progress bar
+                pbar.refresh()
+                time.sleep(1)  # Update every second
+
+    for _ in range(args.num_passes):
+        with multiprocessing.Manager() as manager:
+            task_queue = manager.Queue()
             for i in range(args.num_tasks):
                 task_queue.put(i)
 
-            with concurrent.futures.ThreadPoolExecutor(
-                max_workers=args.parallel
-            ) as executor:
-                futures = [
-                    executor.submit(worker, pbar, args) for _ in range(args.parallel)
-                ]
-                # Ensure all threads complete execution
-                concurrent.futures.wait(futures)
+            processes = []                
+            for _ in range(args.parallel):
+                p = multiprocessing.Process(target=worker, args=(task_queue, args))
+                processes.append(p)
+                p.start()
+
+            # Start progress monitoring thread
+            progress_thread = threading.Thread(target=monitor_progress, args=(task_queue, args.num_tasks), daemon=True)
+            progress_thread.start()
+
+            for p in processes:
+                p.join()  # Ensure all processes complete execution
+            progress_thread.join()  # Ensure progress thread terminates
+
 
 if __name__ == "__main__":
     asyncio.run(main())
