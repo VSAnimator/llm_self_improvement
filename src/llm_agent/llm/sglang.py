@@ -6,6 +6,7 @@ import asyncio
 from time import time
 from collections import Counter
 from typing import Dict, List, Optional, Any, Callable, Type
+import threading
 
 import openai
 
@@ -72,16 +73,22 @@ class BaseBackend:
 
         if cls.INSTRUMENTATION:
             trace_entry = {
-                "prompt": prompt,
-                "config": {
-                    "max_tokens": max_tokens,
-                    "stop": stop,
-                    "regex_constrain": regex_constrain,
+                "name": cls.__name__,
+                "ph": "X",
+                "ts": int(start_time * 1e6),
+                "dur": int(duration * 1e6),
+                "pid": os.getpid(),
+                "tid": threading.get_ident(),
+                "args": {
+                    "prompt": prompt,
+                    "config": {
+                        "max_tokens": max_tokens,
+                        "stop": stop,
+                        "regex_constrain": regex_constrain,
+                    },
+                    "label": trace_label,
+                    "response": responses[0],
                 },
-                "label": trace_label,
-                "response": responses[0],
-                "start_time": start_time,
-                "duration": duration,
             }
             cls._log_trace(trace_entry)
 

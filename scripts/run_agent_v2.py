@@ -22,7 +22,9 @@ from llm_agent.llm.lite_llm import LiteLLMWrapper
 from llm_agent.database.learning_db import LearningDB
 import random
 import argparse
-import json
+import concurrent.futures
+from tqdm import tqdm
+from queue import Queue
 
 def config(env, gym_env_name):
     # Load default config first
@@ -198,35 +200,64 @@ async def main():
     parser.add_argument('--store_episodes', action='store_true', help='Store episodes')
     parser.add_argument('--env', default='alfworld_test', help='Environment to use (alfworld, alfworld_test, webshop, gymnasium)')
     parser.add_argument('--gym_env_name', help='Name of gymnasium environment if using gymnasium')
+    parser.add_argument('--num_tasks', type=int, default=134, help='Number of tasks to run')
+    parser.add_argument('--parallel', type=int, default=1, help='Number of threads to use')
     args = parser.parse_args()
 
-    for j in range(args.num_passes):
-        environment = None
-        for i in range(0,134,1):
-            cfg = config(args.env, args.gym_env_name)
-            cfg['benchmark']['problem_id'] = i
-            cfg['llm']['model'] = args.llm
-            cfg['llm']['backend'] = args.backend
+    task_queue = Queue()
+    async def process_task(i, args, environment=None):
+        cfg = config(args.env, args.gym_env_name)
+        cfg["benchmark"]["problem_id"] = i
+        cfg["llm"]["model"] = args.llm
+        cfg["llm"]["backend"] = args.backend
 
-            agent_config = test_config(agent_type=args.agent_type)
-            agent_config['store_episodes'] = args.store_episodes
-            db_name = args.db_name if args.db_name else "default"
-            log_dir = Path("logs/episodes") / f"{cfg['benchmark']['name']}/{cfg['benchmark']['split']}/{args.agent_type}/{args.llm}/{db_name}"
-            log_dir.mkdir(parents=True, exist_ok=True)
+        agent_config = test_config(agent_type=args.agent_type)
+        agent_config["store_episodes"] = args.store_episodes
+        db_name = args.db_name if args.db_name else "default"
+        log_dir = (
+            Path("logs/episodes")
+            / f"{cfg['benchmark']['name']}/{cfg['benchmark']['split']}/{args.agent_type}/{args.llm}/{db_name}"
+        )
+        log_dir.mkdir(parents=True, exist_ok=True)
 
-            log_file = log_dir / f"{i}.txt"
-            if environment is None or cfg['benchmark']['name'] != 'alfworld':
-                environment = env(cfg)
-            llm = real_llm(cfg)
-            default_db_path = f"{log_dir}/learning.db"
-            db_path = args.db_path if args.db_path else default_db_path
-            learning_db = db(db_path=db_path)
-            agent = test_agent(llm, learning_db, environment, agent_config)
-            if args.run_offline_rules:
-                # Only need to run offline rules once
-                await agent.update_rules_offline()
-                return
-            await run_env(agent, environment, log_file, args.num_attempts)
+        log_file = log_dir / f"{i}.txt"
+        if environment is None or cfg["benchmark"]["name"] != "alfworld":
+            environment = env(cfg)
+        llm = real_llm(cfg)
+        default_db_path = f"{log_dir}/learning.db"
+        db_path = args.db_path if args.db_path else default_db_path
+        learning_db = db(db_path=db_path)
+        agent = test_agent(llm, learning_db, environment, agent_config)
+        if args.run_offline_rules:
+            # Only need to run offline rules once
+            await agent.update_rules_offline()
+            return
+        await run_env(agent, environment, log_file, args.num_attempts)
+
+    def worker(pbar, args):
+        """Worker function that fetches tasks from the queue and runs them sequentially."""
+        while not task_queue.empty():
+            i = task_queue.get()
+            try:
+                asyncio.run(process_task(i, args))  # Run the async function
+            except Exception as e:
+                print(f"Error processing task {i}: {e}")
+            pbar.update(1)  # Update the progress bar
+
+    total_tasks = args.num_passes * args.num_tasks
+    with tqdm(total=total_tasks, desc="Processing tasks", unit="task") as pbar:
+        for _ in range(args.num_passes):
+            for i in range(args.num_tasks):
+                task_queue.put(i)
+
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=args.parallel
+            ) as executor:
+                futures = [
+                    executor.submit(worker, pbar, args) for _ in range(args.parallel)
+                ]
+                # Ensure all threads complete execution
+                concurrent.futures.wait(futures)
 
 if __name__ == "__main__":
     asyncio.run(main())
