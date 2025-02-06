@@ -217,13 +217,13 @@ async def main():
         cfg["llm"]["model"] = args.llm
         cfg["llm"]["backend"] = args.backend
 
-            agent_config = test_config(agent_type=args.agent_type)
-            agent_config['store_episodes'] = args.store_episodes
-            agent_config['benchmark'] = args.env
-            agent_config['num_ic'] = args.num_ic
-            db_name = args.db_name if args.db_name else "default"
-            log_dir = Path("logs/episodes") / f"{cfg['benchmark']['name']}/{cfg['benchmark']['split']}/{args.agent_type}/{args.llm}/{db_name}"
-            log_dir.mkdir(parents=True, exist_ok=True)
+        agent_config = test_config(agent_type=args.agent_type)
+        agent_config['store_episodes'] = args.store_episodes
+        agent_config['benchmark'] = args.env
+        agent_config['num_ic'] = args.num_ic
+        db_name = args.db_name if args.db_name else "default"
+        log_dir = Path("logs/episodes") / f"{cfg['benchmark']['name']}/{cfg['benchmark']['split']}/{args.agent_type}/{args.llm}/{db_name}"
+        log_dir.mkdir(parents=True, exist_ok=True)
 
         log_file = log_dir / f"{i}.txt"
         if environment is None or cfg["benchmark"]["name"] != "alfworld":
