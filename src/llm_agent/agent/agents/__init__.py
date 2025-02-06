@@ -2,6 +2,7 @@ from .react import ReAct
 from .reflexion import Reflexion
 from .rap import RAP
 from .rap_noplan import RAPNoPlan
+from .rap_flex import RAPFlex
 from .synapse import Synapse
 from .expel import Expel
 from .autoguide import AutoGuide

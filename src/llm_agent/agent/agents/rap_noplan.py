@@ -15,6 +15,15 @@ class RAPNoPlan(BaseAgent):
     
     async def analyze_episode(self):
         """Process feedback from the environment"""
-        # Maybe filter out steps that resulted in nothing happening
-        pass
+        nothing_indices = [i for i in range(len(self.observation_history)) if "Invalid action!" in self.observation_history[i].structured]
+        
+        for idx in sorted(nothing_indices, reverse=True):
+            del self.observation_history[idx]
+            if idx > 0:
+                if idx-1 < len(self.reasoning_history):
+                    del self.reasoning_history[idx-1]
+                if idx-1 < len(self.action_history):
+                    del self.action_history[idx-1]
+                if idx-1 < len(self.reward_history):
+                    del self.reward_history[idx-1]
         

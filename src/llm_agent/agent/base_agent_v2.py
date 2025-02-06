@@ -25,6 +25,7 @@ class BaseAgent:
         self.max_retries = config.get('max_retries', 3)
         self.memory_size = config.get('memory_size', 50)
         self.temperature = config.get('temperature', 0.7)
+        self.num_ic = config.get('num_ic', None)
         
         # Trajectory history
         self.observation_history: List[Observation] = []
@@ -175,6 +176,9 @@ class BaseAgent:
         conversation = []
         # Add system prompt
         system_prompt = f"You are an expert at reasoning about the most appropriate action to take towards achieving a goal. "
+        if self.config.get("give_action_space", False):
+            print("Giving action space")
+            system_prompt += "\nHere is your action space:\n" + self.action_space['description']
         if in_context_data:
             system_prompt += self._in_context_prompt(in_context_data)
         conversation.append({"role": "system", "content": system_prompt})
@@ -191,7 +195,9 @@ class BaseAgent:
         # Want the system prompt to be standardized. Should have environment and goal info, as well as observation and action format. 
         system_prompt = f"""You are an agent in an environment. Given the current observation, you must select an action to take towards achieving the goal: {self.goal}."""
         # If this is a TRAD agent, we want to add the action space to the system prompt
+        #print("Action space", self.action_space)
         if self.config.get("give_action_space", False):
+            print("Giving action space")
             system_prompt += "\nHere is your action space:\n" + self.action_space['description']
         if in_context_data:
             system_prompt += self._in_context_prompt(in_context_data)

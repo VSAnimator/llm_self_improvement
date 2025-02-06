@@ -142,7 +142,7 @@ class WebShopEnv(BaseEnv):
     obs, info = self.reset()
     self.goal = obs.split('Instruction: ')[1].split('[')[0].strip()
     self.max_steps = config['max_steps']
-    self.category = None
+    self.category = ""
 
   # In this case reset just calls 
   def reset(self):
@@ -150,6 +150,7 @@ class WebShopEnv(BaseEnv):
     return obs, info
   
   def step(self, action):
+    action = action.strip()
     done = False
     observation_ = None
     try:
@@ -235,7 +236,11 @@ class WebShopEnv(BaseEnv):
       "description": """
         * search[query]: Search for products matching the given query. Available when [search] in observation.
         * click[button]: Click on a button to interact with the webshop. Button names indicated as [button] in observation, with the exception of [search].
-        If the last observation does not have a [button] or [search], then use the actions indicated as available by the previous observation.
+        If the last observation does not have a [button] or [search], then use the actions indicated as available by the previous observation. 
+        Never use the [Next >] or [< Prev] buttons. Never use the [Back to Search] button.
+        Never click on [Description], [Features], [Reviews], or [Attributes].
+        Only search once in the trajectory: first search, then click on an item, then click on any necessary options, then buy. Never go back or search again or click on any other buttons.
+        Follow the rules given no matter what--if you realize the product is not 100% perfect, you should still buy it since you get partial credit, but you get no credit if you don't follow the rules. This is critically important.
       """.strip("\n")
     }
   

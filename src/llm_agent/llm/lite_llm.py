@@ -71,7 +71,7 @@ class LiteLLMWrapper:
                 "top_p": self.top_p,
                 #"frequency_penalty": self.frequency_penalty,
                 #"presence_penalty": self.presence_penalty,
-                "timeout": self.timeout,
+                "timeout": 120.0,
                 "stream": False,
                 #"api_base": "http://0.0.0.0:8000/v1"
                 "mock_response": input("Human: ") if "human" in self.model.lower() else None,

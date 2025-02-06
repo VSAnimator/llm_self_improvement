@@ -253,7 +253,7 @@ class LearningDB:
         cursor.execute(f"""
             SELECT * FROM trajectories WHERE id IN ({', '.join(map(str, ids))})
             AND CASE 
-                WHEN json_array_length(rewards) > 0 AND rewards LIKE '%1%' THEN 1
+                WHEN json_array_length(rewards) > 0 AND CAST(json_extract(rewards, '$[#-1]') AS FLOAT) = 1.0 THEN 1
                 ELSE 0
             END = {1 if outcome == 'winning' else 0}
         """)
@@ -315,7 +315,7 @@ class LearningDB:
                                     observations, reasoning, actions, rewards, plan, plan_embedding,
                                     reflection, reflection_embedding, summary, summary_embedding)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (environment_id, goal, goal_embedding, category, category_embedding,
+        """, (environment_id, goal, goal_embedding, category if category else "", category_embedding,
               observations_str, reasoning_str, actions_str, rewards_str, 
               plan, plan_embedding, reflection, reflection_embedding, summary, summary_embedding))
         
@@ -332,7 +332,7 @@ class LearningDB:
         }
         
         for field, (value, embedding) in trajectory_fields.items():
-            if value is not None:
+            if value is not None and embedding is not None:
                 embedding_array = np.frombuffer(embedding, dtype=np.float32).reshape(1, -1)
                 self.trajectory_indices[field].add(embedding_array)
                 curr_size = self.trajectory_indices[field].ntotal - 1
@@ -547,13 +547,13 @@ class LearningDB:
                 cursor.execute(f"""
                     SELECT id, environment_id, goal, category, observations, reasoning, actions, rewards, plan, reflection, summary, LENGTH(observations) as traj_len,
                     CASE 
-                        WHEN json_array_length(rewards) > 0 AND rewards LIKE '%1%' THEN 1
+                        WHEN json_array_length(rewards) > 0 AND CAST(json_extract(rewards, '$[#-1]') AS FLOAT) = 1.0 THEN 1
                         ELSE 0
                     END as success
                     FROM trajectories 
                     WHERE environment_id = "{key}"
                     AND CASE 
-                        WHEN json_array_length(rewards) > 0 AND rewards LIKE '%1%' THEN 1
+                        WHEN json_array_length(rewards) > 0 AND CAST(json_extract(rewards, '$[#-1]') AS FLOAT) = 1.0 THEN 1
                         ELSE 0
                     END = {1 if (outcome == 'success' or outcome == 'winning') else 0}
                     ORDER BY traj_len ASC
@@ -564,7 +564,7 @@ class LearningDB:
                 cursor.execute(f"""
                     SELECT id, environment_id, goal, category, observations, reasoning, actions, rewards, plan, reflection, summary, LENGTH(observations) as traj_len,
                     CASE 
-                        WHEN json_array_length(rewards) > 0 AND rewards LIKE '%1%' THEN 1
+                        WHEN json_array_length(rewards) > 0 AND CAST(json_extract(rewards, '$[#-1]') AS FLOAT) = 1.0 THEN 1
                         ELSE 0
                     END as success
                     FROM trajectories 

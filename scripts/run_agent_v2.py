@@ -11,6 +11,7 @@ from llm_agent.agent.agents import (
     Reflexion,
     RAP,
     RAPNoPlan,
+    RAPFlex,
     Synapse,
     Expel,
     AutoGuide,
@@ -101,6 +102,8 @@ def test_config(agent_type):
     }
 
 def test_agent(real_llm, db, env, test_config):
+    if test_config.get('agent_type', 'react') == 'trad' or test_config.get('benchmark', '') == 'webshop':
+        test_config['give_action_space'] = True
     if test_config.get('agent_type', 'react') == 'react':
         return ReAct(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'reflexion':
@@ -109,12 +112,13 @@ def test_agent(real_llm, db, env, test_config):
         return RAP(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'rap_noplan':
         return RAPNoPlan(real_llm, db, env, test_config)
+    elif test_config.get('agent_type', 'react') == 'rap_flex':
+        return RAPFlex(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'synapse':
         return Synapse(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'expel':
         return Expel(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'trad':
-        test_config['give_action_space'] = True
         return TRAD(real_llm, db, env, test_config)
     elif test_config.get('agent_type', 'react') == 'autoguide':
         return AutoGuide(real_llm, db, env, test_config)
@@ -204,6 +208,7 @@ async def main():
     parser.add_argument('--gym_env_name', help='Name of gymnasium environment if using gymnasium')
     parser.add_argument('--num_tasks', type=int, default=134, help='Number of tasks to run')
     parser.add_argument('--parallel', type=int, default=1, help='Number of threads to use')
+    parser.add_argument('--num_ic', type=int, default=3, help='Number of in-context examples to use')
     args = parser.parse_args()
 
     async def process_task(i, args, environment=None):
@@ -212,14 +217,13 @@ async def main():
         cfg["llm"]["model"] = args.llm
         cfg["llm"]["backend"] = args.backend
 
-        agent_config = test_config(agent_type=args.agent_type)
-        agent_config["store_episodes"] = args.store_episodes
-        db_name = args.db_name if args.db_name else "default"
-        log_dir = (
-            Path("logs/episodes")
-            / f"{cfg['benchmark']['name']}/{cfg['benchmark']['split']}/{args.agent_type}/{args.llm}/{db_name}"
-        )
-        log_dir.mkdir(parents=True, exist_ok=True)
+            agent_config = test_config(agent_type=args.agent_type)
+            agent_config['store_episodes'] = args.store_episodes
+            agent_config['benchmark'] = args.env
+            agent_config['num_ic'] = args.num_ic
+            db_name = args.db_name if args.db_name else "default"
+            log_dir = Path("logs/episodes") / f"{cfg['benchmark']['name']}/{cfg['benchmark']['split']}/{args.agent_type}/{args.llm}/{db_name}"
+            log_dir.mkdir(parents=True, exist_ok=True)
 
         log_file = log_dir / f"{i}.txt"
         if environment is None or cfg["benchmark"]["name"] != "alfworld":
