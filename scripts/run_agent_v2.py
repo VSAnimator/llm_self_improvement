@@ -23,7 +23,11 @@ from llm_agent.llm.lite_llm import LiteLLMWrapper
 from llm_agent.database.learning_db import LearningDB
 import random
 import argparse
-import json
+import concurrent.futures
+from tqdm import tqdm
+import multiprocessing
+import time
+import threading
 
 def config(env, gym_env_name):
     # Load default config first
@@ -192,6 +196,7 @@ async def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('--llm', required=True, help='LLM model to use')
+    parser.add_argument('--backend', default='litellm', help='Backend to use for LLM')
     parser.add_argument('--db_path', help='Optional custom path for learning database')
     parser.add_argument('--db_name', help='Optional custom name for learning database')
     parser.add_argument('--agent_type', required=True, help='Type of agent to use')
@@ -201,37 +206,80 @@ async def main():
     parser.add_argument('--store_episodes', action='store_true', help='Store episodes')
     parser.add_argument('--env', default='alfworld_test', help='Environment to use (alfworld, alfworld_test, webshop, gymnasium)')
     parser.add_argument('--gym_env_name', help='Name of gymnasium environment if using gymnasium')
+    parser.add_argument('--num_tasks', type=int, default=134, help='Number of tasks to run')
+    parser.add_argument('--parallel', type=int, default=1, help='Number of threads to use')
     parser.add_argument('--num_ic', type=int, default=3, help='Number of in-context examples to use')
     args = parser.parse_args()
 
-    for j in range(args.num_passes):
-        environment = None
-        for i in range(0,134,1):
-            cfg = config(args.env, args.gym_env_name)
-            cfg['benchmark']['problem_id'] = i
-            cfg['llm']['model'] = args.llm
+    async def process_task(i, args, environment=None):
+        cfg = config(args.env, args.gym_env_name)
+        cfg["benchmark"]["problem_id"] = i
+        cfg["llm"]["model"] = args.llm
+        cfg["llm"]["backend"] = args.backend
 
-            agent_config = test_config(agent_type=args.agent_type)
-            agent_config['store_episodes'] = args.store_episodes
-            agent_config['benchmark'] = args.env
-            agent_config['num_ic'] = args.num_ic
-            db_name = args.db_name if args.db_name else "default"
-            log_dir = Path("logs/episodes") / f"{cfg['benchmark']['name']}/{cfg['benchmark']['split']}/{args.agent_type}/{args.llm}/{db_name}"
-            log_dir.mkdir(parents=True, exist_ok=True)
+        agent_config = test_config(agent_type=args.agent_type)
+        agent_config['store_episodes'] = args.store_episodes
+        agent_config['benchmark'] = args.env
+        agent_config['num_ic'] = args.num_ic
+        db_name = args.db_name if args.db_name else "default"
+        log_dir = Path("logs/episodes") / f"{cfg['benchmark']['name']}/{cfg['benchmark']['split']}/{args.agent_type}/{args.llm}/{db_name}"
+        log_dir.mkdir(parents=True, exist_ok=True)
 
-            log_file = log_dir / f"{i}.txt"
-            if environment is None or cfg['benchmark']['name'] != 'alfworld':
-                environment = env(cfg)
-            llm = real_llm(cfg)
-            default_db_path = f"{log_dir}/learning.db"
-            db_path = args.db_path if args.db_path else default_db_path
-            learning_db = db(db_path=db_path)
-            agent = test_agent(llm, learning_db, environment, agent_config)
-            if args.run_offline_rules:
-                # Only need to run offline rules once
-                await agent.update_rules_offline()
-                return
-            await run_env(agent, environment, log_file, args.num_attempts)
+        log_file = log_dir / f"{i}.txt"
+        if environment is None or cfg["benchmark"]["name"] != "alfworld":
+            environment = env(cfg)
+        llm = real_llm(cfg)
+        default_db_path = f"{log_dir}/learning.db"
+        db_path = args.db_path if args.db_path else default_db_path
+        learning_db = db(db_path=db_path)
+        agent = test_agent(llm, learning_db, environment, agent_config)
+        if args.run_offline_rules:
+            # Only need to run offline rules once
+            await agent.update_rules_offline()
+            return
+        await run_env(agent, environment, log_file, args.num_attempts)
+
+    def worker(task_queue, args):
+        """Worker function that fetches tasks from the queue and runs them sequentially."""
+        while not task_queue.empty():
+            try:
+                i = task_queue.get_nowait()  # Non-blocking get to prevent hanging
+            except multiprocessing.queues.Empty:
+                break
+            try:
+                asyncio.run(process_task(i, args))  # Run the async function
+            except Exception as e:
+                print(f"Error processing task {i}: {e}")
+
+    def monitor_progress(task_queue, total_tasks):
+        """Thread function to update tqdm every second."""
+        with tqdm(total=total_tasks, desc="Processing tasks", unit="task") as pbar:
+            while not task_queue.empty():
+                remaining = task_queue.qsize()
+                pbar.n = total_tasks - remaining  # Update the progress bar
+                pbar.refresh()
+                time.sleep(1)  # Update every second
+
+    for _ in range(args.num_passes):
+        with multiprocessing.Manager() as manager:
+            task_queue = manager.Queue()
+            for i in range(args.num_tasks):
+                task_queue.put(i)
+
+            processes = []                
+            for _ in range(args.parallel):
+                p = multiprocessing.Process(target=worker, args=(task_queue, args))
+                processes.append(p)
+                p.start()
+
+            # Start progress monitoring thread
+            progress_thread = threading.Thread(target=monitor_progress, args=(task_queue, args.num_tasks), daemon=True)
+            progress_thread.start()
+
+            for p in processes:
+                p.join()  # Ensure all processes complete execution
+            progress_thread.join()  # Ensure progress thread terminates
+
 
 if __name__ == "__main__":
     asyncio.run(main())

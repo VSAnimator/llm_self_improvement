@@ -31,7 +31,7 @@ async def select_action_structured(conversation: List[Dict], observation: Observ
             class ActionNumber(BaseModel):
                 action_number: int
             response = await llm.generate_structured(conversation, output_schema=ActionNumber)
-            action_number = json.loads(response.choices[0].message.content)['action_number']
+            action_number = json.loads(response)['action_number']
             action = available_actions[action_number - 1]
             if action is not None:
                 return action
