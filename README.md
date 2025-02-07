@@ -43,7 +43,9 @@ Zhiqiang, this creates a new database for training runs with 3, 6, and 10 in-con
 
 ### Run on test environments with generated database
 
-
+```bash
+./test_alfworld.sh
+```
 
 ## Options
 
