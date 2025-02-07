@@ -81,7 +81,7 @@ class AlfWorldTrainEnv(BaseEnv):
         obs = obs[0]
         reward = reward[0]
         done = done[0]
-        print(reward, done)
+        #print(reward, done)
         # Clean the obs following prior work
         if obs.startswith('You arrive at '):
             obs = obs[obs.find('. ')+2:]

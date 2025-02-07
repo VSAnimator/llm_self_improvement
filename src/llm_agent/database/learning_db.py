@@ -131,9 +131,25 @@ class LearningDB:
             mapping_path = os.path.join(self.index_path, f"state_{field}_id_mapping.json")
             if os.path.exists(mapping_path):
                 with open(mapping_path, 'r') as f:
+                    print(f"Loading state id mapping for {field}")
                     self.state_id_mappings[field] = json.load(f)
             else:
                 self.state_id_mappings[field] = {}
+
+        # A little corrective thing for the state indices
+        if False: # Off for now
+            for field in self.state_indices.keys():
+                # Find the largest index in the mapping
+                max_index = max([int(k) for k in self.state_id_mappings["state"].keys()])
+                max_index += 100
+                # Now figure out the offset of key and value in the mapping
+                field_max_index = max([int(k) for k in self.state_id_mappings[field].keys()])
+                offset = self.state_id_mappings[field][str(field_max_index)] - field_max_index
+                # Now add in key-value pairs up to the max_index
+                print(f"Field: {field}, max_index: {max_index}, field_max_index: {field_max_index}, offset: {offset}")
+                #input("Press enter to continue")
+                for i in range(field_max_index+1, max_index+1):
+                    self.state_id_mappings[field][str(i)] = i + offset
                 
         for field in self.rule_indices.keys():
             mapping_path = os.path.join(self.index_path, f"rule_{field}_id_mapping.json")
@@ -396,7 +412,7 @@ class LearningDB:
             os.makedirs(backup_dir, exist_ok=True)
             
             # Copy the full directory
-            shutil.copytree(db_dir, os.path.join(backup_dir, db_name))
+            shutil.copytree(db_dir, os.path.join(backup_dir, db_name)) # Should just be backup_dir
 
     """ Retrieving from the database """
 

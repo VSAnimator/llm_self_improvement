@@ -48,7 +48,7 @@ def config(env, gym_env_name):
     elif env == 'alfworld':
         env_config.update({
             'type': 'AlfredTWEnv',  # Required env type for alfworld
-            'split': 'eval_in_distribution',#'eval_out_of_distribution'  # Required split parameter # eval_out_of_distribution
+            'split': 'train',#'eval_out_of_distribution'  # Required split parameter # eval_out_of_distribution
             'name': 'alfworld'
         })
     elif env == 'webshop':
@@ -209,6 +209,7 @@ async def main():
     parser.add_argument('--num_tasks', type=int, default=134, help='Number of tasks to run')
     parser.add_argument('--parallel', type=int, default=1, help='Number of threads to use')
     parser.add_argument('--num_ic', type=int, default=3, help='Number of in-context examples to use')
+    parser.add_argument('--start_task', type=int, default=0, help='Task to start from')
     args = parser.parse_args()
 
     async def process_task(i, args, environment=None):
@@ -263,7 +264,7 @@ async def main():
     for _ in range(args.num_passes):
         with multiprocessing.Manager() as manager:
             task_queue = manager.Queue()
-            for i in range(args.num_tasks):
+            for i in range(args.start_task, args.num_tasks):
                 task_queue.put(i)
 
             processes = []                
