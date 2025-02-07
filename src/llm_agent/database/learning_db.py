@@ -391,7 +391,8 @@ class LearningDB:
             db_name = os.path.basename(self.db_path)
             
             # Create backup directory if it doesn't exist. Same name but with _backup_{curr_count}
-            backup_dir = os.path.join(os.path.dirname(db_dir), f"backups_{curr_count}")
+            curr_dir_name = os.path.basename(db_dir)
+            backup_dir = os.path.join(os.path.dirname(db_dir), f"{curr_dir_name}_backups", str(curr_count))
             os.makedirs(backup_dir, exist_ok=True)
             
             # Copy the full directory
