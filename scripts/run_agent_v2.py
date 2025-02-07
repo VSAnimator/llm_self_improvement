@@ -226,7 +226,7 @@ async def main():
         log_dir.mkdir(parents=True, exist_ok=True)
 
         log_file = log_dir / f"{i}.txt"
-        if environment is None or cfg["benchmark"]["name"] != "alfworld":
+        if environment is None:
             environment = env(cfg)
         llm = real_llm(cfg)
         default_db_path = f"{log_dir}/learning.db"

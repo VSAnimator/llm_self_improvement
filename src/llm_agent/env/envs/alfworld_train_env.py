@@ -39,6 +39,9 @@ class AlfWorldTrainEnv(BaseEnv):
         self._observation = None
         self.steps = 0
         self.id = None
+
+        # Seed the environment
+        self.env.seed(config.get('problem_id'))
         
     def reset(self) -> Observation:
         """Reset environment to initial state
