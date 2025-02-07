@@ -5,6 +5,8 @@ import numpy as np
 from typing import List, Dict, Union, Optional
 from sentence_transformers import SentenceTransformer
 import json
+import shutil
+import os
 
 class LearningDB:
     def __init__(self, db_path: str = "data/learning.db"):
@@ -380,6 +382,20 @@ class LearningDB:
                     self._save_index(field, self.state_indices[field], False)
                     
         self.state_conn.commit()
+
+        # When the database is of size divisible by 100, copy the folder
+        curr_count = self.trajectory_cursor.execute("SELECT COUNT(*) FROM trajectories").fetchone()[0]
+        if curr_count % 100 == 0:
+            # Get the database directory and filename
+            db_dir = os.path.dirname(self.db_path)
+            db_name = os.path.basename(self.db_path)
+            
+            # Create backup directory if it doesn't exist. Same name but with _backup_{curr_count}
+            backup_dir = os.path.join(os.path.dirname(db_dir), f"backups_{curr_count}")
+            os.makedirs(backup_dir, exist_ok=True)
+            
+            # Copy the full directory
+            shutil.copytree(db_dir, os.path.join(backup_dir, db_name))
 
     """ Retrieving from the database """
 
