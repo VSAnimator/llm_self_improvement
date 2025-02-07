@@ -27,6 +27,24 @@ This repository contains code for an LLM-powered agent that can interact with th
     uv pip install -e .
     ```
 
+---
+
+## Current experimental usage
+
+### Self-generate database from train environments
+
+Run the train_alfworld.sh script to generate a database of in-context examples:
+
+```bash
+./train_alfworld.sh
+```
+
+Zhiqiang, this creates a new database for training runs with 3, 6, and 10 in-context examples. These databases are copies of the alfworld_expel database that has the initial human-curated in-context examples. The script launches 3 parallel processes, each running the training script with a different number of in-context examples. If run correctly, the script will 1) create 3 new databases, 2) run 3 training processes, 3) create 3 new databases with the training results, while saving backup copies of the original databases. There should be no errors, and the databases should contain all of the trajectories from the training runs (can check the trajectory_*.json files to confirm).
+
+### Run on test environments with generated database
+
+
+
 ## Options
 
 ### Environments supported
