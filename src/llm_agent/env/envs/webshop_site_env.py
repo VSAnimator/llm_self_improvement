@@ -137,7 +137,7 @@ class WebShopEnv(BaseEnv):
   def __init__(self, config):
     super().__init__(config)
     self.sessions = {}
-    self.id = "fixed_" + config['problem_id']
+    self.id = "fixed_" + str(config['problem_id'])
     # Run reset once to get the goal
     obs, info = self.reset()
     self.goal = obs.split('Instruction: ')[1].split('[')[0].strip()
