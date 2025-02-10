@@ -22,12 +22,11 @@ class LearningDB:
         self.trajectory_conn = sqlite3.connect(db_path)
         self.trajectory_cursor = self.trajectory_conn.cursor()
         
-        self.state_conn = sqlite3.connect(db_path.replace('.db', '_states.db'))
+        self.state_conn = sqlite3.connect(os.path.join(os.path.dirname(db_path), 'learning_states.db'))
         self.state_cursor = self.state_conn.cursor()
         
-        self.rule_conn = sqlite3.connect(db_path.replace('.db', '_rules.db'))
+        self.rule_conn = sqlite3.connect(os.path.join(os.path.dirname(db_path), 'learning_rules.db'))
         self.rule_cursor = self.rule_conn.cursor()
-        
         # Create trajectory table
         self.trajectory_cursor.execute("""
             CREATE TABLE IF NOT EXISTS trajectories (
