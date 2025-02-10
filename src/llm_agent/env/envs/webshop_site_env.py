@@ -137,7 +137,7 @@ class WebShopEnv(BaseEnv):
   def __init__(self, config):
     super().__init__(config)
     self.sessions = {}
-    self.id = config['problem_id']
+    self.id = "fixed_" + config['problem_id']
     # Run reset once to get the goal
     obs, info = self.reset()
     self.goal = obs.split('Instruction: ')[1].split('[')[0].strip()
@@ -239,7 +239,7 @@ class WebShopEnv(BaseEnv):
         If the last observation does not have a [button] or [search], then use the actions indicated as available by the previous observation. 
         Never use the [Next >] or [< Prev] buttons. Never use the [Back to Search] button.
         Never click on [Description], [Features], [Reviews], or [Attributes].
-        Only search once in the trajectory: first search, then click on an item, then click on any necessary options, then buy. Never go back or search again or click on any other buttons.
+        Only search once in the trajectory: first search, then click on an item, then click on any options, then buy. Never go back or search again or click on any other buttons.
         Follow the rules given no matter what--if you realize the product is not 100% perfect, you should still buy it since you get partial credit, but you get no credit if you don't follow the rules. This is critically important.
       """.strip("\n")
     }
