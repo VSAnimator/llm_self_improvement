@@ -63,6 +63,12 @@ def config(env, gym_env_name):
             'name': gym_env_name,
             'max_steps': 10,
         })
+    elif env == 'intercode':
+        env_config.update({
+            'type': 'InterCodeEnv',
+            'name': 'intercode',
+            'max_steps': 10,
+        })
     else:
         raise ValueError(f"Invalid environment name: {env}")
     
@@ -87,6 +93,9 @@ def env(config):
     elif config['benchmark']['name'] == 'alfworld_test':
         from llm_agent.env.envs.alfworld_env import AlfWorldEnv
         return AlfWorldEnv(config['benchmark'])
+    elif config['benchmark']['name'] == 'intercode':
+        from llm_agent.env.envs.intercode_env import InterCodeEnv
+        return InterCodeEnv(config['benchmark'])
     else:
         raise ValueError(f"Invalid environment name: {config['benchmark']['name']}")
 
@@ -102,7 +111,7 @@ def test_config(agent_type):
     }
 
 def test_agent(real_llm, db, env, test_config):
-    if test_config.get('agent_type', 'react') == 'trad' or test_config.get('benchmark', '') == 'webshop':
+    if test_config.get('agent_type', 'react') == 'trad' or test_config.get('benchmark', '') == 'webshop' or test_config.get('benchmark', '') == 'intercode':
         test_config['give_action_space'] = True
     if test_config.get('agent_type', 'react') == 'react':
         return ReAct(real_llm, db, env, test_config)
