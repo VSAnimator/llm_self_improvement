@@ -184,7 +184,8 @@ class BaseAgent:
         conversation.append({"role": "system", "content": system_prompt})
         # Add conversation history
         conversation.append({"role": "user", "content": self._create_conversation(["goal", "plan", "observation", "reasoning", "action"], available_actions) + "reasoning: "})
-        reasoning = await self.llm.generate_chat(conversation)
+        stop = None if self.config.get("multiline_reasoning", False) else ["\n"]
+        reasoning = await self.llm.generate_chat(conversation, stop=stop)
         self.reasoning_history.append(reasoning)
         return reasoning
 
@@ -205,7 +206,8 @@ class BaseAgent:
         conversation.append({"role": "user", "content": self._create_conversation(["goal", "plan", "observation", "reasoning", "action"], available_actions) + "action: "})
         
         # Select action
-        action = await self.llm.generate_chat(conversation)
+        stop = None if self.config.get("multiline_action", False) else ["\n"]
+        action = await self.llm.generate_chat(conversation, stop=stop)
         action = Action(text=action)
         self.action_history.append(action)
 
