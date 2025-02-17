@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Any, Callable, Type
 import threading
 
 import openai
+import fcntl
 
 TRACE_FILE = "trace_log.json"
 
@@ -96,19 +97,11 @@ class BaseBackend:
 
     @staticmethod
     def _log_trace(trace_entry: Dict[str, Any]) -> None:
-        """Logs trace information to a JSON file."""
-        if not os.path.isfile(TRACE_FILE):
-            with open(TRACE_FILE, "w", encoding="utf-8") as f:
-                json.dump([trace_entry], f, ensure_ascii=False, indent=2)
-        else:
-            try:
-                with open(TRACE_FILE, "r", encoding="utf-8") as f:
-                    trace_data = json.load(f)
-            except json.JSONDecodeError:
-                trace_data = []
-            trace_data.append(trace_entry)
-            with open(TRACE_FILE, "w", encoding="utf-8") as f:
-                json.dump(trace_data, f, ensure_ascii=False, indent=2)
+        """Logs trace information with file locking for safety."""
+        with open(TRACE_FILE, "a", encoding="utf-8") as f:
+            fcntl.flock(f, fcntl.LOCK_EX)  # Acquire log file lock
+            f.write(json.dumps(trace_entry, ensure_ascii=False) + "\n")
+            fcntl.flock(f, fcntl.LOCK_UN)  # Release log file lock
 
 
 class SGLangBackend(BaseBackend):
