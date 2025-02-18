@@ -3,7 +3,7 @@ from intercode.envs import (
 )
 from typing import Dict, List
 from intercode.assets import sql_build_docker, sql_image_name, sql_test_data
-
+import time
 
 def preprocess_ctf(record: Dict) -> List:
     cmds = [f"cd /ctf/{record['task_id']}"]
@@ -11,14 +11,15 @@ def preprocess_ctf(record: Dict) -> List:
         cmds.append(record["setup"])
     return cmds
 
-def preprocess_sql(record: Dict) -> List:
-    db = record["db"]
-    return [f"use {db}"]
+def preprocess_sql(record: Dict) -> str:
+    print("Record", record)
+    db = record['extra']["db"]
+    return f"use {db}"
 
 base_path = "/mnt/ssd/intercode/intercode_github/data/"
 DEMO_MAP = {
     "bash": {"env": BashEnv, "image_name": "intercode-nl2bash", "data_path": base_path + "nl2bash/nl2bash_fs_1.json"},
-    "sql": {"env": SqlEnv, "image_name": "docker-env-sql_ic_ctr", "data_path": base_path + "sql/bird/ic_bird.json", "preprocess": preprocess_sql},
+    "sql": {"env": SqlEnv, "image_name": "docker-env-sql-ic-bird", "data_path": base_path + "sql/bird/ic_bird.json", "preprocess": preprocess_sql},
     "ctf": {"env": CTFEnv, "image_name": "intercode-ctf", "data_path": base_path + "ctf/ic_ctf.json", "preprocess": preprocess_ctf},
 }
 
@@ -30,27 +31,47 @@ class InterCodeSqlEnv(BaseEnv):
         self.max_steps = config.get('max_steps', 100)
         self.problem_id = config.get('problem_id', 0)
         demo = "sql"
-        '''
+
         image_name = DEMO_MAP[demo]["image_name"]
         data_path = DEMO_MAP[demo]["data_path"] if "data_path" in DEMO_MAP[demo] else None
-        preprocess = None #DEMO_MAP[demo]["preprocess"] if "preprocess" in DEMO_MAP[demo] else None
-        '''
+        self.env = DEMO_MAP[demo]["env"](image_name, data_path=data_path, verbose=True, preprocess=preprocess_sql)
+        self.data_path = data_path
 
-        #self.env = DEMO_MAP[demo]["env"](image_name, data_path=data_path, verbose=True)
-        sql_build_docker()
-        self.env = SqlEnv(sql_image_name, data_path=sql_test_data, verbose=True)
+        #sql_build_docker()
+        #self.env = SqlEnv(sql_image_name, data_path=sql_test_data, verbose=True, preprocess=preprocess_sql)
+        #self.data_path = sql_test_data
         self.category = "sql"
         self.id = self.problem_id
 
     def reset(self):
-        self.env.reset(self.problem_id)
+        x = self.env.reset(self.problem_id)
+        print("Reset", x)
+        #time.sleep(30)
         obs = self.env.observation
+        # If obs is none, get it from the data path
+        if obs is None:
+            if self.data_path.endswith(".json"):
+                import json
+                with open(self.data_path, 'r') as f:
+                    data = json.load(f)
+                    obs = data[self.problem_id]['query']
+            else:
+                import csv
+                with open(self.data_path, 'r') as f:
+                    reader = csv.reader(f)
+                    obs = list(reader)[self.problem_id + 1][0]
         self.goal = obs
         info = {}
+        # Wait for the environment to be ready
+        #time.sleep(30)
+        print("Observation", obs)
         return obs, info
 
     def step(self, action):
         action = action.strip()
+        # Remove "execute[ " and "]" from the action
+        if action.startswith("execute["):
+            action = action[len("execute["):-1]
         obs, reward, done, info = self.env.step(action)
         if obs is None:
             obs = "No output"
@@ -62,12 +83,11 @@ class InterCodeSqlEnv(BaseEnv):
             "description": """
                 Your action space is outputting valid mysql commands to solve the sql task.
                 You will be evaluated on the Latest Standard Output.
-                If you believe the latest observation is the final answer, you can complete the task by running 'submit' BY ITSELF WITH NO OTHER TEXT.
-                Otherwise, you can run any valid mysql command. Do not wrap your text with ```sql'''. You can run multiple commands in one action, separated by semicolons.
-                You have up to 10 iterations of interaction to obtain a solution.
-                The environment will evaluate your solution and provide a score between 0.0 and 1.0.
-                There is no post-processing of your output. The command you provide will be used as-is.
+                If you believe the latest observation is the final answer, you can complete the task by running 'submit' by itself.
+                You have 10 iterations to solve the task.
+                Follow the syntax and logical flow from the provided examples exactly.
             """.strip()
+
         }
 
     def get_available_actions(self, info):

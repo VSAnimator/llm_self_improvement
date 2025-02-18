@@ -67,6 +67,14 @@ def config(env, gym_env_name):
         env_config.update({
             'type': 'InterCodeEnv',
             'name': 'intercode',
+            'split': 'test',
+            'max_steps': 10,
+        })
+    elif env == 'intercode_sql':
+        env_config.update({
+            'type': 'InterCodeSqlEnv',
+            'name': 'intercode_sql',
+            'split': 'test',
             'max_steps': 10,
         })
     else:
@@ -96,6 +104,9 @@ def env(config):
     elif config['benchmark']['name'] == 'intercode':
         from llm_agent.env.envs.intercode_env import InterCodeEnv
         return InterCodeEnv(config['benchmark'])
+    elif config['benchmark']['name'] == 'intercode_sql':
+        from llm_agent.env.envs.intercode_sql_env import InterCodeSqlEnv
+        return InterCodeSqlEnv(config['benchmark'])
     else:
         raise ValueError(f"Invalid environment name: {config['benchmark']['name']}")
 
@@ -111,7 +122,7 @@ def test_config(agent_type):
     }
 
 def test_agent(real_llm, db, env, test_config):
-    if test_config.get('agent_type', 'react') == 'trad' or test_config.get('benchmark', '') == 'webshop' or test_config.get('benchmark', '') == 'intercode':
+    if test_config.get('agent_type', 'react') == 'trad' or test_config.get('benchmark', '') == 'webshop' or test_config.get('benchmark', '') == 'intercode' or test_config.get('benchmark', '') == 'intercode_sql':
         test_config['give_action_space'] = True
     if test_config.get('agent_type', 'react') == 'react':
         return ReAct(real_llm, db, env, test_config)
@@ -219,6 +230,7 @@ async def main():
     parser.add_argument('--parallel', type=int, default=1, help='Number of threads to use')
     parser.add_argument('--num_ic', type=int, default=3, help='Number of in-context examples to use')
     parser.add_argument('--start_task', type=int, default=0, help='Task to start from')
+    parser.add_argument('--multiline', action='store_true', help='Allow multiline actions')
     args = parser.parse_args()
 
     async def process_task(i, args, environment=None):
@@ -242,6 +254,8 @@ async def main():
         default_db_path = f"{log_dir}/learning.db"
         db_path = args.db_path if args.db_path else default_db_path
         learning_db = db(db_path=db_path)
+        agent_config['multiline_action'] = args.multiline
+        agent_config['multiline_reasoning'] = args.multiline
         agent = test_agent(llm, learning_db, environment, agent_config)
         if args.run_offline_rules:
             # Only need to run offline rules once
