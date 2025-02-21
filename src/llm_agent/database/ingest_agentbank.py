@@ -7,11 +7,11 @@ from llm_agent.in_context.alfworld_fewshots import get_task_type
 
 # Load the dataset
 dataset_name = "Solaris99/AgentBank"
-for subset_name in ['alfworld']:
+for subset_name in ['intercode_sql']:
     dataset = load_dataset(dataset_name, subset_name)
 
     # Now ingest the dataset
-    db = LearningDB("./data/agentbank_alfworld/learning.db")
+    db = LearningDB(f"./data/agentbank_{subset_name}/learning.db")
     
     # Process each split
     for split in dataset.keys():
@@ -34,15 +34,28 @@ for subset_name in ['alfworld']:
                     # Otherwise its the first message from the agent
                     else:
                         # Split on newline to separate initial observation from goal
-                        parts = conv['value'].split('\n')
-                        obs_list.append(parts[0])
-                        goal = parts[2].replace('Your task is to:', '').strip()
+                        if subset_name == 'alfworld':
+                            parts = conv['value'].split('\n')
+                            obs_list.append(parts[0])
+                            goal = parts[2].replace('Your task is to:', '').strip()
+                        else:
+                            obs_list.append(conv['value'])
+                            goal = conv['value']
+
                 elif conv['from'] == 'gpt':
                     # Extract thought and action from GPT messages
                     message = conv['value']
                     thought = None
                     action = None
                     
+                    # Remove all newline characters except for the one right before Action:
+                    message = message.replace('\n', '')
+                    message = message.replace('Action:', '\nAction:')
+
+                    if subset_name == 'intercode_sql':
+                        message = message.replace('```sql', '')
+                        message = message.replace('```', '')
+
                     # Split on newline to separate thought from action
                     parts = message.split('\n')
                     for part in parts:
@@ -61,8 +74,11 @@ for subset_name in ['alfworld']:
                         act_list.append("")
 
             # The plan is the first sentence of the first thought
-            plan = thought_list[0].split('.')[0] + "."
-            thought_list[0] = thought_list[0].replace(plan, '')[1:].strip()
+            if subset_name == 'alfworld':
+                plan = thought_list[0].split('.')[0] + "."
+                thought_list[0] = thought_list[0].replace(plan, '')[1:].strip()
+            else:
+                plan = ""
 
             # Put in one last observation indicating task success
             obs_list.append("Task completed successfully.")
@@ -74,7 +90,10 @@ for subset_name in ['alfworld']:
             # Assume success if trajectory completed (give reward of 1 at end)
             rewards = [0] * (len(act_list)-1) + [1]
 
-            category = get_task_type(goal)
+            if subset_name == 'alfworld':
+                category = get_task_type(goal)
+            else:
+                category = "sql"
             
             # Store trajectory
             try:
