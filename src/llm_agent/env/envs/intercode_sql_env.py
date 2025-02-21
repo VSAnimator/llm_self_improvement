@@ -41,6 +41,27 @@ class InterCodeSqlEnv(BaseEnv):
         #self.env = SqlEnv(sql_image_name, data_path=sql_test_data, verbose=True, preprocess=preprocess_sql)
         #self.data_path = sql_test_data
         self.category = "sql"
+        # Okay in mapping the problem id to the actual problem id we need a random permutation of the problem ids
+        num_entries = None
+        if self.data_path.endswith(".json"):
+            import json
+            with open(self.data_path, 'r') as f:
+                data = json.load(f)
+                num_entries = len(data)
+        else:
+            import csv
+            with open(self.data_path, 'r') as f:
+                reader = csv.reader(f)
+                num_entries = len(list(reader)) - 1
+        # Define the permutation
+        import random
+        random.seed(0)
+        problem_ids = list(range(num_entries))
+        random.shuffle(problem_ids)
+        # Select the problem id
+        if self.problem_id >= num_entries:
+            raise ValueError(f"Problem id {self.problem_id} is out of range for train split")
+        self.problem_id = problem_ids[self.problem_id]
         self.id = self.problem_id
 
     def reset(self):
@@ -48,6 +69,7 @@ class InterCodeSqlEnv(BaseEnv):
         print("Reset", x)
         #time.sleep(30)
         obs = self.env.observation
+        gold = None
         # If obs is none, get it from the data path
         if obs is None:
             if self.data_path.endswith(".json"):
@@ -55,16 +77,20 @@ class InterCodeSqlEnv(BaseEnv):
                 with open(self.data_path, 'r') as f:
                     data = json.load(f)
                     obs = data[self.problem_id]['query']
+                    gold = data[self.problem_id]['gold']
             else:
                 import csv
                 with open(self.data_path, 'r') as f:
                     reader = csv.reader(f)
                     obs = list(reader)[self.problem_id + 1][0]
+                    gold = list(reader)[self.problem_id + 1][1]
         self.goal = obs
+        if gold is not None:
+            self.goal += f"\nHere is the gold answer: {gold}. Don't directly use this command, your goal is to look as though you are solving the problem yourself."
         info = {}
         # Wait for the environment to be ready
         #time.sleep(30)
-        print("Observation", obs)
+        obs = repr(obs)
         return obs, info
 
     def step(self, action):
@@ -75,6 +101,7 @@ class InterCodeSqlEnv(BaseEnv):
         obs, reward, done, info = self.env.step(action)
         if obs is None:
             obs = "No output"
+        obs = repr(obs)
         return obs, reward, done, info
 
     def get_action_space(self):

@@ -179,6 +179,9 @@ async def run_env(agent, env, log_file, num_attempts):
                     valid_actions = None
                 # Choose action
                 selected_action = await agent.choose_action(obs, valid_actions)
+                if steps == 0:
+                    f.write(f"Goal: {agent.goal}\n")
+                    f.write(f"Plan: {agent.plan}\n")
                 f.write(f"Reasoning: {agent.reasoning_history[-1]}\n")
                 f.write(f"Selected action: {selected_action}\n")
                 # Take step in env

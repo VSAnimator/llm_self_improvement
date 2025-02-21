@@ -54,7 +54,7 @@ class InterCodeEnv(BaseEnv):
         obs, reward, done, info = self.env.step(action)
         return obs, reward, done, info
 
-    def get_action_space_v1(self):
+    def get_action_space(self):
         return {
             "type": "string",
             "description": """
@@ -68,7 +68,7 @@ class InterCodeEnv(BaseEnv):
             """.strip()
         }
     
-    def get_action_space(self):
+    def get_action_space_new(self):
         return {
             "type": "string",
             "description": """
