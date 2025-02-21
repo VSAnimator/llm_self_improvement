@@ -77,6 +77,12 @@ def config(env, gym_env_name):
             'split': 'test',
             'max_steps': 10,
         })
+    elif env == 'animation':
+        env_config.update({
+            'type': 'AnimationEnv',
+            'name': 'animation',
+            'max_steps': 10,
+        })
     else:
         raise ValueError(f"Invalid environment name: {env}")
     
@@ -107,6 +113,9 @@ def env(config):
     elif config['benchmark']['name'] == 'intercode_sql':
         from llm_agent.env.envs.intercode_sql_env import InterCodeSqlEnv
         return InterCodeSqlEnv(config['benchmark'])
+    elif config['benchmark']['name'] == 'animation':
+        from llm_agent.env.envs.animation_env import AnimationEnv
+        return AnimationEnv(config['benchmark'])
     else:
         raise ValueError(f"Invalid environment name: {config['benchmark']['name']}")
 
