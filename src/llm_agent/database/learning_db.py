@@ -400,7 +400,7 @@ class LearningDB:
 
         # When the database is of size divisible by 100, copy the folder
         curr_count = self.trajectory_cursor.execute("SELECT COUNT(*) FROM trajectories").fetchone()[0]
-        if curr_count % 100 == 0:
+        if curr_count % 100 == 0 or (curr_count < 100 and curr_count % 10 == 0):
             # Get the database directory and filename
             db_dir = os.path.dirname(self.db_path)
             db_name = os.path.basename(self.db_path)

@@ -14,7 +14,7 @@ print("Folders containing txt files:")
 average_success_rates = {}
 cumulative_success_rates = {}
 for folder in sorted(txt_folders):
-    if "intercode" not in folder or "backups" in folder:
+    if "webshop" not in folder or "backups" in folder:
         continue
     print(folder)
     # Get all episode files
