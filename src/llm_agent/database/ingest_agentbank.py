@@ -18,7 +18,7 @@ for subset_name in ['intercode_sql']:
         # Process each trajectory in the split
         for i, trajectory in enumerate(dataset[split]):
             conversations = trajectory['conversations']
-            
+
             # Extract observations, thoughts/reasoning, and actions
             obs_list = []
             thought_list = []  
@@ -94,6 +94,10 @@ for subset_name in ['intercode_sql']:
                 category = get_task_type(goal)
             else:
                 category = "sql"
+
+            if len(obs_list) - 1 != len(thought_list) or len(obs_list) - 1 != len(act_list):
+                print(f"Skipping episode {i} in split {split} because of length mismatch")
+                continue
             
             # Store trajectory
             try:
