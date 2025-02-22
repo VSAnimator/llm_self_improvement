@@ -16,6 +16,14 @@ def ingest_animation_fewshots():
         # Convert obs_list and act_list to Observation and Action objects
         obs_list = [Observation(o) for o in obs_list]
         act_list = [Action(a) for a in act_list]
+
+        print(f"Ingesting trajectory {i} with goal {goal}")
+        print("Observations:", obs_list)
+        print("Reasoning:", thought_list)
+        print("Actions:", act_list)
+        print("Rewards:", rewards)
+
+        obs_list.append(Observation("You have successfully completed the task."))
         
         # Store trajectory using store_episode
         db.store_episode(
@@ -23,7 +31,12 @@ def ingest_animation_fewshots():
             goal=goal,
             category="None",
             observations=obs_list,
+            reasoning=thought_list,
             actions=act_list,
             rewards=rewards,
-            thoughts=thought_list
+            plan=None,
+            reflection=None,
+            summary=None
         )
+
+ingest_animation_fewshots()
