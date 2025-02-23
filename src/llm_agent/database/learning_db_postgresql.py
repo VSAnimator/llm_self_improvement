@@ -126,28 +126,6 @@ class LearningDB:
             )
         )
 
-    def _create_rule_table(self):
-        """
-        Create the rules table with vector columns for embeddings.
-        """
-        self.cursor.execute(
-            sql.SQL(
-                f"""
-                CREATE TABLE IF NOT EXISTS rules (
-                    id SERIAL PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    name_embedding vector({self.embedding_dim}),
-                    rule_content TEXT NOT NULL,
-                    rule_embedding vector({self.embedding_dim}),
-                    context TEXT,
-                    context_embedding vector({self.embedding_dim}),
-                    trajectory_ids TEXT,
-                    state_ids TEXT
-                )
-                """
-            )
-        )
-
     def store_episode(
         self,
         environment_id: str,
@@ -180,64 +158,6 @@ class LearningDB:
         self._insert_states(trajectory_id, observations, actions, reasoning)
 
         # todo: is there a need for backing up?
-
-    def store_rule(
-        self,
-        name: str,
-        rule_content: str,
-        context: str,
-        trajectory_ids: List[int],
-        state_ids: List[int],
-    ):
-        """
-        Store a rule in the PostgreSQL 'rules' table with vector embeddings (pgvector).
-
-        Args:
-            name: Name of the rule
-            rule_content: Full text/content of the rule
-            context: Context text (optional) for the rule
-            trajectory_ids: List of trajectory IDs associated with the rule
-            state_ids: List of state IDs associated with the rule
-
-        Returns:
-            The newly inserted rule's primary key (id).
-        """
-        # Encode embeddings as lists of floats for pgvector
-        name_embedding = self.model.encode(name).tolist()
-        rule_embedding = self.model.encode(rule_content).tolist()
-        context_embedding = self.model.encode(context).tolist()
-
-        trajectory_ids_str = str(trajectory_ids)
-        state_ids_str = str(state_ids)
-
-        self.cursor.execute(
-            """
-            INSERT INTO rules (
-                name, name_embedding,
-                rule_content, rule_embedding,
-                context, context_embedding,
-                trajectory_ids,
-                state_ids
-            )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING id
-            """,
-            (
-                name,
-                name_embedding,
-                rule_content,
-                rule_embedding,
-                context,
-                context_embedding,
-                trajectory_ids_str,
-                state_ids_str,
-            ),
-        )
-        # Fetch the newly inserted rule ID
-        rule_id = self.cursor.fetchone()[0]
-        self.conn.commit()
-
-        return rule_id
 
     def _insert_trajectory(
         self,
@@ -530,50 +450,6 @@ class LearningDB:
         indices = [ids.index(tid) for tid in trajectory_ids]
         return trajectory_ids, indices
 
-    def get_rules(
-        self, key_types: List[str], keys: List[str], k: int = 5
-    ) -> List[Dict]:
-        # If key_types is an empty list, search for all rules
-        if not key_types:
-            self.cursor.execute(
-                "SELECT id, name, rule_content, context, trajectory_ids, state_ids FROM rules"
-            )
-            rules = self.cursor.fetchall()
-            rule_ids = [rule[0] for rule in rules]
-        else:
-            # Otherwise, use embeddings to search for rules
-            rule_ids, rule_distances = self._get_top_k_by_keys(key_types, keys, k)
-            self.cursor.execute(
-                "SELECT id, name, rule_content, context, trajectory_ids, state_ids FROM rules WHERE id IN ({})".format(
-                    ", ".join(map(str, rule_ids))
-                )
-            )
-            rules = self.cursor.fetchall()
-
-        # Turn rules into a list of dictionaries
-        rules = [dict(zip(self.cursor.description, rule)) for rule in rules]
-
-        # Let's also fetch corresponding trajectories and states
-        for rule in rules:
-            trajectory_ids = rule["trajectory_ids"]
-            state_ids = rule["state_ids"]
-            for trajectory_id in trajectory_ids:
-                self.trajectory_cursor.execute(
-                    "SELECT id, environment_id, goal, category, observations, reasoning, actions, rewards, plan, reflection, summary FROM trajectories WHERE id = %s",
-                    (trajectory_id,),
-                )
-                trajectories = self.trajectory_cursor.fetchall()
-                rule["trajectories"] = trajectories
-            for state_id in state_ids:
-                self.state_cursor.execute(
-                    "SELECT id, state, reasoning, action, next_state FROM states WHERE id = %s",
-                    (state_id,),
-                )
-                states = self.state_cursor.fetchall()
-                rule["states"] = states
-
-        return rules
-
     def get_similar_sets(self, n: int, k: int):
         """
         Get similar sets of episodes by finding trajectories with similar goals using vector search.
@@ -690,23 +566,6 @@ class LearningDB:
                 contrastive_pairs.append((success_entry, failure_entry))
 
         return contrastive_pairs
-
-    def _get_rules_for_id(self, trajectory_id: int) -> List[Dict]:
-        """
-        Helper function to get rules for a specific trajectory ID from PostgreSQL.
-        """
-
-        self.cursor.execute(
-            """
-            SELECT name, rule_content, context
-            FROM rules
-            WHERE trajectory_ids LIKE %s
-            """,
-            (f"%{trajectory_id}%",),
-        )
-        rows = self.cursor.fetchall()
-
-        return [{"name": r[0], "content": r[1], "context": r[2]} for r in rows]
 
     def _exact_match(self, outcome, key: str, k: int):
 
@@ -1067,3 +926,147 @@ class LearningDB:
         ]
 
         return success_entries, failure_entries
+
+    ############################################################
+    # implementation for rules to be tested
+
+    def _create_rule_table(self):
+        """
+        Create the rules table with vector columns for embeddings.
+        """
+        self.cursor.execute(
+            sql.SQL(
+                f"""
+                CREATE TABLE IF NOT EXISTS rules (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    name_embedding vector({self.embedding_dim}),
+                    rule_content TEXT NOT NULL,
+                    rule_embedding vector({self.embedding_dim}),
+                    context TEXT,
+                    context_embedding vector({self.embedding_dim}),
+                    trajectory_ids TEXT,
+                    state_ids TEXT
+                )
+                """
+            )
+        )
+
+    def store_rule(
+        self,
+        name: str,
+        rule_content: str,
+        context: str,
+        trajectory_ids: List[int],
+        state_ids: List[int],
+    ):
+        """
+        Store a rule in the PostgreSQL 'rules' table with vector embeddings (pgvector).
+
+        Args:
+            name: Name of the rule
+            rule_content: Full text/content of the rule
+            context: Context text (optional) for the rule
+            trajectory_ids: List of trajectory IDs associated with the rule
+            state_ids: List of state IDs associated with the rule
+
+        Returns:
+            The newly inserted rule's primary key (id).
+        """
+        # Encode embeddings as lists of floats for pgvector
+        name_embedding = self.model.encode(name).tolist()
+        rule_embedding = self.model.encode(rule_content).tolist()
+        context_embedding = self.model.encode(context).tolist()
+
+        trajectory_ids_str = str(trajectory_ids)
+        state_ids_str = str(state_ids)
+
+        self.cursor.execute(
+            """
+            INSERT INTO rules (
+                name, name_embedding,
+                rule_content, rule_embedding,
+                context, context_embedding,
+                trajectory_ids,
+                state_ids
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+            """,
+            (
+                name,
+                name_embedding,
+                rule_content,
+                rule_embedding,
+                context,
+                context_embedding,
+                trajectory_ids_str,
+                state_ids_str,
+            ),
+        )
+        # Fetch the newly inserted rule ID
+        rule_id = self.cursor.fetchone()[0]
+        self.conn.commit()
+
+        return rule_id
+
+    def get_rules(
+        self, key_types: List[str], keys: List[str], k: int = 5
+    ) -> List[Dict]:
+        # If key_types is an empty list, search for all rules
+        if not key_types:
+            self.cursor.execute(
+                "SELECT id, name, rule_content, context, trajectory_ids, state_ids FROM rules"
+            )
+            rules = self.cursor.fetchall()
+            rule_ids = [rule[0] for rule in rules]
+        else:
+            # Otherwise, use embeddings to search for rules
+            rule_ids, rule_distances = self._get_top_k_by_keys(key_types, keys, k)
+            self.cursor.execute(
+                "SELECT id, name, rule_content, context, trajectory_ids, state_ids FROM rules WHERE id IN ({})".format(
+                    ", ".join(map(str, rule_ids))
+                )
+            )
+            rules = self.cursor.fetchall()
+
+        # Turn rules into a list of dictionaries
+        rules = [dict(zip(self.cursor.description, rule)) for rule in rules]
+
+        # Let's also fetch corresponding trajectories and states
+        for rule in rules:
+            trajectory_ids = rule["trajectory_ids"]
+            state_ids = rule["state_ids"]
+            for trajectory_id in trajectory_ids:
+                self.trajectory_cursor.execute(
+                    "SELECT id, environment_id, goal, category, observations, reasoning, actions, rewards, plan, reflection, summary FROM trajectories WHERE id = %s",
+                    (trajectory_id,),
+                )
+                trajectories = self.trajectory_cursor.fetchall()
+                rule["trajectories"] = trajectories
+            for state_id in state_ids:
+                self.state_cursor.execute(
+                    "SELECT id, state, reasoning, action, next_state FROM states WHERE id = %s",
+                    (state_id,),
+                )
+                states = self.state_cursor.fetchall()
+                rule["states"] = states
+
+        return rules
+
+    def _get_rules_for_id(self, trajectory_id: int) -> List[Dict]:
+        """
+        Helper function to get rules for a specific trajectory ID from PostgreSQL.
+        """
+
+        self.cursor.execute(
+            """
+            SELECT name, rule_content, context
+            FROM rules
+            WHERE trajectory_ids LIKE %s
+            """,
+            (f"%{trajectory_id}%",),
+        )
+        rows = self.cursor.fetchall()
+
+        return [{"name": r[0], "content": r[1], "context": r[2]} for r in rows]
