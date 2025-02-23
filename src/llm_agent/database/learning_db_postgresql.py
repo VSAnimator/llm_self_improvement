@@ -424,7 +424,7 @@ class LearningDB:
         for col_i in range(len(embedding_columns)):
             col_distances = all_distances[col_i]
             col_neighbors = all_neighbors[col_i]
-            worst_distance = col_distances[-1] if len(col_distances) > 0 else 0.0
+            worst_distance = col_distances[-1] if len(col_distances) > 0 else 1.0
 
             for nb, dist in zip(col_neighbors, col_distances):
                 if nb not in candidates:
@@ -440,9 +440,7 @@ class LearningDB:
             nb: float(np.mean(dist_list)) for nb, dist_list in candidates.items()
         }
 
-        sorted_candidates = sorted(
-            avg_distances_dict.items(), key=lambda x: x[1], reverse=True
-        )
+        sorted_candidates = sorted(avg_distances_dict.items(), key=lambda x: x[1])
         top_k = sorted_candidates[:k]
 
         top_k_neighbors = [nb for nb, _ in top_k]
@@ -512,25 +510,23 @@ class LearningDB:
         return [int(i) for i in I], list(D)
 
     def _filter_by_outcome(self, ids: list[int], outcome: str):
-        # todo, the tag "winning" is not general
-        winning_value = 1 if outcome == "winning" else 0
+        # Use float values for the winning/losing outcomes
+        # so that '[1.0]' matches actual JSON array elements like 1.0
+        winning_value = 1.0 if outcome == "winning" else 0.0
 
-        sql = f"""
-        SELECT id
-        FROM trajectories
-        WHERE id = ANY(%s)
-        AND CASE
-                WHEN jsonb_array_length(rewards::jsonb) > 0
-                    AND (rewards::jsonb ->> (jsonb_array_length(rewards::jsonb) - 1))::float = 1.0
-                THEN 1
-                ELSE 0
-            END = {winning_value}
+        sql = """
+            SELECT id
+            FROM trajectories
+            WHERE id = ANY(%s)
+            AND rewards::jsonb @> %s::jsonb
         """
-        self.cursor.execute(sql, (ids,))
-        rows = self.cursor.fetchall()  # list of (id,)
+        self.cursor.execute(sql, (ids, json.dumps([winning_value])))
+
+        rows = self.cursor.fetchall()  # returns list of (id, )
+
         trajectory_ids = [r[0] for r in rows]
 
-        # Also get indices of each id in the original 'ids' list
+        # Convert those IDs into indices from the original 'ids' list
         indices = [ids.index(tid) for tid in trajectory_ids]
         return trajectory_ids, indices
 
@@ -842,8 +838,8 @@ class LearningDB:
                     trajectory_ids, outcome
                 )
                 trajectory_distances = [trajectory_distances[i] for i in indices]
-                # Sort by distances, high to low
-                sorted_indices = np.argsort(trajectory_distances)[::-1]
+                # Sort by distances, low to high
+                sorted_indices = np.argsort(trajectory_distances)
                 trajectory_ids = [trajectory_ids[i] for i in sorted_indices]
                 trajectory_distances = [trajectory_distances[i] for i in sorted_indices]
 
@@ -888,7 +884,8 @@ class LearningDB:
                             state_embedding = row[embedding_col_mapping[state_key_type]]
                             if state_embedding:
                                 elem_distances.append(
-                                    np.dot(
+                                    1
+                                    - np.dot(
                                         np.array(
                                             ast.literal_eval(state_embedding),
                                             dtype=np.float32,
@@ -897,7 +894,7 @@ class LearningDB:
                                     )
                                 )
                             else:
-                                elem_distances.append(-1.0)
+                                elem_distances.append(1.0)
 
                         # Aggregate distances for each state row
                         state_row_distances.append(np.mean(elem_distances))
@@ -912,7 +909,7 @@ class LearningDB:
                     trajectory_distances[i] + state_distances[i]
                     for i in range(len(trajectory_distances))
                 ]
-                ranked_indices = np.argsort(summed_distances)[::-1]
+                ranked_indices = np.argsort(summed_distances)
                 trajectory_ids = [trajectory_ids[i] for i in ranked_indices]
                 state_ids = [state_ids[i] for i in ranked_indices]
                 trajectory_distances = [trajectory_distances[i] for i in ranked_indices]
