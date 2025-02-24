@@ -21,6 +21,7 @@ from llm_agent.agent.agents import (
 from llm_agent.env.base_env import Observation, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
 from llm_agent.database.learning_db import LearningDB
+# from llm_agent.database.learning_db_postgresql import LearningDB
 import random
 import argparse
 import concurrent.futures
@@ -136,8 +137,6 @@ def test_agent(real_llm, db, env, test_config):
     else:
         raise ValueError(f"Invalid agent type: {test_config.get('agent_type', 'react')}")
 
-def db(db_path):
-    return LearningDB(db_path)
 
 async def run_env(agent, env, log_file, num_attempts):
     # Goal: run the agent on the environment and log the results
@@ -152,6 +151,7 @@ async def run_env(agent, env, log_file, num_attempts):
             agent.category = env.category
             agent.environment_id = env.id
             # Continue to logging
+            f.write(f"Goal: {agent.goal}\n")
             f.write(f"Initial observation: {obs}\n")
             obs = Observation(structured=obs)
             done = False
@@ -207,7 +207,7 @@ async def main():
     parser.add_argument('--llm', required=True, help='LLM model to use')
     parser.add_argument('--backend', default='litellm', help='Backend to use for LLM')
     parser.add_argument('--db_path', help='Optional custom path for learning database')
-    parser.add_argument('--db_name', help='Optional custom name for learning database')
+    parser.add_argument('--log_name', help='Optional custom name for learning database')
     parser.add_argument('--agent_type', required=True, help='Type of agent to use')
     parser.add_argument('--num_passes', type=int, default=1, help='Number of passes to run')
     parser.add_argument('--num_attempts', type=int, default=1)
@@ -231,8 +231,8 @@ async def main():
         agent_config['store_episodes'] = args.store_episodes
         agent_config['benchmark'] = args.env
         agent_config['num_ic'] = args.num_ic
-        db_name = args.db_name if args.db_name else "default"
-        log_dir = Path("logs/episodes") / f"{cfg['benchmark']['name']}/{cfg['benchmark']['split']}/{args.agent_type}/{args.llm}/{db_name}"
+        log_name = args.log_name if args.log_name else "default"
+        log_dir = Path("logs/episodes") / f"{cfg['benchmark']['name']}/{cfg['benchmark']['split']}/{args.agent_type}/{args.llm}/{log_name}"
         log_dir.mkdir(parents=True, exist_ok=True)
 
         log_file = log_dir / f"{i}.txt"
@@ -241,7 +241,7 @@ async def main():
         llm = real_llm(cfg)
         default_db_path = f"{log_dir}/learning.db"
         db_path = args.db_path if args.db_path else default_db_path
-        learning_db = db(db_path=db_path)
+        learning_db = LearningDB(db_path=db_path)
         agent = test_agent(llm, learning_db, environment, agent_config)
         if args.run_offline_rules:
             # Only need to run offline rules once
