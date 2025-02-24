@@ -14,7 +14,7 @@ print("Folders containing txt files:")
 average_success_rates = {}
 cumulative_success_rates = {}
 for folder in sorted(txt_folders):
-    if "alfworld" not in folder:
+    if "webshop" not in folder or "backups" in folder:
         continue
     print(folder)
     # Get all episode files
@@ -113,10 +113,14 @@ for folder in sorted(txt_folders):
     print("Avg final reward:", sum(final_rewards)/len(final_rewards))
 
     # Also print the average final reward over each segment of 100 episodes
-    '''
-    for i in range(0, len(final_rewards), 100):
-        print(f"Average final reward over {i+100} episodes:", np.mean(final_rewards[i:i+100]))
+    
+    for i in range(0, len(final_rewards), 10):
+        print(f"Average final reward over {i+10} episodes:", np.mean(final_rewards[:i+10]))
 
+    for i in range(0, len(final_rewards), 10):
+        print(f"Average final reward over {i+10} episodes:", np.mean((np.array(final_rewards[:i+10]) == 1)))
+
+    '''
     # Try a different version which is tracking squared hundreds
     for i in range(10):
         print(f"Average final reward over {i}th interval:", np.mean(np.array(final_rewards[(i**2)*50:((i+1)**2)*50])))

@@ -177,7 +177,6 @@ class BaseAgent:
         # Add system prompt
         system_prompt = f"You are an expert at reasoning about the most appropriate action to take towards achieving a goal. "
         if self.config.get("give_action_space", False):
-            print("Giving action space")
             system_prompt += "\nHere is your action space:\n" + self.action_space['description']
         if in_context_data:
             system_prompt += self._in_context_prompt(in_context_data)
@@ -198,7 +197,6 @@ class BaseAgent:
         # If this is a TRAD agent, we want to add the action space to the system prompt
         #print("Action space", self.action_space)
         if self.config.get("give_action_space", False):
-            print("Giving action space")
             system_prompt += "\nHere is your action space:\n" + self.action_space['description']
         if in_context_data:
             system_prompt += self._in_context_prompt(in_context_data)
