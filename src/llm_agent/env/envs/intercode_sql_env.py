@@ -85,7 +85,7 @@ class InterCodeSqlEnv(BaseEnv):
                     obs = list(reader)[self.problem_id + 1][0]
                     gold = list(reader)[self.problem_id + 1][1]
         self.goal = obs
-        if gold is not None:
+        if False and gold is not None:
             self.goal += f"\nHere is the gold answer: {gold}. Don't directly use this command, your goal is to look as though you are solving the problem yourself."
         info = {}
         # Wait for the environment to be ready
@@ -98,6 +98,15 @@ class InterCodeSqlEnv(BaseEnv):
         # Remove "execute[ " and "]" from the action
         if action.startswith("execute["):
             action = action[len("execute["):-1]
+        '''
+        if action.startswith("action: ") or action.startswith("Action: "):
+            action = action[len("action: "):]
+        # Also strip out ```sql and ``` from the action
+        if action.startswith("```sql"):
+            action = action[len("```sql"):]
+        if "```" in action:
+            action = action.split("```")[0]
+        '''
         obs, reward, done, info = self.env.step(action)
         if obs is None:
             obs = "No output"

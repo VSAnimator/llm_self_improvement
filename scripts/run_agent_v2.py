@@ -131,7 +131,7 @@ def test_config(agent_type):
     }
 
 def test_agent(real_llm, db, env, test_config):
-    if test_config.get('agent_type', 'react') == 'trad' or test_config.get('benchmark', '') == 'webshop' or test_config.get('benchmark', '') == 'intercode' or test_config.get('benchmark', '') == 'intercode_sql':
+    if test_config.get('agent_type', 'react') == 'trad' or test_config.get('benchmark', '') == 'webshop' or test_config.get('benchmark', '') == 'intercode' or test_config.get('benchmark', '') == 'intercode_sql' or test_config.get('benchmark', '') == 'animation':
         test_config['give_action_space'] = True
     if test_config.get('agent_type', 'react') == 'react':
         return ReAct(real_llm, db, env, test_config)
