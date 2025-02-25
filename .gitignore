@@ -74,6 +74,7 @@ checkpoints/
 runs/
 wandb/
 logs/
+*.txt
 
 # OS generated files
 .DS_Store
