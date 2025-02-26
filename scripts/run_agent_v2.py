@@ -2,10 +2,7 @@ import asyncio
 
 import yaml
 import os
-import shutil
 from pathlib import Path
-from types import SimpleNamespace
-from llm_agent.agent.base_agent_v2 import BaseAgent
 from llm_agent.agent.agents import (
     ReAct,
     Reflexion,
@@ -22,13 +19,14 @@ from llm_agent.env.base_env import Observation, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
 from llm_agent.database.learning_db import LearningDB
 # from llm_agent.database.learning_db_postgresql import LearningDB
-import random
+# from llm_agent.database.learning_db_chroma import LearningDB
 import argparse
-import concurrent.futures
 from tqdm import tqdm
 import multiprocessing
 import time
 import threading
+import traceback
+
 
 def config(env, gym_env_name):
     # Load default config first
@@ -224,7 +222,7 @@ async def run_env(agent, env, log_file, num_attempts):
                 break
 
 # Run the environment
-async def main():
+def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('--llm', required=True, help='LLM model to use')
@@ -286,6 +284,7 @@ async def main():
                 asyncio.run(process_task(i, args))  # Run the async function
             except Exception as e:
                 print(f"Error processing task {i}: {e}")
+                print(traceback.format_exc())
 
     def monitor_progress(task_queue, total_tasks):
         """Thread function to update tqdm every second."""
@@ -297,11 +296,12 @@ async def main():
                 time.sleep(1)  # Update every second
 
     for _ in range(args.num_passes):
-        with multiprocessing.Manager() as manager:
-            task_queue = manager.Queue()
-            for i in range(args.start_task, args.num_tasks):
-                task_queue.put(i)
-
+        task_queue = multiprocessing.Queue()
+        for i in range(args.start_task, args.num_tasks):
+            task_queue.put(i)
+        if args.parallel == 1:
+            worker(task_queue, args)
+        else:
             processes = []                
             for _ in range(args.parallel):
                 p = multiprocessing.Process(target=worker, args=(task_queue, args))
@@ -318,4 +318,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
