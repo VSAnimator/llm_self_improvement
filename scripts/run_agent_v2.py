@@ -83,6 +83,12 @@ def config(env, gym_env_name):
             'name': 'animation',
             'max_steps': 10,
         })
+    elif env == 'textcraft':
+        env_config.update({
+            'type': 'TextCraftEnv',
+            'name': 'textcraft',
+            'max_steps': 30,
+        })
     else:
         raise ValueError(f"Invalid environment name: {env}")
     
@@ -116,6 +122,9 @@ def env(config):
     elif config['benchmark']['name'] == 'animation':
         from llm_agent.env.envs.animation_env import AnimationEnv
         return AnimationEnv(config['benchmark'])
+    elif config['benchmark']['name'] == 'textcraft':
+        from llm_agent.env.envs.textcraft import TextCraftEnv
+        return TextCraftEnv(config['benchmark'])
     else:
         raise ValueError(f"Invalid environment name: {config['benchmark']['name']}")
 
@@ -131,7 +140,7 @@ def test_config(agent_type):
     }
 
 def test_agent(real_llm, db, env, test_config):
-    if test_config.get('agent_type', 'react') == 'trad' or test_config.get('benchmark', '') == 'webshop' or test_config.get('benchmark', '') == 'intercode' or test_config.get('benchmark', '') == 'intercode_sql' or test_config.get('benchmark', '') == 'animation':
+    if test_config.get('agent_type', 'react') == 'trad' or test_config.get('benchmark', '') == 'webshop' or test_config.get('benchmark', '') == 'intercode' or test_config.get('benchmark', '') == 'intercode_sql' or test_config.get('benchmark', '') == 'animation' or test_config.get('benchmark', '') == 'textcraft':
         test_config['give_action_space'] = True
     if test_config.get('agent_type', 'react') == 'react':
         return ReAct(real_llm, db, env, test_config)
@@ -166,6 +175,7 @@ async def run_env(agent, env, log_file, num_attempts):
     with open(log_file, "a" if os.path.exists(log_file) else "w") as f:
         for attempt in range(num_attempts):
             # Initial reset
+            print("Resetting environment")
             obs, info = env.reset()
             # Set agent goal
             agent.goal = env.goal
