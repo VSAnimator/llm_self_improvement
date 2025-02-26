@@ -130,7 +130,6 @@ class LearningDB:
             mapping_path = os.path.join(self.index_path, f"state_{field}_id_mapping.json")
             if os.path.exists(mapping_path):
                 with open(mapping_path, 'r') as f:
-                    print(f"Loading state id mapping for {field}")
                     self.state_id_mappings[field] = json.load(f)
             else:
                 self.state_id_mappings[field] = {}
