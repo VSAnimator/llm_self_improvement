@@ -7,7 +7,7 @@ from llm_agent.in_context.alfworld_fewshots import get_task_type
 
 # Load the dataset
 dataset_name = "Solaris99/AgentBank"
-for subset_name in ['intercode_sql']:
+for subset_name in ['alfworld']:
     dataset = load_dataset(dataset_name, subset_name)
 
     # Now ingest the dataset
@@ -97,6 +97,10 @@ for subset_name in ['intercode_sql']:
 
             if len(obs_list) - 1 != len(thought_list) or len(obs_list) - 1 != len(act_list):
                 print(f"Skipping episode {i} in split {split} because of length mismatch")
+                continue
+        
+            if len(obs_list) > 20:
+                print(f"Skipping episode {i} in split {split} because it is too long")
                 continue
             
             # Store trajectory

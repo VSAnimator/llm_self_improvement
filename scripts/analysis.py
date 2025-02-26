@@ -14,7 +14,12 @@ print("Folders containing txt files:")
 average_success_rates = {}
 cumulative_success_rates = {}
 for folder in sorted(txt_folders):
-    if "webshop" not in folder or "backups" in folder:
+    #if "bird_gold" not in folder or "backups" in folder or "4o-mini" in folder:
+    # Table 1: if "bird_gold" not in folder or "cont" in folder or "4o-mini" in folder:
+    # Table 2: if "alfworld" not in folder or "agentbank" not in folder or "rap_flex" not in folder:
+    # Table 3: if "intercode_sql" not in folder or "bird_intercode" not in folder or "retry" not in folder:
+    # Table 4: if "intercode_sql" not in folder or "bird_gold" not in folder or "cont" not in folder:
+    if "intercode_sql" not in folder or "bird_intercode" not in folder or "retry" not in folder:# or "4o-mini" not in folder:
         continue
     print(folder)
     # Get all episode files
@@ -114,12 +119,15 @@ for folder in sorted(txt_folders):
 
     # Also print the average final reward over each segment of 100 episodes
     
+    '''
     for i in range(0, len(final_rewards), 10):
         print(f"Average final reward over {i+10} episodes:", np.mean(final_rewards[:i+10]))
 
     for i in range(0, len(final_rewards), 10):
-        print(f"Average final reward over {i+10} episodes:", np.mean((np.array(final_rewards[:i+10]) == 1)))
-
+        print(f"Average success rate over {i+10} episodes:", np.mean((np.array(final_rewards[:i+10]) == 1)))
+    '''
+    print(f"Last 100 episode average success rate:", np.mean(np.array(final_rewards[-100:]) == 1))
+    
     '''
     # Try a different version which is tracking squared hundreds
     for i in range(10):
