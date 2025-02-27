@@ -13,13 +13,13 @@ from llm_agent.agent.agents import (
     Expel,
     AutoGuide,
     AutoManual,
-    TRAD
+    TRAD,
 )
 from llm_agent.env.base_env import Observation, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
 from llm_agent.database.learning_db import LearningDB
-# from llm_agent.database.learning_db_postgresql import LearningDB
-# from llm_agent.database.learning_db_chroma import LearningDB
+from llm_agent.database.learning_db_postgresql import LearningDB as LearningDBPostgreSQL
+from llm_agent.database.learning_db_chroma import LearningDB as LearningDBChroma
 import argparse
 from tqdm import tqdm
 import multiprocessing
@@ -30,139 +30,177 @@ import traceback
 
 def config(env, gym_env_name):
     # Load default config first
-    with open('config/default.yaml', 'r') as f:
+    with open("config/default.yaml", "r") as f:
         config = yaml.safe_load(f)
-    
+
     # Override with alfworld-specific config
-    with open('config/benchmark/alfworld.yaml', 'r') as f:
+    with open("config/benchmark/alfworld.yaml", "r") as f:
         env_config = yaml.safe_load(f)
-        
+
     # Ensure required alfworld configuration exists
-    if env == 'alfworld_test':
-        env_config.update({
-            'type': 'AlfredTWEnv',  # Required env type for alfworld
-            'split': 'eval_out_of_distribution',#'eval_out_of_distribution'  # Required split parameter # eval_out_of_distribution
-            'name': 'alfworld_test'
-        })
-    elif env == 'alfworld':
-        env_config.update({
-            'type': 'AlfredTWEnv',  # Required env type for alfworld
-            'split': 'train',#'eval_out_of_distribution'  # Required split parameter # eval_out_of_distribution
-            'name': 'alfworld'
-        })
-    elif env == 'webshop':
-        env_config.update({
-            'type': 'WebShopEnv',  # Required env type for alfworld
-            'name': 'webshop',
-            'max_steps': 10,
-        })
-    elif env == 'gymnasium':
-        env_config.update({
-            'type': 'GymEnv',
-            'name': gym_env_name,
-            'max_steps': 10,
-        })
-    elif env == 'intercode':
-        env_config.update({
-            'type': 'InterCodeEnv',
-            'name': 'intercode',
-            'split': 'test',
-            'max_steps': 10,
-        })
-    elif env == 'intercode_sql':
-        env_config.update({
-            'type': 'InterCodeSqlEnv',
-            'name': 'intercode_sql',
-            'split': 'test',
-            'max_steps': 10,
-        })
-    elif env == 'animation':
-        env_config.update({
-            'type': 'AnimationEnv',
-            'name': 'animation',
-            'max_steps': 10,
-        })
-    elif env == 'textcraft':
-        env_config.update({
-            'type': 'TextCraftEnv',
-            'name': 'textcraft',
-            'max_steps': 30,
-        })
+    if env == "alfworld_test":
+        env_config.update(
+            {
+                "type": "AlfredTWEnv",  # Required env type for alfworld
+                "split": "eval_out_of_distribution",  #'eval_out_of_distribution'  # Required split parameter # eval_out_of_distribution
+                "name": "alfworld_test",
+            }
+        )
+    elif env == "alfworld":
+        env_config.update(
+            {
+                "type": "AlfredTWEnv",  # Required env type for alfworld
+                "split": "train",  #'eval_out_of_distribution'  # Required split parameter # eval_out_of_distribution
+                "name": "alfworld",
+            }
+        )
+    elif env == "webshop":
+        env_config.update(
+            {
+                "type": "WebShopEnv",  # Required env type for alfworld
+                "name": "webshop",
+                "max_steps": 10,
+            }
+        )
+    elif env == "gymnasium":
+        env_config.update(
+            {
+                "type": "GymEnv",
+                "name": gym_env_name,
+                "max_steps": 10,
+            }
+        )
+    elif env == "intercode":
+        env_config.update(
+            {
+                "type": "InterCodeEnv",
+                "name": "intercode",
+                "split": "test",
+                "max_steps": 10,
+            }
+        )
+    elif env == "intercode_sql":
+        env_config.update(
+            {
+                "type": "InterCodeSqlEnv",
+                "name": "intercode_sql",
+                "split": "test",
+                "max_steps": 10,
+            }
+        )
+    elif env == "animation":
+        env_config.update(
+            {
+                "type": "AnimationEnv",
+                "name": "animation",
+                "max_steps": 10,
+            }
+        )
+    elif env == "textcraft":
+        env_config.update(
+            {
+                "type": "TextCraftEnv",
+                "name": "textcraft",
+                "max_steps": 30,
+            }
+        )
     else:
         raise ValueError(f"Invalid environment name: {env}")
-    
+
     # Update with benchmark config
-    config['benchmark'] = env_config
-    
+    config["benchmark"] = env_config
+
     return config
 
+
 use_gym = False
+
 
 def env(config):
     if use_gym:
         from llm_agent.env.envs.gym_env import GymEnv
+
         env_config = {"env_name": "CartPole-v1"}
         return GymEnv(env_config)
-    elif config['benchmark']['name'] == 'webshop':
+    elif config["benchmark"]["name"] == "webshop":
         from llm_agent.env.envs.webshop_site_env import WebShopEnv
-        return WebShopEnv(config['benchmark'])
-    elif config['benchmark']['name'] == 'alfworld':
+
+        return WebShopEnv(config["benchmark"])
+    elif config["benchmark"]["name"] == "alfworld":
         from llm_agent.env.envs.alfworld_train_env import AlfWorldTrainEnv
-        return AlfWorldTrainEnv(config['benchmark'])
-    elif config['benchmark']['name'] == 'alfworld_test':
+
+        return AlfWorldTrainEnv(config["benchmark"])
+    elif config["benchmark"]["name"] == "alfworld_test":
         from llm_agent.env.envs.alfworld_env import AlfWorldEnv
-        return AlfWorldEnv(config['benchmark'])
-    elif config['benchmark']['name'] == 'intercode':
+
+        return AlfWorldEnv(config["benchmark"])
+    elif config["benchmark"]["name"] == "intercode":
         from llm_agent.env.envs.intercode_env import InterCodeEnv
-        return InterCodeEnv(config['benchmark'])
-    elif config['benchmark']['name'] == 'intercode_sql':
+
+        return InterCodeEnv(config["benchmark"])
+    elif config["benchmark"]["name"] == "intercode_sql":
         from llm_agent.env.envs.intercode_sql_env import InterCodeSqlEnv
-        return InterCodeSqlEnv(config['benchmark'])
-    elif config['benchmark']['name'] == 'animation':
+
+        return InterCodeSqlEnv(config["benchmark"])
+    elif config["benchmark"]["name"] == "animation":
         from llm_agent.env.envs.animation_env import AnimationEnv
-        return AnimationEnv(config['benchmark'])
-    elif config['benchmark']['name'] == 'textcraft':
+
+        return AnimationEnv(config["benchmark"])
+    elif config["benchmark"]["name"] == "textcraft":
         from llm_agent.env.envs.textcraft import TextCraftEnv
-        return TextCraftEnv(config['benchmark'])
+
+        return TextCraftEnv(config["benchmark"])
     else:
         raise ValueError(f"Invalid environment name: {config['benchmark']['name']}")
 
+
 def real_llm(config):
     return LiteLLMWrapper(config)
+
 
 def test_config(agent_type):
     return {
         "max_retries": 1,
         "memory_size": 50,
         "temperature": 0.1,
-        "agent_type": agent_type
+        "agent_type": agent_type,
     }
 
+
 def test_agent(real_llm, db, env, test_config):
-    if test_config.get('agent_type', 'react') == 'trad' or test_config.get('benchmark', '') == 'webshop' or test_config.get('benchmark', '') == 'intercode' or test_config.get('benchmark', '') == 'intercode_sql' or test_config.get('benchmark', '') == 'animation' or test_config.get('benchmark', '') == 'textcraft':
-        test_config['give_action_space'] = True
-    if test_config.get('agent_type', 'react') == 'react':
+    if (
+        test_config.get("agent_type", "react") == "trad"
+        or test_config.get("benchmark", "") == "webshop"
+        or test_config.get("benchmark", "") == "intercode"
+        or test_config.get("benchmark", "") == "intercode_sql"
+        or test_config.get("benchmark", "") == "animation"
+        or test_config.get("benchmark", "") == "textcraft"
+    ):
+        test_config["give_action_space"] = True
+    if test_config.get("agent_type", "react") == "react":
         return ReAct(real_llm, db, env, test_config)
-    elif test_config.get('agent_type', 'react') == 'reflexion':
+    elif test_config.get("agent_type", "react") == "reflexion":
         return Reflexion(real_llm, db, env, test_config)
-    elif test_config.get('agent_type', 'react') == 'rap':
+    elif test_config.get("agent_type", "react") == "rap":
         return RAP(real_llm, db, env, test_config)
-    elif test_config.get('agent_type', 'react') == 'rap_noplan':
+    elif test_config.get("agent_type", "react") == "rap_noplan":
         return RAPNoPlan(real_llm, db, env, test_config)
-    elif test_config.get('agent_type', 'react') == 'rap_flex':
+    elif test_config.get("agent_type", "react") == "rap_flex":
         return RAPFlex(real_llm, db, env, test_config)
-    elif test_config.get('agent_type', 'react') == 'synapse':
+    elif test_config.get("agent_type", "react") == "synapse":
         return Synapse(real_llm, db, env, test_config)
-    elif test_config.get('agent_type', 'react') == 'expel':
+    elif test_config.get("agent_type", "react") == "expel":
         return Expel(real_llm, db, env, test_config)
-    elif test_config.get('agent_type', 'react') == 'trad':
+    elif test_config.get("agent_type", "react") == "trad":
         return TRAD(real_llm, db, env, test_config)
-    elif test_config.get('agent_type', 'react') == 'autoguide':
+    elif test_config.get("agent_type", "react") == "autoguide":
         return AutoGuide(real_llm, db, env, test_config)
-    elif test_config.get('agent_type', 'react') == 'automanual':
+    elif test_config.get("agent_type", "react") == "automanual":
         return AutoManual(real_llm, db, env, test_config)
     else:
-        raise ValueError(f"Invalid agent type: {test_config.get('agent_type', 'react')}")
+        raise ValueError(
+            f"Invalid agent type: {test_config.get('agent_type', 'react')}"
+        )
 
 
 async def run_env(agent, env, log_file, num_attempts):
@@ -188,7 +226,7 @@ async def run_env(agent, env, log_file, num_attempts):
             while not done and steps < env.max_steps:
                 # Get valid actions
                 # Check if env has get_available_actions
-                if hasattr(env, 'get_available_actions'):
+                if hasattr(env, "get_available_actions"):
                     valid_actions = env.get_available_actions(info)
                     valid_actions = [Action(text=action) for action in valid_actions]
                     f.write(f"Valid actions: {valid_actions}\n")
@@ -202,17 +240,19 @@ async def run_env(agent, env, log_file, num_attempts):
                 f.write(f"Reasoning: {agent.reasoning_history[-1]}\n")
                 f.write(f"Selected action: {selected_action}\n")
                 # Take step in env
-                obs, reward, done, info = env.step(selected_action.text) # This feedback needs to be looped anyways
+                obs, reward, done, info = env.step(
+                    selected_action.text
+                )  # This feedback needs to be looped anyways
                 f.write(f"Obs: {obs}, Reward: {reward}\n")
                 obs = Observation(structured=obs)
                 # Pass feedback to agent
-                agent.reward_history.append(reward) # Add to reward history
+                agent.reward_history.append(reward)  # Add to reward history
                 # Increment step count
                 steps += 1
                 f.write(f"Step {steps} of {env.max_steps}\n")
                 # Flush the file to ensure the log is written
                 f.flush()
-            
+
             if not done:
                 f.write("\nEpisode timed out after reaching max steps\n")
                 f.flush()
@@ -225,32 +265,52 @@ async def run_env(agent, env, log_file, num_attempts):
                 agent.store_episode()
 
             if reward < 1:
-                attempt_count += 1 
+                attempt_count += 1
                 agent.clear_history()
             else:
                 agent.clear_history()
                 break
 
+
 # Run the environment
 def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('--llm', required=True, help='LLM model to use')
-    parser.add_argument('--backend', default='litellm', help='Backend to use for LLM')
-    parser.add_argument('--db_path', help='Optional custom path for learning database')
-    parser.add_argument('--log_name', help='Optional custom name for learning database')
-    parser.add_argument('--agent_type', required=True, help='Type of agent to use')
-    parser.add_argument('--num_passes', type=int, default=1, help='Number of passes to run')
-    parser.add_argument('--num_attempts', type=int, default=1)
-    parser.add_argument('--run_offline_rules', action='store_true', help='Run offline rules')
-    parser.add_argument('--store_episodes', action='store_true', help='Store episodes')
-    parser.add_argument('--env', default='alfworld_test', help='Environment to use (alfworld, alfworld_test, webshop, gymnasium)')
-    parser.add_argument('--gym_env_name', help='Name of gymnasium environment if using gymnasium')
-    parser.add_argument('--num_tasks', type=int, default=134, help='Number of tasks to run')
-    parser.add_argument('--parallel', type=int, default=1, help='Number of threads to use')
-    parser.add_argument('--num_ic', type=int, default=3, help='Number of in-context examples to use')
-    parser.add_argument('--start_task', type=int, default=0, help='Task to start from')
-    parser.add_argument('--multiline', action='store_true', help='Allow multiline actions')
+    parser.add_argument("--llm", required=True, help="LLM model to use")
+    parser.add_argument("--backend", default="litellm", help="Backend to use for LLM")
+    parser.add_argument("--db_path", help="Optional custom path for learning database")
+    parser.add_argument("--db_type", help="Backend database to use", default="sqlite")
+    parser.add_argument("--log_name", help="Optional custom directory name for logs")
+    parser.add_argument("--agent_type", required=True, help="Type of agent to use")
+    parser.add_argument(
+        "--num_passes", type=int, default=1, help="Number of passes to run"
+    )
+    parser.add_argument("--num_attempts", type=int, default=1)
+    parser.add_argument(
+        "--run_offline_rules", action="store_true", help="Run offline rules"
+    )
+    parser.add_argument("--store_episodes", action="store_true", help="Store episodes")
+    parser.add_argument(
+        "--env",
+        default="alfworld_test",
+        help="Environment to use (alfworld, alfworld_test, webshop, gymnasium)",
+    )
+    parser.add_argument(
+        "--gym_env_name", help="Name of gymnasium environment if using gymnasium"
+    )
+    parser.add_argument(
+        "--num_tasks", type=int, default=134, help="Number of tasks to run"
+    )
+    parser.add_argument(
+        "--parallel", type=int, default=1, help="Number of threads to use"
+    )
+    parser.add_argument(
+        "--num_ic", type=int, default=3, help="Number of in-context examples to use"
+    )
+    parser.add_argument("--start_task", type=int, default=0, help="Task to start from")
+    parser.add_argument(
+        "--multiline", action="store_true", help="Allow multiline actions"
+    )
     args = parser.parse_args()
 
     async def process_task(i, args, environment=None):
@@ -260,11 +320,14 @@ def main():
         cfg["llm"]["backend"] = args.backend
 
         agent_config = test_config(agent_type=args.agent_type)
-        agent_config['store_episodes'] = args.store_episodes
-        agent_config['benchmark'] = args.env
-        agent_config['num_ic'] = args.num_ic
+        agent_config["store_episodes"] = args.store_episodes
+        agent_config["benchmark"] = args.env
+        agent_config["num_ic"] = args.num_ic
         log_name = args.log_name if args.log_name else "default"
-        log_dir = Path("logs/episodes") / f"{cfg['benchmark']['name']}/{cfg['benchmark']['split']}/{args.agent_type}/{args.llm}/{log_name}"
+        log_dir = (
+            Path("logs/episodes")
+            / f"{cfg['benchmark']['name']}/{cfg['benchmark']['split']}/{args.agent_type}/{args.llm}/{log_name}"
+        )
         log_dir.mkdir(parents=True, exist_ok=True)
 
         log_file = log_dir / f"{i}.txt"
@@ -273,9 +336,18 @@ def main():
         llm = real_llm(cfg)
         default_db_path = f"{log_dir}/learning.db"
         db_path = args.db_path if args.db_path else default_db_path
-        learning_db = LearningDB(db_path=db_path)
-        agent_config['multiline_action'] = args.multiline
-        agent_config['multiline_reasoning'] = args.multiline
+        if args.db_type == "sqlite":
+            learning_db = LearningDB(db_path=db_path)
+        elif args.db_type == "postgresql":
+            learning_db = LearningDBPostgreSQL(db_path=db_path)
+        elif args.db_type == "chroma":
+            learning_db = LearningDBChroma(
+                db_path=db_path, config_type="server" if args.store_episodes else "lite"
+            )
+        else:
+            raise ValueError(f"Invalid database type: {args.db_type}")
+        agent_config["multiline_action"] = args.multiline
+        agent_config["multiline_reasoning"] = args.multiline
         agent = test_agent(llm, learning_db, environment, agent_config)
         if args.run_offline_rules:
             # Only need to run offline rules once
@@ -312,14 +384,16 @@ def main():
         if args.parallel == 1:
             worker(task_queue, args)
         else:
-            processes = []                
+            processes = []
             for _ in range(args.parallel):
                 p = multiprocessing.Process(target=worker, args=(task_queue, args))
                 processes.append(p)
                 p.start()
 
             # Start progress monitoring thread
-            progress_thread = threading.Thread(target=monitor_progress, args=(task_queue, args.num_tasks), daemon=True)
+            progress_thread = threading.Thread(
+                target=monitor_progress, args=(task_queue, args.num_tasks), daemon=True
+            )
             progress_thread.start()
 
             for p in processes:

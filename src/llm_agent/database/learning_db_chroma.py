@@ -402,6 +402,9 @@ class LearningDB:
                     if len(chosen_t_ids) >= k:
                         break
 
+        if len(chosen_t_ids) == 0:
+            return [], []
+
         similar_entries = self.trajectories_collection.get(ids=chosen_t_ids)[
             "metadatas"
         ]
