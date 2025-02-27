@@ -19,7 +19,7 @@ for folder in sorted(txt_folders):
     # Table 2: if "alfworld" not in folder or "agentbank" not in folder or "rap_flex" not in folder:
     # Table 3: if "intercode_sql" not in folder or "bird_intercode" not in folder or "retry" not in folder:
     # Table 4: if "intercode_sql" not in folder or "bird_gold" not in folder or "cont" not in folder:
-    if "intercode_sql" not in folder or "bird_intercode" not in folder or "retry" not in folder:# or "4o-mini" not in folder:
+    if "intercode_sql" not in folder or "bird_gold" not in folder or "gpt-4o-mini" in folder:# or "4o-mini" not in folder:
         continue
     print(folder)
     # Get all episode files
@@ -88,6 +88,7 @@ for folder in sorted(txt_folders):
     print(f"Successful episodes: {successful_episodes}")
     print(f"Success rate: {success_rate:.2f}%")
 
+    continue
     print("Success dict", dict(sorted(success_count_dict.items(), key=lambda item: item[0]))) 
     print("Failure dict", dict(sorted(failure_count_dict.items(), key=lambda item: -1*item[0])))
 
