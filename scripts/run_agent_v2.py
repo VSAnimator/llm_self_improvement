@@ -17,9 +17,6 @@ from llm_agent.agent.agents import (
 )
 from llm_agent.env.base_env import Observation, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
-from llm_agent.database.learning_db import LearningDB
-from llm_agent.database.learning_db_postgresql import LearningDB as LearningDBPostgreSQL
-from llm_agent.database.learning_db_chroma import LearningDB as LearningDBChroma
 import argparse
 from tqdm import tqdm
 import multiprocessing
@@ -337,10 +334,13 @@ def main():
         default_db_path = f"{log_dir}/learning.db"
         db_path = args.db_path if args.db_path else default_db_path
         if args.db_type == "sqlite":
+            from llm_agent.database.learning_db import LearningDB
             learning_db = LearningDB(db_path=db_path)
         elif args.db_type == "postgresql":
+            from llm_agent.database.learning_db_postgresql import LearningDB as LearningDBPostgreSQL
             learning_db = LearningDBPostgreSQL(db_path=db_path)
         elif args.db_type == "chroma":
+            from llm_agent.database.learning_db_chroma import LearningDB as LearningDBChroma
             learning_db = LearningDBChroma(
                 db_path=db_path, config_type="server" if args.store_episodes else "lite"
             )
