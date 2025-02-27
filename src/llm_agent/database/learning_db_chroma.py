@@ -15,7 +15,7 @@ RULE_FIELDS = ["name", "content", "context"]
 
 class LearningDB:
 
-    def __init__(self, db_path: str = "data/learning_db", config_type: str = "lite"):
+    def __init__(self, db_path: str = "data/learning_db", config_type: str = "lite", port: int = 8008):
         """
         Initialize a Chroma-based "learning database".
         - embedding_dim is mainly informational here, as SentenceTransformer determines actual dimension.
@@ -28,7 +28,7 @@ class LearningDB:
         if config_type == "lite":
             self.chroma_client = chromadb.PersistentClient(path=db_path)
         elif config_type == "server":
-            self.chroma_client = chromadb.HttpClient(host="localhost", port=8008)
+            self.chroma_client = chromadb.HttpClient(host="localhost", port=port)
         else:
             raise ValueError(f"Unknown config_type: {config_type}")
 

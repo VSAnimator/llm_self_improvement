@@ -26,6 +26,8 @@ import multiprocessing
 import time
 import threading
 import traceback
+import signal
+import sys
 
 
 def config(env, gym_env_name):
@@ -280,6 +282,9 @@ def main():
     parser.add_argument("--backend", default="litellm", help="Backend to use for LLM")
     parser.add_argument("--db_path", help="Optional custom path for learning database")
     parser.add_argument("--db_type", help="Backend database to use", default="sqlite")
+    parser.add_argument(
+        "--db_port", help="Optional port connecting to a local database", default=8008
+    )
     parser.add_argument("--log_name", help="Optional custom directory name for logs")
     parser.add_argument("--agent_type", required=True, help="Type of agent to use")
     parser.add_argument(
@@ -342,7 +347,9 @@ def main():
             learning_db = LearningDBPostgreSQL(db_path=db_path)
         elif args.db_type == "chroma":
             learning_db = LearningDBChroma(
-                db_path=db_path, config_type="server" if args.store_episodes else "lite"
+                db_path=db_path,
+                config_type="server" if args.store_episodes else "lite",
+                port=args.db_port,
             )
         else:
             raise ValueError(f"Invalid database type: {args.db_type}")
@@ -395,6 +402,14 @@ def main():
                 target=monitor_progress, args=(task_queue, args.num_tasks), daemon=True
             )
             progress_thread.start()
+
+            def signal_handler(sig, frame):
+                print("Termination signal received. Stopping processes...")
+                for p in processes:
+                    p.terminate()  # Terminate all running processes
+                sys.exit(0)
+
+            signal.signal(signal.SIGINT, signal_handler)  # Register signal handler
 
             for p in processes:
                 p.join()  # Ensure all processes complete execution
