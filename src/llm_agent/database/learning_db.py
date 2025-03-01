@@ -569,9 +569,10 @@ class LearningDB:
         """, (f'%{trajectory_id}%',))
         return [{'name': r[0], 'content': r[1], 'context': r[2]} for r in self.rule_cursor.fetchall()]
 
-    def get_similar_entries(self, key_type: Union[str, List[str]], key: Union[str, List[str]], k: int = 5, outcome: str = None, window: int = 1) -> List[Dict]:
+    def get_similar_entries(self, key_type: Union[str, List[str]], key: Union[str, List[str]], k: int = 5, outcome: str = None, window: int = 1, filtered_environment_id: str = None) -> List[Dict]:
         # For environment_id, use exact matching instead of embedding search
-        if key_type == 'environment_id':
+        if 'environment_id' in key_type:
+            key = key[0]
             cursor = self.trajectory_cursor
             if outcome is not None:
                 # Filter by outcome and get k shortest trajectories
@@ -642,7 +643,7 @@ class LearningDB:
         if trajectory_key_types:
             # Filter key to trajectory-level keys
             key_filtered = [key[i] for i in range(len(key)) if key_type[i] in trajectory_key_types]
-            trajectory_ids, trajectory_distances = self._get_top_k_by_keys(trajectory_key_types, key_filtered, k * (3 if outcome else 1) * (2 if len(state_key_types) > 0 else 1))
+            trajectory_ids, trajectory_distances = self._get_top_k_by_keys(trajectory_key_types, key_filtered, (k * (3 if outcome else 1) * (2 if len(state_key_types) > 0 else 1)) + (10 if filtered_environment_id else 0))
             # Filter by outcome if specified
             if outcome:
                 trajectory_ids, indices = self._filter_by_outcome(trajectory_ids, outcome)
@@ -650,6 +651,10 @@ class LearningDB:
                 # Sort by distances, high to low
                 trajectory_ids = [trajectory_ids[i] for i in np.argsort(trajectory_distances)[::-1]]
                 trajectory_distances = [trajectory_distances[i] for i in np.argsort(trajectory_distances)[::-1]]
+            if filtered_environment_id:
+                # Filtering out the environment_id we're not interested in
+                trajectory_distances = [trajectory_distances[i] for i in range(len(trajectory_distances)) if self.trajectory_cursor.execute("SELECT environment_id FROM trajectories WHERE id = ?", (trajectory_ids[i],)).fetchone()[0] != filtered_environment_id]
+                trajectory_ids = [trajectory_ids[i] for i in range(len(trajectory_ids)) if self.trajectory_cursor.execute("SELECT environment_id FROM trajectories WHERE id = ?", (trajectory_ids[i],)).fetchone()[0] != filtered_environment_id]
             # Now if state-level keys are present, we'll do a state-level search
             if state_key_types:
                 state_distances = []

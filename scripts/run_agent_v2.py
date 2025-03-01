@@ -6,9 +6,11 @@ from pathlib import Path
 from llm_agent.agent.agents import (
     ReAct,
     Reflexion,
+    ReflexionRefine,
     RAP,
     RAPNoPlan,
     RAPFlex,
+    RAPRefine,
     Synapse,
     Expel,
     AutoGuide,
@@ -180,12 +182,16 @@ def test_agent(real_llm, db, env, test_config):
         return ReAct(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "reflexion":
         return Reflexion(real_llm, db, env, test_config)
+    elif test_config.get("agent_type", "react") == "reflexion_refine":
+        return ReflexionRefine(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "rap":
         return RAP(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "rap_noplan":
         return RAPNoPlan(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "rap_flex":
         return RAPFlex(real_llm, db, env, test_config)
+    elif test_config.get("agent_type", "react") == "rap_refine":
+        return RAPRefine(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "synapse":
         return Synapse(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "expel":

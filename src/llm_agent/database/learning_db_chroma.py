@@ -366,7 +366,7 @@ class LearningDB:
                     s_ids, s_distances = self._get_top_k_by_keys(
                         state_key_types,
                         state_only_key_filtered,
-                        n_results=1,
+                        n_results=10,
                         filter={"trajectory_id": t_id},
                     )
                     if not s_ids:
