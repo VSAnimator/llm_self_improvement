@@ -3,6 +3,7 @@ from .reflexion import Reflexion
 from .reflexion_refine import ReflexionRefine
 from .rap import RAP
 from .rap_refine import RAPRefine
+from .rap_diversity import RAPDiversity
 from .rap_noplan import RAPNoPlan
 from .rap_flex import RAPFlex
 from .synapse import Synapse

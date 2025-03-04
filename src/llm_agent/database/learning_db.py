@@ -7,6 +7,7 @@ from sentence_transformers import SentenceTransformer
 import json
 import shutil
 import os
+import random
 
 class LearningDB:
     def __init__(self, db_path: str = "data/learning.db"):
@@ -112,6 +113,9 @@ class LearningDB:
             'context': self._load_or_create_index('rule_context'),
             'content': self._load_or_create_index('rule_content')
         }
+
+        # Mode for random trajectory retrieval
+        self.random_trajectory_retrieval = False
         
         # Load id mappings
         self.trajectory_id_mappings = {}
@@ -234,11 +238,6 @@ class LearningDB:
 
     def _get_top_k_by_keys(self, key_type: Union[str, List[str]], key: Union[str, List[str]], k: int = 5) -> List[Dict]:
         """Get top k entries based on key_types and keys"""
-        # Encode all keys
-        key_embeddings = []
-        for elem in key:
-            key_embeddings.append(self.model.encode([elem])[0])
-        
         # Determine if this is a trajectory or state level search
         trajectory_keys = {'environment_id', 'goal', 'category', 'plan', 'reflection', 'summary'} 
         rule_keys = {'name', 'context', 'content'}
@@ -251,6 +250,19 @@ class LearningDB:
         else:
             indices = self.trajectory_indices if is_trajectory else self.state_indices
             mappings = self.trajectory_id_mappings if is_trajectory else self.state_id_mappings
+
+        if self.random_trajectory_retrieval:
+            # Randomly select k indices
+            # Ordered syntax: entry_ids = [mappings[key_type[0]][str(i)] for i in I]
+            # Random syntax: entry_ids = [mappings[key_type[0]][str(i)] for i in random.sample(range(len(mappings[key_type[0]])), k)]
+            entry_ids = [mappings[key_type[0]][str(i)] for i in random.sample(range(len(mappings[key_type[0]])), k)]
+            print(f"Randomly selected {k} entries")
+            return entry_ids, [0.0 for _ in range(k)]
+
+        # Encode all keys
+        key_embeddings = []
+        for elem in key:
+            key_embeddings.append(self.model.encode([elem])[0])
 
         D, I = self._compute_top_k_nearest_neighbors_by_avg_distance([indices[elem] for elem in key_type], key_embeddings, k)
 
@@ -623,7 +635,8 @@ class LearningDB:
                     'plan': row[8],
                     'reflection': row[9],
                     'summary': row[10],
-                    'rules': rules
+                    'rules': rules,
+                    'id': row[0],
                 }
                 similar_entries.append(entry)
                 success_labels.append(1 if max(json.loads(row[7])) == 1 else 0)
@@ -735,7 +748,8 @@ class LearningDB:
                         'plan': row[8],
                         'reflection': row[9],
                         'summary': row[10],
-                        'rules': rules
+                        'rules': rules,
+                        'id': row[0],
                     }
                     
                     if not outcome or ('rewards' in entry and entry['rewards'][-1] == outcome_flag) or ('trajectory' in entry and entry['trajectory']['rewards'][-1] == outcome_flag):
@@ -786,7 +800,8 @@ class LearningDB:
                         'plan': trajectory_row[8],
                         'reflection': trajectory_row[9],
                         'summary': trajectory_row[10],
-                        'rules': rules
+                        'rules': rules,
+                        'id': trajectory_row[0],
                     }
 
                     rewards = json.loads(trajectory_row[7]) # Don't want to filter for this

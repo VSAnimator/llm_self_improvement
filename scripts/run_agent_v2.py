@@ -11,6 +11,7 @@ from llm_agent.agent.agents import (
     RAPNoPlan,
     RAPFlex,
     RAPRefine,
+    RAPDiversity,
     Synapse,
     Expel,
     AutoGuide,
@@ -192,6 +193,8 @@ def test_agent(real_llm, db, env, test_config):
         return RAPFlex(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "rap_refine":
         return RAPRefine(real_llm, db, env, test_config)
+    elif test_config.get("agent_type", "react") == "rap_diversity":
+        return RAPDiversity(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "synapse":
         return Synapse(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "expel":
@@ -213,6 +216,8 @@ async def run_env(agent, env, log_file, num_attempts):
     attempt_count = 0
     print("Num attempts", num_attempts)
     with open(log_file, "a" if os.path.exists(log_file) else "w") as f:
+        # Pass f to the agent
+        agent.f = f
         for attempt in range(num_attempts):
             # Initial reset
             print("Resetting environment")
@@ -319,6 +324,8 @@ def main():
     parser.add_argument(
         "--multiline", action="store_true", help="Allow multiline actions"
     )
+    parser.add_argument("--diversity_mode", action="store_true", help="Use diversity mode")
+    parser.add_argument("--random_retrieval", action="store_true", help="Use random retrieval")
     args = parser.parse_args()
 
     async def process_task(i, args, environment=None):
@@ -347,6 +354,8 @@ def main():
         if args.db_type == "sqlite":
             from llm_agent.database.learning_db import LearningDB
             learning_db = LearningDB(db_path=db_path)
+            if args.random_retrieval:
+                learning_db.random_trajectory_retrieval = True
         elif args.db_type == "postgresql":
             from llm_agent.database.learning_db_postgresql import LearningDB as LearningDBPostgreSQL
             learning_db = LearningDBPostgreSQL(db_path=db_path)
@@ -361,6 +370,7 @@ def main():
             raise ValueError(f"Invalid database type: {args.db_type}")
         agent_config["multiline_action"] = args.multiline
         agent_config["multiline_reasoning"] = args.multiline
+        agent_config["diversity_mode"] = args.diversity_mode
         agent = test_agent(llm, learning_db, environment, agent_config)
         if args.run_offline_rules:
             # Only need to run offline rules once
@@ -391,9 +401,11 @@ def main():
                 time.sleep(1)  # Update every second
 
     for _ in range(args.num_passes):
+        print("Starting new pass")
         task_queue = multiprocessing.Queue()
         for i in range(args.start_task, args.num_tasks):
             task_queue.put(i)
+        print("Task queue created")
         if args.parallel == 1:
             worker(task_queue, args)
         else:
@@ -423,4 +435,5 @@ def main():
 
 
 if __name__ == "__main__":
+    print("Starting main")
     main()

@@ -45,6 +45,9 @@ class BaseAgent:
         # Database
         self.db = db
 
+        # File to log to
+        self.f: None
+
     """ Helper functions """
 
     def _trajectory_to_string(self, trajectory):
@@ -130,13 +133,21 @@ class BaseAgent:
                 for k_type in value_type:
                     system_prompt += f"{k_type}: {entry[k_type]}\n"
 
-        system_prompt += f"\nFollow the provided examples closely."
+        if self.config.get("diversity_mode", False):
+            system_prompt += f"\nFollow the provided examples closely." # However, make sure to solve the goal while taking at least one action that is different from the provided examples."
+        else:
+            system_prompt += f"\nFollow the provided examples closely."
 
         return system_prompt
     
     def _get_in_context_data(self, key_type, key, value_type, outcome="winning", k=5, window=20, filtered_environment_id=None) -> List[Dict]:
         """Retrieve in context examples from the database"""
         success_entries, failure_entries = self.db.get_similar_entries(key_type, key, outcome=outcome, k=k, window=window, filtered_environment_id=filtered_environment_id)
+        if self.f:
+            success_entry_ids = [entry['id'] for entry in success_entries]
+            failure_entry_ids = [entry['id'] for entry in failure_entries]
+            self.f.write(f"Success entry ids: {success_entry_ids}\n")
+            self.f.write(f"Failure entry ids: {failure_entry_ids}\n")
         # Now figure out which part of the examples to return in-context
         if not isinstance(value_type, list): # Check that this is a list, not a string
             value_type = [value_type]
@@ -148,30 +159,39 @@ class BaseAgent:
     """ Main components used by agent's choose_action function """
 
     # A wrapper function for the get_in_context_data function when getting state-level data with a window
-    def get_state_data(self, trajectory_key_types, trajectory_keys, state_key_types, state_keys, value_types, outcome, k, window) -> List[Dict]:
+    def get_state_data(self, trajectory_key_types, trajectory_keys, state_key_types, state_keys, value_types, outcome, k, window, filtered_environment_id="self") -> List[Dict]:
         # Combine the trajectory and state keys for now since the wrapped function will split them back out
+        if filtered_environment_id == "self":
+            filtered_environment_id = self.environment_id
         key = trajectory_keys + state_keys
         key_type = trajectory_key_types + state_key_types
         """Retrieve state-level in-context examples from the database"""
-        return self._get_in_context_data(key_type, key, value_types, outcome, k, window, filtered_environment_id=self.environment_id)
+        return self._get_in_context_data(key_type, key, value_types, outcome, k, window, filtered_environment_id=filtered_environment_id)
     
     # A wrapper function for the get_in_context_data function when getting trajectory-level data
-    def get_trajectory_data(self, key_types, keys, value_types, outcome, k) -> List[Dict]:
+    def get_trajectory_data(self, key_types, keys, value_types, outcome, k, filtered_environment_id="self") -> List[Dict]:
         """Retrieve trajectory-level in-context examples from the database"""
-        return self._get_in_context_data(key_types, keys, value_types, outcome, k, filtered_environment_id=self.environment_id)
+        if filtered_environment_id == "self":
+            filtered_environment_id = self.environment_id
+        return self._get_in_context_data(key_types, keys, value_types, outcome, k, filtered_environment_id=filtered_environment_id)
     
     # A wrapper function for the get_in_context_data function when getting rule-level data
-    def get_rule_data(self, trajectory_key_types, trajectory_keys, state_key_types, state_keys, value_types, outcome, k, window) -> List[Dict]:
+    def get_rule_data(self, trajectory_key_types, trajectory_keys, state_key_types, state_keys, value_types, outcome, k, window, filtered_environment_id="self") -> List[Dict]:
         """Retrieve rule-level in-context examples from the database"""
         # Rules can apply to any state, so we need to combine the trajectory and state keys
+        if filtered_environment_id == "self":
+            filtered_environment_id = self.environment_id
         key = trajectory_keys + state_keys
         key_type = trajectory_key_types + state_key_types
-        return self._get_in_context_data(key_type, key, value_types, outcome, k, filtered_environment_id=self.environment_id)
+        return self._get_in_context_data(key_type, key, value_types, outcome, k, filtered_environment_id=filtered_environment_id)
 
     async def create_plan(self, observation: Observation, available_actions: List[Action], in_context_data = None) -> str:
         """Generate a plan for the agent to follow"""
         conversation = []
         system_prompt = f"You are an expert at generating high-level plans of actions to achieve a goal. "
+        if self.config.get("diversity_mode", False):
+            system_prompt += f"\nMake sure to solve the goal while taking at least one action that is different from the provided examples. This plan must be a single line without any line breaks."
+            print("Diversity mode enabled")
         if in_context_data:
             system_prompt += self._in_context_prompt(in_context_data)
         conversation.append({"role": "system", "content": system_prompt})
@@ -242,7 +262,8 @@ class BaseAgent:
         else:
             #reflection_prompt = f"Your are provided with an ultimately failed trajectory of observations and actions taken. Taking into consideration the entire planning, reasoning, and execution, outline the key aspects of the trajectory that you would repeat in the future, and key mistakes you made that you would avoid in the future/any areas for improvement. Generate a response that is optimally tailored to improve the performance of agents' future attempts at this goal."
             reflection_prompt = "You are provided with an ultimately failed trajectory of observations and actions taken."
-        reflection_prompt += " What are up to three key facts about this task in this environment that you would like to remember for future attempts at this goal?"
+        #reflection_prompt += " What are up to three key facts about this task in this environment that you would like to remember for future attempts at this goal?"
+        reflection_prompt += "You will have to solve this exact goal again in the future. Write down three key facts about this task in this environment that will be provided to you in the future."
         system_prompt = f"You are an agent in an environment. Given the goal: {self.goal}, {reflection_prompt}"
         if in_context_data:
             system_prompt += self._in_context_prompt(in_context_data)
