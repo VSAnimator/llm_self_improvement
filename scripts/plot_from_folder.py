@@ -7,7 +7,7 @@ import re
 def plot_cumulative_rewards(folder_path, granularity=1, plot_task_type=None):
     """
     Plot the average cumulative reward over tasks.
-    
+
     Args:
         folder_path: Path to the folder containing episode files
         granularity: Number of tasks to group together for each data point
@@ -15,10 +15,14 @@ def plot_cumulative_rewards(folder_path, granularity=1, plot_task_type=None):
     import matplotlib.pyplot as plt
     import numpy as np
     import os
-    
+
     # Get all episode files in the folder
-    episode_files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
-    
+    episode_files = [
+        os.path.join(folder_path, f)
+        for f in os.listdir(folder_path)
+        if os.path.isfile(os.path.join(folder_path, f)) and f.endswith(".txt")
+    ]
+
     # Get final rewards for all episodes
     final_rewards = []
     task_type_rewards = {}
@@ -118,11 +122,11 @@ def plot_cumulative_rewards(folder_path, granularity=1, plot_task_type=None):
     
     # Calculate cumulative rewards
     cumulative_rewards = np.cumsum(final_rewards)
-    
+
     # Group by granularity
     x_points = list(range(granularity, len(final_rewards) + 1, granularity))
-    y_points = [cumulative_rewards[i-1] / i for i in x_points]
-    
+    y_points = [cumulative_rewards[i - 1] / i for i in x_points]
+
     # Plot
     plt.figure(figsize=(10, 6))
     
@@ -194,9 +198,10 @@ def plot_cumulative_rewards(folder_path, granularity=1, plot_task_type=None):
     output_path = os.path.join(parent_folder, f'cumulative_reward_plot_{subfolder_name}_{str(plot_task_type)}.png')
     plt.savefig(output_path)
     plt.close()
-    
+
     print(f"Plot saved to {output_path}")
     return output_path
+
 
 if __name__ == "__main__":
     import argparse
