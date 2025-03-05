@@ -61,12 +61,14 @@ def ingest_alfworld_log(log_file_path, db):
     # Parse log content
     goal, category, plan, obs_list, reasoning_list, act_list, rewards = parse_alfworld_log(log_content)
     
-    return
     # Validate lists match in length
-    min_length = min(len(obs_list), len(act_list), len(reasoning_list))
-    obs_list = obs_list[:min_length]
-    act_list = act_list[:min_length]
-    reasoning_list = reasoning_list[:min_length]
+    # Validate that observations list is one longer than actions list
+    if len(obs_list) != len(act_list) + 1:
+        raise ValueError(f"Observation list should be one longer than action list. Found {len(obs_list)} observations and {len(act_list)} actions.")
+    
+    # Validate that reasoning list matches action list in length
+    if len(reasoning_list) != len(act_list):
+        raise ValueError(f"Reasoning list length ({len(reasoning_list)}) doesn't match action list length ({len(act_list)}). This may cause issues.")
     
     # Ensure rewards matches actions length
     if not rewards:
@@ -89,10 +91,11 @@ def ingest_alfworld_log(log_file_path, db):
         rewards=rewards,
         plan=plan,
         reflection=None,
-        summary=None
+        summary=None,
+        nosave=True
     )
 
-def ingest_multiple_logs(log_directory, db_path):
+def ingest_multiple_logs(log_files, db_path):
     """
     Ingest multiple Alfworld log files from a directory.
     
@@ -104,21 +107,57 @@ def ingest_multiple_logs(log_directory, db_path):
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
 
     # Initialize database
-    db = None #LearningDB(db_path)
+    db = LearningDB(db_path)
     
     # Iterate through log files
-    for filename in sorted(os.listdir(log_directory)):
-        if filename.endswith('.txt'):
-            log_file_path = os.path.join(log_directory, filename)
-            try:
-                print(f"Ingesting log file: {filename}")
-                ingest_alfworld_log(log_file_path, db)
-            except Exception as e:
-                print(f"Error ingesting {filename}: {e}")
+    for log_file_path in log_files:
+        try:
+            print(f"Ingesting log file: {log_file_path}")
+            ingest_alfworld_log(log_file_path, db)
+        except Exception as e:
+            print(f"Error ingesting {log_file_path}: {e}")
 
 if __name__ == "__main__":
     # Example usage
-    log_directory = "/mnt/ssd/agent_algo_bench/logs/episodes/alfworld/train/rap_flex/openai/gpt-4o-mini/trial_1"  # Directory containing log files
-    db_path = "./data/alfworld_learning.db"
+    import json
+    import csv
+
+    '''
+    mode = "best"
     
-    ingest_multiple_logs(log_directory, db_path)
+    # Load best examples from JSON or CSV
+    log_files = []
+    try:
+        with open(f"compare_3ic/{mode}_examples_per_task.json", "r") as f:
+            best_examples = json.load(f)
+            for task_id, data in best_examples.items():
+                if int(task_id) >= 19:
+                    run = data["run"]
+                    run = run.replace("analysis", "trial")
+                    task_id = int(task_id) - 19
+                    log_file = f"/mnt/ssd/agent_algo_bench/logs/episodes/alfworld/train/rap_flex/openai/gpt-4o-mini/{run}/{task_id}.txt"
+                    log_files.append(log_file)
+    except:
+        # Fallback to CSV if JSON fails
+        with open(f"compare_3ic/{mode}_examples_per_task.csv", "r") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                task_id = row["task_id"]
+                if int(task_id) >= 19:
+                    run = row["best_run"]
+                    run = run.replace("analysis", "trial")
+                    task_id = int(task_id) - 19
+                    log_file = f"/mnt/ssd/agent_algo_bench/logs/episodes/alfworld/train/rap_flex/openai/gpt-4o-mini/{run}/{task_id}.txt"
+                    log_files.append(log_file)
+    db_path = f"./data/alfworld_filtered/alfworld_{mode}_examples/learning.db"
+    
+    ingest_multiple_logs(log_files, db_path)
+    '''
+
+    # Read the text files from the folders for each of the 5 trials and ingest them into the database
+    for trial in [5]:
+        log_files = []
+        for task_id in range(1000):
+            log_file = f"./logs/episodes/alfworld/train/rap_flex/openai/gpt-4o-mini/trial_{trial}/{task_id}.txt"
+            log_files.append(log_file)
+        ingest_multiple_logs(log_files, f"./data/alfworld_filtered/alfworld_trial_{trial}_examples/learning.db")

@@ -322,7 +322,12 @@ class LearningDB:
 
     def store_episode(self, environment_id: str, goal: str, category: str, observations: List[str], reasoning: List[str], 
                      actions: List[str], rewards: List[float], plan: Optional[str],
-                     reflection: Optional[str], summary: Optional[str]):
+                     reflection: Optional[str], summary: Optional[str], nosave: bool = False):
+        # Never allow nosave if we are going to be backing up the database
+        curr_count = self.trajectory_cursor.execute("SELECT COUNT(*) FROM trajectories").fetchone()[0] + 1
+        if curr_count % 100 == 0 or (curr_count < 100 and curr_count % 10 == 0):
+            nosave = False
+
         """Store an episode in both trajectory and state databases"""
         # Store trajectory
         observations_str = json.dumps([observation.structured for observation in observations])
@@ -348,7 +353,8 @@ class LearningDB:
               plan, plan_embedding, reflection, reflection_embedding, summary, summary_embedding))
         
         trajectory_id = self.trajectory_cursor.lastrowid
-        self.trajectory_conn.commit()
+        if not nosave:
+            self.trajectory_conn.commit()
 
         # Add trajectory embeddings to FAISS indices
         trajectory_fields = {
@@ -365,7 +371,8 @@ class LearningDB:
                 self.trajectory_indices[field].add(embedding_array)
                 curr_size = self.trajectory_indices[field].ntotal - 1
                 self.trajectory_id_mappings[field][str(curr_size)] = trajectory_id
-                self._save_index(field, self.trajectory_indices[field], True)
+                if not nosave:
+                    self._save_index(field, self.trajectory_indices[field], True)
         
         # Store individual states with embeddings
         for i in range(len(observations) - 1):
@@ -406,8 +413,9 @@ class LearningDB:
                     curr_size = self.state_indices[field].ntotal - 1
                     self.state_id_mappings[field][str(curr_size)] = state_id
                     self._save_index(field, self.state_indices[field], False)
-                    
-        self.state_conn.commit()
+
+        if not nosave:
+            self.state_conn.commit()
 
         # When the database is of size divisible by 100, copy the folder
         curr_count = self.trajectory_cursor.execute("SELECT COUNT(*) FROM trajectories").fetchone()[0]

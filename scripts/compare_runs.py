@@ -393,7 +393,7 @@ class RetrievalRunComparison:
             else:
                 f.write("Examples showed consistent performance across the analyzed runs. This suggests that the effectiveness of examples is relatively stable across the tested hyperparameter configurations.\n")
     
-    def find_best_examples_per_task(self, max_task_id=200):
+    def find_best_examples_per_task(self, max_task_id=1200):
         """
         For each task ID up to max_task_id, find the example that achieves the highest direct success rate.
         
