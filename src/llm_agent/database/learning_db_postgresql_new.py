@@ -356,6 +356,7 @@ class LearningDB:
         k: int = 5,
         outcome: str = None,
         window: int = 1,
+        filtered_environment_id: str = None,
     ) -> tuple[List[Dict], List[Dict]]:
         """
         Retrieve similar trajectory entries based on key type and query.
