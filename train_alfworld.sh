@@ -43,7 +43,7 @@ stop_postgres() {
 cleanup() {
     echo "Terminating processes..."
     if [[ -n "$PYTHON_PID" ]]; then
-        kill $PYTHON_PID 2>/dev/null
+        kill -- -$PYTHON_PID 2>/dev/null
         wait $PYTHON_PID 2>/dev/null
     fi
     echo "Stopping the PostgreSQL server..."
@@ -65,13 +65,14 @@ for parallel in 1 4 16; do
     LOG_NAME="expel_train_postgresql_parallel_${parallel}"
 
     # Reset database to base state
-    dropdb -h "$PGSOCKETDIR" "$DBNAME" 2>/dev/null || true
+    echo "Resetting database to base state..."
+    dropdb -f -h "$PGSOCKETDIR" "$DBNAME" 2>/dev/null || true
     createdb -h "$PGSOCKETDIR" "$DBNAME"
     psql -h "$PGSOCKETDIR" -d "$DBNAME" -f "$CURRENT_DIR/data/alfworld_postgresql/learning_base.sql"
     sleep 5 # Allow time for initialization
 
     # Run training script in the background
-    python scripts/run_agent_v2.py \
+    setsid python scripts/run_agent_v2.py \
         --llm openai/gpt-4o-mini \
         --agent_type rap_flex \
         --db_type postgresql \
@@ -89,5 +90,7 @@ for parallel in 1 4 16; do
     wait "$PYTHON_PID"
 
     # Dump the database after training
+    echo "Dumping database to $LOG_NAME.sql..."
     pg_dump -h "$PGSOCKETDIR" -d "$DBNAME" -f "$CURRENT_DIR/data/alfworld_postgresql/$LOG_NAME.sql"
+    sleep 5
 done

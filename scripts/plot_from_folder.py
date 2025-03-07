@@ -129,6 +129,7 @@ def plot_cumulative_rewards(folder_path, granularity=1, plot_task_type=None):
 
     # Plot
     plt.figure(figsize=(10, 6))
+    plt.ylim(0, 1)
     
     # Plot based on task_type parameter
     if plot_task_type == 'substep':
