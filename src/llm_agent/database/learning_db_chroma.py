@@ -8,14 +8,15 @@ from typing import List, Dict, Union, Optional, Any
 import chromadb
 from chromadb.utils import embedding_functions
 
-TRAJECTORY_FIELDS = ["goal", "category", "plan", "reflection", "summary"]
-STATE_FIELDS = ["observation", "reasoning", "action"]
-RULE_FIELDS = ["name", "content", "context"]
-
 
 class LearningDB:
 
-    def __init__(self, db_path: str = "data/learning_db", config_type: str = "lite", port: int = 8008):
+    def __init__(
+        self,
+        db_path: str = "data/learning_db",
+        config_type: str = "lite",
+        port: int = 8008,
+    ):
         """
         Initialize a Chroma-based "learning database".
         - embedding_dim is mainly informational here, as SentenceTransformer determines actual dimension.
@@ -24,6 +25,8 @@ class LearningDB:
         self.embedding_func = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name="all-MiniLM-L6-v2"
         )
+        # change the dimension acoording to the model
+        self.zero_embedding = [0.0] * 384
 
         if config_type == "lite":
             self.chroma_client = chromadb.PersistentClient(path=db_path)
@@ -32,30 +35,62 @@ class LearningDB:
         else:
             raise ValueError(f"Unknown config_type: {config_type}")
 
-        self.trajectories_collection = self.chroma_client.get_or_create_collection(
-            name="trajectories",
-            embedding_function=self.embedding_func,
-            metadata={
-                "hnsw:space": "cosine",
-                "description": "Trajectories of agent-environment interactions",
-                "created": str(datetime.now()),
-            },
+        self.trajectories_collection = self.get_or_create_collection(
+            "trajectories", "Trajectories of agent-environment interactions"
         )
-        self.states_collection = self.chroma_client.get_or_create_collection(
-            name="states",
-            embedding_function=self.embedding_func,
-            metadata={
-                "hnsw:space": "cosine",
-                "description": "States of each trajectory",
-                "created": str(datetime.now()),
-            },
+        self.goal_collection = self.get_or_create_collection(
+            "goal", "Goal of each trajectory"
         )
-        self.rules_collection = self.chroma_client.get_or_create_collection(
-            name="rules",
+        self.category_collection = self.get_or_create_collection(
+            "category", "Category of each trajectory"
+        )
+        self.plan_collection = self.get_or_create_collection(
+            "plan", "Plan of each trajectory"
+        )
+        self.reflection_collection = self.get_or_create_collection(
+            "reflection", "Reflection of each trajectory"
+        )
+        self.summary_collection = self.get_or_create_collection(
+            "summary", "Summary of each trajectory"
+        )
+
+        self.states_collection = self.get_or_create_collection(
+            "states", "States of each trajectory"
+        )
+        self.observation_collection = self.get_or_create_collection(
+            "observation", "Observation of each state"
+        )
+        self.reasoning_collection = self.get_or_create_collection(
+            "reasoning", "Reasoning of each state"
+        )
+        self.action_collection = self.get_or_create_collection(
+            "actions", "Actions of each state"
+        )
+
+        self.traj_field_collections = {
+            "goal": self.goal_collection,
+            "category": self.category_collection,
+            "plan": self.plan_collection,
+            "reflection": self.reflection_collection,
+            "summary": self.summary_collection,
+        }
+        self.state_field_collections = {
+            "observation": self.observation_collection,
+            "reasoning": self.reasoning_collection,
+            "action": self.action_collection,
+        }
+        self.rule_field_collections = {}
+
+    def get_or_create_collection(self, name: str, description: str):
+        return self.chroma_client.get_or_create_collection(
+            name=name,
             embedding_function=self.embedding_func,
+            # todo, performance tuning
             metadata={
                 "hnsw:space": "cosine",
-                "description": "Rules for agent behavior",
+                # "hnsw:construction_ef": 200,
+                # "hnsw:M": 48,
+                "description": description,
                 "created": str(datetime.now()),
             },
         )
@@ -115,46 +150,43 @@ class LearningDB:
         success = bool(rewards and rewards[-1])
         rewards_str = json.dumps(rewards)
 
+        fields = {
+            "goal": goal,
+            "category": category,
+            "plan": plan if plan else "",
+            "reflection": reflection if reflection else "",
+            "summary": summary if summary else "",
+        }
+
         # a "metadata" dictionary for the trajectory doc
         self.trajectories_collection.add(
             ids=[trajectory_id],
             documents=[""],
+            embeddings=[self.zero_embedding],
             metadatas=[
                 {
                     "environment_id": environment_id,
-                    "goal": goal,
-                    "category": category,
+                    "goal": fields["goal"],
+                    "category": fields["category"],
                     "observations": observations_str,
                     "reasoning": reasoning_str,
                     "actions": actions_str,
                     "rewards": rewards_str,
                     "success": success,
-                    "plan": plan if plan else "",
-                    "reflection": reflection if reflection else "",
-                    "summary": summary if summary else "",
+                    "plan": fields["plan"],
+                    "reflection": fields["reflection"],
+                    "summary": fields["summary"],
                 }
             ],
         )
 
-        fields = {
-            "goal": goal,
-            "category": category,
-            "plan": plan,
-            "reflection": reflection,
-            "summary": summary,
-        }
-
         for field_name, text_value in fields.items():
-            if text_value is None:
-                text_value = ""
-            doc_id = f"traj_{trajectory_id}_{field_name}"
-            self.trajectories_collection.add(
-                ids=[doc_id],
+            self.traj_field_collections[field_name].add(
+                ids=[trajectory_id],
                 documents=[text_value],
                 metadatas=[
                     {
                         "trajectory_id": trajectory_id,
-                        "field_name": field_name,
                         "success": success,
                     }
                 ],
@@ -175,6 +207,7 @@ class LearningDB:
             self.states_collection.add(
                 ids=[state_id],
                 documents=[""],
+                embeddings=[self.zero_embedding],
                 metadatas=[
                     {
                         "trajectory_id": trajectory_id,
@@ -193,22 +226,20 @@ class LearningDB:
                 "action": action_text,
             }
             for field_name, text_value in fields.items():
-                doc_id = f"state_{state_id}_{field_name}"
-                self.states_collection.add(
-                    ids=[doc_id],
+                self.state_field_collections[field_name].add(
+                    ids=[state_id],
                     documents=[text_value],
                     metadatas=[
                         {
                             "trajectory_id": trajectory_id,
-                            "state_id": state_id,
-                            "field_name": field_name,
+                            "position": i,
                         }
                     ],
                 )
 
     def _compute_top_k_nearest_neighbors_by_avg_distance(
         self,
-        collection,
+        collections,
         field_names: List[str],
         query_texts: List[str],
         n_results: int,
@@ -218,14 +249,10 @@ class LearningDB:
         field_worst_distance = {}
 
         for fname, qtext in zip(field_names, query_texts):
-            results = collection.query(
+            results = collections[fname].query(
                 query_texts=[qtext],
-                n_results=n_results * len(field_names),  # expand search range
-                where=(
-                    {"$and": [{"field_name": fname}, filter]}
-                    if filter
-                    else {"field_name": fname}
-                ),
+                n_results=n_results * min(2, len(field_names)),  # expand search range
+                where=({**filter} if filter else {}),
                 include=["distances", "metadatas"],
             )
 
@@ -263,27 +290,27 @@ class LearningDB:
         n_results: int = 5,
         filter: Optional[Dict[str, Any]] = None,
     ):
-        key_type = [key_type] if isinstance(key_type, str) else key_type
-        key = [key] if isinstance(key, str) else key
+        key_types = [key_type] if isinstance(key_type, str) else key_type
+        keys = [key] if isinstance(key, str) else key
 
-        is_trajectory = any(kt in TRAJECTORY_FIELDS for kt in key_type)
-        is_state = any(kt in STATE_FIELDS for kt in key_type)
-        is_rule = any(kt in RULE_FIELDS for kt in key_type)
+        is_trajectory = any(kt in self.traj_field_collections for kt in key_types)
+        is_state = any(kt in self.state_field_collections for kt in key_types)
+        is_rule = any(kt in self.rule_field_collections for kt in key_types)
         assert (
             sum([is_trajectory, is_state, is_rule]) == 1
         ), "Invalid or mixed key types."
 
         if is_trajectory:
-            collection = self.trajectories_collection
+            collections = self.traj_field_collections
         elif is_state:
-            collection = self.states_collection
+            collections = self.state_field_collections
         else:  # is_rule
-            collection = self.rules_collection
+            raise NotImplementedError("Rule-based search not yet implemented.")
 
         return self._compute_top_k_nearest_neighbors_by_avg_distance(
-            collection,
-            key_type,
-            key,
+            collections,
+            key_types,
+            keys,
             n_results,
             filter,
         )
@@ -304,8 +331,8 @@ class LearningDB:
     def _exact_match(self, env_id: str, n_results: int, outcome_filter: Dict):
         all_trajectories = self.trajectories_collection.get(
             where=(
-                {"$and": [{"environment_id": env_id}, filter]}
-                if filter
+                {"$and": [{"environment_id": env_id}, outcome_filter]}
+                if outcome_filter
                 else {"environment_id": env_id}
             ),
         )["metadatas"]
@@ -340,11 +367,13 @@ class LearningDB:
         if key_type == ["environment_id"]:
             return self._exact_match(key[0], k, outcome_filter)
 
-        trajectory_key_types = [kt for kt in key_type if kt in TRAJECTORY_FIELDS]
-        state_key_types = [kt for kt in key_type if kt in STATE_FIELDS]
+        trajectory_key_types = [
+            kt for kt in key_type if kt in self.traj_field_collections
+        ]
+        state_key_types = [kt for kt in key_type if kt in self.state_field_collections]
 
         chosen_t_ids = []
-        critical_state_positions = []
+        critical_state_positions = {}
         if trajectory_key_types:
             # Filter key+type to only trajectory keys
             key_filtered = [
@@ -353,52 +382,54 @@ class LearningDB:
             t_ids, t_distances = self._get_top_k_by_keys(
                 trajectory_key_types,
                 key_filtered,
-                k * 3,
+                k * 2 if state_key_types else k,
                 filter=outcome_filter,
             )
 
-            critical_state_ids = {}
             if state_key_types:
                 state_only_key_filtered = [
                     v for kt, v in zip(key_type, key) if kt in state_key_types
                 ]
                 for i, t_id in enumerate(t_ids):
-                    s_ids, s_distances = self._get_top_k_by_keys(
-                        state_key_types,
-                        state_only_key_filtered,
-                        n_results=10,
-                        filter={"trajectory_id": t_id},
-                    )
-                    if not s_ids:
-                        t_distances[i] += 1.0
-                        # missing critical id
-                    else:
-                        t_distances[i] += min(s_distances)
-                        critical_state_ids[t_id] = s_ids[0]
+                    t_states = self.states_collection.get(where={"trajectory_id": t_id})
+                    state_field_distances = np.zeros(len(t_states["ids"]))
+                    for s_field, state_key in zip(
+                        state_key_types, state_only_key_filtered
+                    ):
+                        field_embeds = self.state_field_collections[s_field].get(
+                            ids=t_states["ids"], include=["embeddings"]
+                        )["embeddings"]
+                        query_vec = self.embedding_func(state_key)[0]
+                        state_field_distances += [
+                            1
+                            - np.dot(
+                                embd,
+                                query_vec,
+                            )
+                            for embd in field_embeds
+                        ]
+                    state_field_distances /= len(state_key_types)
+
+                    min_index = np.argmin(state_field_distances)
+                    critical_state_positions[t_id] = t_states["metadatas"][min_index][
+                        "position"
+                    ]
+                    t_distances[i] += state_field_distances[min_index]
 
             sort_indices = np.argsort(t_distances)
             chosen_t_ids = [t_ids[i] for i in sort_indices[:k]]
-
-            if critical_state_ids:
-                critical_state_ids = {
-                    k: v for k, v in critical_state_ids.items() if k in chosen_t_ids
-                }
-                critical_states = self.states_collection.get(
-                    ids=list(critical_state_ids.keys()), include=["metadatas"]
-                )["metadatas"]
-                critical_state_positions = [cs["position"] for cs in critical_states]
 
         else:
             assert (
                 state_key_types
             ), "At least one key must be a trajectory or state key."
-            s_ids, s_distances = self._get_top_k_by_keys(state_key_types, key, k)
+            s_ids, s_distances = self._get_top_k_by_keys(state_key_types, key, k * 2)
             for s_id in s_ids:
                 state = self.states_collection.get(ids=[s_id])["metadatas"][0]
                 trajectory_id = state["trajectory_id"]
                 if trajectory_id not in chosen_t_ids:
                     chosen_t_ids.append(trajectory_id)
-                    critical_state_positions.append(state["position"])
+                    critical_state_positions[trajectory_id] = state["position"]
                     if len(chosen_t_ids) >= k:
                         break
 
@@ -409,11 +440,11 @@ class LearningDB:
             "metadatas"
         ]
 
-        for i in range(len(similar_entries)):
+        for i, tid in enumerate(chosen_t_ids):
             window_start, window_end = 0, None
             if critical_state_positions:
-                window_start = max(0, critical_state_positions[i] - window)
-                window_end = critical_state_positions[i] + window + 1
+                window_start = max(0, critical_state_positions[tid] - window)
+                window_end = critical_state_positions[tid] + window + 1
             similar_entries[i] = self._format_conversion(
                 similar_entries[i], window_start, window_end
             )

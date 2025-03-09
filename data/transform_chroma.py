@@ -15,17 +15,63 @@ class ChromaDB:
         self.embedding_func = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name="all-MiniLM-L6-v2"
         )
+        self.zero_embedding = [0.0] * 384
 
-        self.trajectories_collection = self.get_or_create_collection("trajectories")
-        self.states_collection = self.get_or_create_collection("states")
+        self.trajectories_collection = self.get_or_create_collection(
+            "trajectories", "Trajectories of agent-environment interactions"
+        )
+        self.goal_collection = self.get_or_create_collection(
+            "goal", "Goal of each trajectory"
+        )
+        self.category_collection = self.get_or_create_collection(
+            "category", "Category of each trajectory"
+        )
+        self.plan_collection = self.get_or_create_collection(
+            "plan", "Plan of each trajectory"
+        )
+        self.reflection_collection = self.get_or_create_collection(
+            "reflection", "Reflection of each trajectory"
+        )
+        self.summary_collection = self.get_or_create_collection(
+            "summary", "Summary of each trajectory"
+        )
 
-    def get_or_create_collection(self, name: str):
+        self.states_collection = self.get_or_create_collection(
+            "states", "States of each trajectory"
+        )
+        self.observation_collection = self.get_or_create_collection(
+            "observation", "Observation of each state"
+        )
+        self.reasoning_collection = self.get_or_create_collection(
+            "reasoning", "Reasoning of each state"
+        )
+        self.action_collection = self.get_or_create_collection(
+            "actions", "Actions of each state"
+        )
+
+        self.traj_field_collections = {
+            "goal": self.goal_collection,
+            "category": self.category_collection,
+            "plan": self.plan_collection,
+            "reflection": self.reflection_collection,
+            "summary": self.summary_collection,
+        }
+        self.state_field_collections = {
+            "observation": self.observation_collection,
+            "reasoning": self.reasoning_collection,
+            "action": self.action_collection,
+        }
+
+    def get_or_create_collection(self, name: str, description: str):
         return self.client.get_or_create_collection(
-            name,
+            name=name,
             embedding_function=self.embedding_func,
+            # todo, performance tuning
             metadata={
                 "hnsw:space": "cosine",
-                "description": f"Collection for storing {name}",
+                # "hnsw:construction_ef": 200,
+                # "hnsw:M": 48,
+                "description": description,
                 "created": str(datetime.now()),
             },
         )
@@ -36,103 +82,75 @@ class ChromaDB:
         environment_id: str,
         goal: str,
         category: str,
-        observations: list,
-        reasoning: list | None,
-        actions: list,
-        rewards: list,
-        plan: str | None,
-        reflection: str | None,
-        summary: str | None,
+        observations,
+        reasoning,
+        actions,
+        rewards,
+        plan,
+        reflection,
+        summary,
     ) -> int:
-        """
-        Insert a trajectory into the trajectories_collection.
-        Now done in fewer calls for speed.
-        """
-        # Convert data to JSON strings for metadata
-        success = bool(rewards and rewards[-1] > 0)  # success if last reward > 0
+
+        # Convert data to JSON strings for storing in metadata
+        observations_str = json.dumps(observations)
+        reasoning_str = json.dumps(reasoning)
+        actions_str = json.dumps(actions)
+        success = bool(rewards and rewards[-1])
         rewards_str = json.dumps(rewards)
 
-        # 1) Add the main trajectory metadata as one document
-        main_id = trajectory_id
-        main_doc = ""
-        main_metadata = {
-            "environment_id": environment_id,
+        goal = goal if goal else ""
+        category = category if category else ""
+        plan = plan if plan else ""
+        reflection = reflection if reflection else ""
+        summary = summary if summary else ""
+
+        fields = {
             "goal": goal,
             "category": category,
-            "observations": observations,
-            "reasoning": reasoning,
-            "actions": actions,
-            "rewards": rewards_str,
-            "success": success,
             "plan": plan if plan else "",
             "reflection": reflection if reflection else "",
             "summary": summary if summary else "",
         }
 
-        # 2) Add separate documents for key fields (goal, category, plan, reflection, summary)
-        sub_ids = []
-        sub_docs = []
-        sub_metadatas = []
-
-        fields = {
-            "goal": goal or "",
-            "category": category or "",
-            "plan": plan or "",
-            "reflection": reflection or "",
-            "summary": summary or "",
-        }
-
-        for field_name, text in fields.items():
-            doc_id = f"traj_{trajectory_id}_{field_name}"
-            sub_ids.append(doc_id)
-            sub_docs.append(text)
-            sub_metadatas.append(
+        # a "metadata" dictionary for the trajectory doc
+        self.trajectories_collection.add(
+            ids=[trajectory_id],
+            documents=[""],
+            embeddings=[self.zero_embedding],
+            metadatas=[
                 {
-                    "trajectory_id": trajectory_id,
-                    "field_name": field_name,
+                    "environment_id": environment_id,
+                    "goal": fields["goal"],
+                    "category": fields["category"],
+                    "observations": observations_str,
+                    "reasoning": reasoning_str,
+                    "actions": actions_str,
+                    "rewards": rewards_str,
                     "success": success,
+                    "plan": fields["plan"],
+                    "reflection": fields["reflection"],
+                    "summary": fields["summary"],
                 }
+            ],
+        )
+
+        for field_name, text_value in fields.items():
+            self.traj_field_collections[field_name].add(
+                ids=[trajectory_id],
+                documents=[text_value],
+                metadatas=[
+                    {
+                        "trajectory_id": trajectory_id,
+                        "success": success,
+                    }
+                ],
             )
 
-        # Now do batched insertion in two calls:
-        # a) main trajectory doc
-        self.trajectories_collection.add(
-            ids=[main_id],
-            documents=[main_doc],
-            metadatas=[main_metadata],
-        )
-        # b) sub-fields
-        self.trajectories_collection.add(
-            ids=sub_ids,
-            documents=sub_docs,
-            metadatas=sub_metadatas,
-        )
-
-        return 1  # number of trajectories inserted
-
-    def _insert_states(
-        self,
-        trajectory_id: str,
-        observations: list,
-        actions: list,
-        reasoning: list | None,
-    ):
+    def _insert_states(self, trajectory_id, observations, actions, reasoning):
         """
-        Insert states into the states_collection based on trajectory data.
-        Uses batched inserts to reduce overhead.
+        Simulates inserting into 'states' by storing a new Chroma document
+        for each state (with separate embeddings for observation, reasoning, action).
         """
-        if len(observations) < 2:
-            return
-
-        main_ids = []
-        main_docs = []
-        main_metadatas = []
-
-        # We'll also store sub-fields (observation, reasoning, action) in a separate batch
-        sub_ids = []
-        sub_docs = []
-        sub_metadatas = []
-
         for i in range(len(observations) - 1):
             state = observations[i]
             next_state = observations[i + 1]
@@ -140,52 +158,38 @@ class ChromaDB:
             action_text = actions[i] if i < len(actions) else ""
 
             state_id = str(uuid.uuid4())
-
-            # Main "state" doc
-            main_ids.append(state_id)
-            main_docs.append("")  # or some summary text if desired
-            main_metadatas.append(
-                {
-                    "trajectory_id": trajectory_id,
-                    "position": i,
-                    "observation": json.dumps(state),
-                    "reasoning": reason_text,
-                    "action": action_text,
-                    "next_state": json.dumps(next_state),
-                }
+            self.states_collection.add(
+                ids=[state_id],
+                documents=[""],
+                embeddings=[self.zero_embedding],
+                metadatas=[
+                    {
+                        "trajectory_id": trajectory_id,
+                        "position": i,
+                        "observation": state,
+                        "reasoning": reason_text,
+                        "action": action_text,
+                        "next_state": next_state,
+                    }
+                ],
             )
 
-            # Sub-fields
             fields = {
-                "observation": json.dumps(state),
+                "observation": state,
                 "reasoning": reason_text,
                 "action": action_text,
             }
-            for field_name, text in fields.items():
-                doc_id = f"state_{state_id}_{field_name}"
-                sub_ids.append(doc_id)
-                sub_docs.append(text)
-                sub_metadatas.append(
-                    {
-                        "trajectory_id": trajectory_id,
-                        "state_id": state_id,
-                        "field_name": field_name,
-                    }
+            for field_name, text_value in fields.items():
+                self.state_field_collections[field_name].add(
+                    ids=[state_id],
+                    documents=[text_value],
+                    metadatas=[
+                        {
+                            "trajectory_id": trajectory_id,
+                            "position": i,
+                        }
+                    ],
                 )
-
-        # Now do two batched insert calls:
-        # a) main states
-        self.states_collection.add(
-            ids=main_ids,
-            documents=main_docs,
-            metadatas=main_metadatas,
-        )
-        # b) sub-fields
-        self.states_collection.add(
-            ids=sub_ids,
-            documents=sub_docs,
-            metadatas=sub_metadatas,
-        )
 
 
 # Transformation function
@@ -225,7 +229,7 @@ def transform_sqlite_to_chroma(sqlite_db_path: str, chroma_db_path: str):
 
         observations = json.loads(observations_json) if observations_json else []
         actions = json.loads(actions_json) if actions_json else []
-        reasoning = json.loads(reasoning_json) if reasoning_json else None
+        reasoning = json.loads(reasoning_json) if reasoning_json else []
         rewards = json.loads(rewards_json) if rewards_json else []
 
         # Insert trajectory into Chroma DB
@@ -234,9 +238,9 @@ def transform_sqlite_to_chroma(sqlite_db_path: str, chroma_db_path: str):
             environment_id=environment_id,
             goal=goal,
             category=category,
-            observations=observations_json,
-            reasoning=reasoning_json,
-            actions=actions_json,
+            observations=observations,
+            reasoning=reasoning,
+            actions=actions,
             rewards=rewards,
             plan=plan,
             reflection=reflection,
@@ -259,8 +263,129 @@ def transform_sqlite_to_chroma(sqlite_db_path: str, chroma_db_path: str):
     )
 
 
+def transform_chroma_to_sqlite(chroma_db_path: str, sqlite_db_path: str):
+    """
+    Transform the Chroma DB at `chroma_db_path` back into an SQLite database
+    at `sqlite_db_path`. Re-creates or updates the `trajectories` table.
+    Embeddings are stored as empty strings or placeholders for simplicity.
+    """
+    # -- 1) Initialize a connection to the existing Chroma DB --
+    embedding_func = embedding_functions.SentenceTransformerEmbeddingFunction(
+        model_name="all-MiniLM-L6-v2"
+    )
+    client = chromadb.PersistentClient(path=chroma_db_path)
+    trajectories_collection = client.get_collection(
+        name="trajectories", embedding_function=embedding_func
+    )
+
+    results = trajectories_collection.get(include=["metadatas"], limit=None)
+
+    conn = sqlite3.connect(sqlite_db_path)
+    cursor = conn.cursor()
+
+    # Ensure we have the same schema as in the original transform
+    create_table_sql = """
+    CREATE TABLE IF NOT EXISTS trajectories (
+        id TEXT PRIMARY KEY,
+        environment_id TEXT,
+        goal TEXT,
+        goal_embedding TEXT,
+        category TEXT,
+        category_embedding TEXT,
+        observations_json TEXT,
+        reasoning_json TEXT,
+        actions_json TEXT,
+        rewards_json TEXT,
+        plan TEXT,
+        plan_embedding TEXT,
+        reflection TEXT,
+        reflection_embedding TEXT,
+        summary TEXT,
+        summary_embedding TEXT
+    );
+    """
+    cursor.execute(create_table_sql)
+
+    for i, doc_id in enumerate(results["ids"]):
+        meta = results["metadatas"][i]  # The metadata dict for this trajectory
+
+        # Pull out the stored fields. They match what was inserted in `_insert_trajectory`:
+        #   environment_id, goal, category, observations, reasoning, actions, rewards, plan, reflection, summary
+        environment_id = meta.get("environment_id", "")
+        goal = meta.get("goal", "")
+        category = meta.get("category", "")
+        observations_str = meta.get("observations", "[]")  # JSON string
+        reasoning_str = meta.get("reasoning", "")
+        actions_str = meta.get("actions", "[]")
+        rewards_str = meta.get("rewards", "[]")
+        plan = meta.get("plan", "")
+        reflection = meta.get("reflection", "")
+        summary = meta.get("summary", "")
+
+        # For simplicity in the example, store empty placeholders for embeddings
+        goal_embedding = ""
+        category_embedding = ""
+        plan_embedding = ""
+        reflection_embedding = ""
+        summary_embedding = ""
+
+        # Insert the row into `trajectories`. We do an upsert or just insert (depending on your needs).
+        insert_sql = """
+        INSERT OR REPLACE INTO trajectories (
+            id,
+            environment_id,
+            goal,
+            goal_embedding,
+            category,
+            category_embedding,
+            observations_json,
+            reasoning_json,
+            actions_json,
+            rewards_json,
+            plan,
+            plan_embedding,
+            reflection,
+            reflection_embedding,
+            summary,
+            summary_embedding
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        cursor.execute(
+            insert_sql,
+            (
+                doc_id,
+                environment_id,
+                goal,
+                goal_embedding,
+                category,
+                category_embedding,
+                observations_str,
+                reasoning_str,
+                actions_str,
+                rewards_str,
+                plan,
+                plan_embedding,
+                reflection,
+                reflection_embedding,
+                summary,
+                summary_embedding,
+            ),
+        )
+
+    conn.commit()
+    conn.close()
+
+    print(
+        f"Transformed {len(results['ids'])} trajectories from Chroma DB "
+        f"('{chroma_db_path}') into SQLite at '{sqlite_db_path}'."
+    )
+
+
 # Run the transformation
 if __name__ == "__main__":
     sqlite_db_path = sys.argv[1]
     chroma_db_path = sys.argv[2]
+    # new_sqlite_db_path = sys.argv[3]
     transform_sqlite_to_chroma(sqlite_db_path, chroma_db_path)
+    # transform_chroma_to_sqlite(chroma_db_path, new_sqlite_db_path)

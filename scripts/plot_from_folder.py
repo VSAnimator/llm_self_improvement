@@ -68,7 +68,7 @@ def nonhomogeneous_max(arrays_list):
 def plot_cumulative_rewards(folder_path, granularity=1, plot_task_type=None, cumulative=True, multiple_folders=False, existing_plot=None):
     """
     Plot the average cumulative reward over tasks.
-    
+
     Args:
         folder_path: Path to the folder containing episode files or a list of folder paths
         granularity: Number of tasks to group together for each data point
@@ -304,8 +304,12 @@ def process_folder(folder_path, plot_task_type=None):
     from llm_agent.in_context.alfworld_fewshots import get_task_type
     
     # Get all episode files in the folder
-    episode_files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
-    
+    episode_files = [
+        os.path.join(folder_path, f)
+        for f in os.listdir(folder_path)
+        if os.path.isfile(os.path.join(folder_path, f)) and f.endswith(".txt")
+    ]
+
     # Get final rewards for all episodes
     final_rewards = []
     task_type_rewards = {}
@@ -405,6 +409,7 @@ def process_folder(folder_path, plot_task_type=None):
             continue
     
     return final_rewards, task_type_rewards, pick_up_successes, interaction_successes, put_successes, interaction_subtype_successes
+
 
 if __name__ == "__main__":
     import argparse

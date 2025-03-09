@@ -353,14 +353,21 @@ def main():
         db_path = args.db_path if args.db_path else default_db_path
         if args.db_type == "sqlite":
             from llm_agent.database.learning_db import LearningDB
+
             learning_db = LearningDB(db_path=db_path)
             if args.random_retrieval:
                 learning_db.random_trajectory_retrieval = True
         elif args.db_type == "postgresql":
-            from llm_agent.database.learning_db_postgresql import LearningDB as LearningDBPostgreSQL
+            from llm_agent.database.learning_db_postgresql_new import (
+                LearningDB as LearningDBPostgreSQL,
+            )
+
             learning_db = LearningDBPostgreSQL(db_path=db_path)
         elif args.db_type == "chroma":
-            from llm_agent.database.learning_db_chroma import LearningDB as LearningDBChroma
+            from llm_agent.database.learning_db_chroma import (
+                LearningDB as LearningDBChroma,
+            )
+
             learning_db = LearningDBChroma(
                 db_path=db_path,
                 config_type="server" if args.store_episodes else "lite",
