@@ -7,7 +7,6 @@ import timeit
 import copy
 
 import numpy as np
-from gym.utils import seeding
 
 DEBUG = False
 
@@ -24,6 +23,14 @@ class Recipe(collections.Counter):
 
     def __len__(self):
         return len(list(self.elements()))
+        
+    def __lt__(self, other):
+        """Support sorting by comparing recipes."""
+        return tuple(sorted(self.items())) < tuple(sorted(other.items()))
+        
+    def __eq__(self, other):
+        """Support equality comparison."""
+        return tuple(sorted(self.items())) == tuple(sorted(other.items()))
 
 
 class Task:
@@ -38,6 +45,17 @@ class Task:
 
     def __hash__(self):
         return tuple((self.goal, self.base_entities, self.intermediate_entities, self.relevant_recipes)).__hash__()
+        
+    def __lt__(self, other):
+        """Support sorting by comparing goals."""
+        return self.goal < other.goal
+        
+    def __eq__(self, other):
+        """Support equality comparison."""
+        return (self.goal == other.goal and 
+                self.base_entities == other.base_entities and 
+                self.intermediate_entities == other.intermediate_entities and 
+                self.relevant_recipes == other.relevant_recipes)
 
 
 class RecipeBook:
@@ -45,12 +63,15 @@ class RecipeBook:
         data_path='src/llm_agent/env/envs/alchemy2.json', max_depth=1, split=None, train_ratio=1.0, seed=None):
         self.test_mode = False
         self.train_ratio = train_ratio
+        print("setting recipebook seed to", seed)
+        input()
         self.set_seed(seed)
 
         self._rawdata = self._load_data(data_path)
         self.max_depth = max_depth
 
-        self.entities = tuple(self._rawdata['entities'].keys())
+        # Sort entities to ensure consistent ordering
+        self.entities = tuple(sorted(self._rawdata['entities'].keys()))
         self.entity2index = {e:i for i,e in enumerate(self.entities)}
         self.entity2recipes = collections.defaultdict(list)
 
@@ -79,7 +100,10 @@ class RecipeBook:
 
     def _random_choice(self, options):
         # Fast random choice
-        i = self.np_random.integers(0, len(options))
+        # Sort options to ensure deterministic behavior when seed is fixed
+        if isinstance(options, list):
+            options = sorted(options)
+        i = self.np_random.randint(0, len(options))
         return options[i]
 
     def _load_data(self, path):
@@ -90,7 +114,8 @@ class RecipeBook:
         return jsondata
 
     def set_seed(self, seed):
-        self.np_random, self.seed = seeding.np_random(seed)
+        self.seed = seed
+        self.np_random = np.random.RandomState(seed)
 
     def save(self, path):
         """
@@ -141,6 +166,8 @@ class RecipeBook:
             return e != task.goal and e not in base_e and e not in intermediate_e
 
         options = [(i, e) for i, e in enumerate(self.entities) if is_valid(e)]
+        # Sort options for deterministic behavior
+        options.sort(key=lambda x: x[1])
         sample_index_space, sample_space = zip(*options)
 
         if uniform:
@@ -174,9 +201,13 @@ class RecipeBook:
                 print(f'--Expanding base entity {b}')
 
                 # Expand each recipe for each base entity
-                for recipe in self.entity2recipes[b]:
+                # Sort recipes for deterministic expansion
+                sorted_recipes = sorted(self.entity2recipes[b], key=lambda r: tuple(sorted(r.items())))
+                for recipe in sorted_recipes:
                     print(f'----Trying recipe for {b}, {recipe}')
                     expanded_entities = [e for e in recipe if e not in next_base_entities]
+                    # Sort expanded entities for deterministic behavior
+                    expanded_entities.sort()
                     is_cycle = False
                     for e in recipe:
                         if e in intermediate_entities or e == goal: 
@@ -209,7 +240,8 @@ class RecipeBook:
         self.depth2task = collections.defaultdict(set) # depth to task tuples
 
         total = 0
-        for e in self.entities:
+        # Process entities in sorted order for deterministic behavior
+        for e in sorted(self.entities):
             # self._generate_all_tasks_for_goal(e)
             s = timeit.timeit(lambda: self._generate_all_tasks_for_goal(e, max_depth=max_depth), number=1)
             # print(f'Generated max-depth {max_depth} recipes for {e} in {s} s.')
@@ -218,7 +250,8 @@ class RecipeBook:
         print(f'Generated all max-depth {max_depth} tasks for {len(self.entities)} entities in {total} s.')
 
         for d in self.depth2task:
-            self.depth2task[d] = tuple(self.depth2task[d])
+            # Convert to sorted tuple for deterministic ordering
+            self.depth2task[d] = tuple(sorted(self.depth2task[d], key=lambda t: (t.goal, t.base_entities)))
             print(f"Depth {d} tasks: {len(self.depth2task[d])}")
 
     def _init_recipe_weighted_entity_dist(self):
@@ -251,6 +284,8 @@ class RecipeBook:
 
             # Split goals into train and test
             all_goals = list(self.entities)
+            # Sort before shuffling to ensure deterministic behavior with fixed seed
+            all_goals.sort()
             self.np_random.shuffle(all_goals)
             if split == 'debug': train_ratio = 1.0
             train_size = int(np.ceil(train_ratio*len(all_goals)))
@@ -276,6 +311,8 @@ class RecipeBook:
 
         elif split in ['by_recipe', 'by_recipe_train_all_goals']:
             all_recipes = list(self.recipe2entity.keys())
+            # Sort recipes before shuffling for deterministic behavior
+            all_recipes.sort(key=lambda r: tuple(sorted(r.items())))
             self.np_random.shuffle(all_recipes)
             train_size = int(np.ceil(train_ratio*len(all_recipes)))
             self.recipes_train = set(all_recipes[:train_size])
@@ -297,6 +334,8 @@ class RecipeBook:
         elif split == 'by_task':
             for depth in depths:
                 all_tasks_at_depth = list(self.depth2task[depth])
+                # Sort tasks before shuffling for deterministic behavior
+                all_tasks_at_depth.sort(key=lambda t: (t.goal, t.base_entities))
                 self.np_random.shuffle(all_tasks_at_depth)
                 train_size_at_depth = int(np.ceil(train_ratio*len(all_tasks_at_depth)))
 
@@ -334,10 +373,14 @@ class RecipeBook:
 
         train_entities = set(entity2recipes_train.keys())
         missing_entities = [e for e in self.entities if e not in train_entities]
+        # Sort missing entities for deterministic behavior
+        missing_entities.sort()
 
         aux_recipes = set()
         for e in missing_entities:
-            aux_recipe = self._random_choice(list(entity2recipes_test[e]))
+            # Convert to sorted list for deterministic selection
+            recipes_for_entity = sorted(list(entity2recipes_test[e]), key=lambda r: tuple(sorted(r.items())))
+            aux_recipe = self._random_choice(recipes_for_entity)
             aux_recipes.add(aux_recipe)
 
         for recipe in aux_recipes:
