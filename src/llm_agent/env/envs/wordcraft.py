@@ -5,15 +5,15 @@ import numpy as np
 import gym
 from gym.utils import seeding
 
-from wordcraft_recipebook import Recipe, RecipeBook
+from llm_agent.env.envs.wordcraft_recipebook import Recipe, RecipeBook
 
 from llm_agent.env.base_env import BaseEnv, Observation, Action
 from typing import Tuple, Dict, Optional, List
 
-NO_RECIPE_PENALTY = -0.1
-IRRELEVANT_RECIPE_PENALTY = -0.1
+NO_RECIPE_PENALTY = 0.0
+IRRELEVANT_RECIPE_PENALTY = 0.0
 GOAL_REWARD = 1.0
-SUBGOAL_REWARD = 1.0
+SUBGOAL_REWARD = 0.0
 
 class WordCraftBaseEnv(gym.Env):
     """
@@ -43,8 +43,6 @@ class WordCraftBaseEnv(gym.Env):
 
         if seed is None:
             seed = int.from_bytes(os.urandom(4), byteorder="little")
-        print("Setting seed to", seed)
-        input()
 
         if recipe_book_path is not None:
             self.recipe_book = RecipeBook.load(recipe_book_path)
@@ -241,10 +239,10 @@ class WordCraftBaseEnv(gym.Env):
         # output = f'\n{goal_str}\n\n{hr}\n{table_str}\n{hr}\n\n{selection_str}\n\nSubgoal rewards: {self.episode_reward}\n'
         output = f'\n{goal_str}\n\n{hr}\n{table_str}\n{hr}\n\n{selection_str}\n\n'
 
-        print(output)
+        return output
 
     def render(self, mode='human'):
-        self._display_ascii(mode)
+        return self._display_ascii(mode)
 
 gym.envs.registration.register(
     id='wordcraft-multistep-goal-v0',
@@ -280,7 +278,27 @@ class WordCraftEnv(BaseEnv):
         self.steps = 0
         self.id = config.get('problem_id', 0)
         self.category = "wordcraft"
-        self.env = WordCraftBaseEnv(max_depth=2, num_distractors=2, seed=self.id)
+        self.env = WordCraftBaseEnv(max_depth=1, num_distractors=2, seed=self.id)
+        
+    def clean_obs(self, obs: str) -> str:
+        """Clean the observation
+        
+        Args:
+            obs: Observation to clean
+        """
+        # Remove "(on hand)"
+        obs = obs.strip()
+        obs = obs.replace("(on hand):", "")
+        # Remove the line with "Combine the ingredients to make *"
+        obs = obs.split("\n")[2:]
+        obs = " ".join(obs)
+        # Remove trailing spaces and newlines
+        obs = obs.strip()
+        # Remove all the dashes
+        obs = obs.replace("--", "")
+        # Add a bit saying "ingredients available"
+        obs = "Ingredients available: " + obs
+        return obs
         
     def reset(self) -> Tuple[Observation, Dict]:
         """Reset environment to initial state
@@ -288,7 +306,13 @@ class WordCraftEnv(BaseEnv):
         Returns:
             Tuple[Observation, Dict]: Initial observation and info
         """
-        return self.env.reset()
+        x = self.env.reset()
+        obs = self.env.render()
+        obs = obs.strip()
+        self.goal = obs.split('\n')[0]
+        self.goal += ". You may only combine two entities at a time. You can take only a single step to make the final product."
+        obs = self.clean_obs(obs)
+        return obs, {}
     
     def step(self, action: Action) -> Tuple[Observation, float, bool, bool, Dict]:
         """
@@ -296,16 +320,22 @@ class WordCraftEnv(BaseEnv):
         """
         
         action_list = []
-        valid_options = [f'{i+1}:{e}' for i, e in enumerate(self.env.table)]
+        valid_options = [f'{e}' for e in self.env.table]
         for option in valid_options:
             if option in action:
-                action_list.append(int(option.split(':')[0]) - 1)
+                # Get the index of the option
+                action_list.append(valid_options.index(option))
+                # If it appears twice, we need to add it twice
+                if action.count(option) == 2:
+                    action_list.append(valid_options.index(option))
         if len(action_list) != 2:
             return None, 0, False, False, {}
         toreturn = None
         for action in action_list:
             toreturn = self.env.step(action)
-        return toreturn
+        obs = self.env.render()
+        obs = self.clean_obs(obs)
+        return obs, toreturn[1], toreturn[2], toreturn[3]
     
     def get_action_space(self) -> Dict:
         """Get JSON schema describing valid action format
@@ -316,21 +346,11 @@ class WordCraftEnv(BaseEnv):
         # Output strings with the names of the two entities we would like to combine
         return {
             "type": "string",
-            "description": "Output strings with the names of the two entities we would like to combine"
+            "description": "Output strings with the names of the two entities we would like to combine in this step."
         }
-    
-    def get_available_actions(self, info: Optional[Dict] = None) -> List[Action]:
-        """Get list of available actions in current state
-        
-        Args:
-            info: Additional information about the environment
-        
-        Returns:
-            List[Action]: List of available actions
-        """
-        return None
         
 # Let's test the environment
+'''
 if __name__ == "__main__":
     env = WordCraftEnv({'max_steps': 100, 'problem_id': 0})
     #env.reset()
@@ -349,3 +369,4 @@ if __name__ == "__main__":
         env.env.render()
         if done:
             env.reset()
+'''

@@ -106,6 +106,14 @@ def config(env, gym_env_name):
                 "max_steps": 30,
             }
         )
+    elif env == "wordcraft":
+        env_config.update(
+            {
+                "type": "WordCraftEnv",
+                "name": "wordcraft",
+                "max_steps": 2,
+            }
+        )
     else:
         raise ValueError(f"Invalid environment name: {env}")
 
@@ -152,6 +160,10 @@ def env(config):
         from llm_agent.env.envs.textcraft import TextCraftEnv
 
         return TextCraftEnv(config["benchmark"])
+    elif config["benchmark"]["name"] == "wordcraft":
+        from llm_agent.env.envs.wordcraft import WordCraftEnv
+
+        return WordCraftEnv(config["benchmark"])
     else:
         raise ValueError(f"Invalid environment name: {config['benchmark']['name']}")
 
@@ -177,6 +189,7 @@ def test_agent(real_llm, db, env, test_config):
         or test_config.get("benchmark", "") == "intercode_sql"
         or test_config.get("benchmark", "") == "animation"
         or test_config.get("benchmark", "") == "textcraft"
+        or test_config.get("benchmark", "") == "wordcraft"
     ):
         test_config["give_action_space"] = True
     if test_config.get("agent_type", "react") == "react":

@@ -63,8 +63,6 @@ class RecipeBook:
         data_path='src/llm_agent/env/envs/alchemy2.json', max_depth=1, split=None, train_ratio=1.0, seed=None):
         self.test_mode = False
         self.train_ratio = train_ratio
-        print("setting recipebook seed to", seed)
-        input()
         self.set_seed(seed)
 
         self._rawdata = self._load_data(data_path)
