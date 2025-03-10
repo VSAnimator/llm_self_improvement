@@ -373,7 +373,7 @@ class LearningDB:
                 self.trajectory_id_mappings[field][str(curr_size)] = trajectory_id
                 if not nosave:
                     self._save_index(field, self.trajectory_indices[field], True)
-        
+
         # Store individual states with embeddings
         for i in range(len(observations) - 1):
             state = observations[i].structured
@@ -506,16 +506,6 @@ class LearningDB:
                     'action': entry['action'],
                     'plan': entry['plan']
                 })
-            
-            # Print all goals in the similar set
-            '''
-            print("Base goal:", base_goal)
-            print("\nSimilar goals:")
-            for traj in similar_set:
-                print(traj['goal'])
-            print('--------------------------------')
-            input()
-            '''
             
             similar_sets.append(similar_set)
 

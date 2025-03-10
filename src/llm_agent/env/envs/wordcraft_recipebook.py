@@ -180,9 +180,7 @@ class RecipeBook:
     def _generate_all_tasks_for_goal(self, goal, max_depth=3):
         base_entities = [goal]
         intermediate_entities = set()
-        print(f'Expanding tasks to goal {goal}')
         self._expand_tasks_to_goal(goal, max_depth, base_entities, intermediate_entities)
-        print('Done.')
 
     def _expand_tasks_to_goal(self, goal, max_depth=1, base_entities=[], intermediate_entities=set(), relevant_recipes=[]):
         """
@@ -196,20 +194,16 @@ class RecipeBook:
 
                 cur_depth = len(intermediate_entities) + 1
 
-                print(f'--Expanding base entity {b}')
-
                 # Expand each recipe for each base entity
                 # Sort recipes for deterministic expansion
                 sorted_recipes = sorted(self.entity2recipes[b], key=lambda r: tuple(sorted(r.items())))
                 for recipe in sorted_recipes:
-                    print(f'----Trying recipe for {b}, {recipe}')
                     expanded_entities = [e for e in recipe if e not in next_base_entities]
                     # Sort expanded entities for deterministic behavior
                     expanded_entities.sort()
                     is_cycle = False
                     for e in recipe:
                         if e in intermediate_entities or e == goal: 
-                            print(f'------Cycle detected, skipping recipe {recipe}')
                             is_cycle = True
                             break
                     if is_cycle:
@@ -223,10 +217,8 @@ class RecipeBook:
                     task = Task(goal, next_base_entities, intermediate_entities, relevant_recipes[:])
                     if task not in self.depth2task[cur_depth]: 
                         self.depth2task[cur_depth].add(task)
-                        print(f'------Adding task {task}')
 
                     if cur_depth < max_depth:
-                        print(f'current depth is {cur_depth}')
                         self._expand_tasks_to_goal(goal, max_depth, next_base_entities, intermediate_entities, relevant_recipes[:])
 
                     relevant_recipes.remove(recipe)
@@ -242,15 +234,11 @@ class RecipeBook:
         for e in sorted(self.entities):
             # self._generate_all_tasks_for_goal(e)
             s = timeit.timeit(lambda: self._generate_all_tasks_for_goal(e, max_depth=max_depth), number=1)
-            # print(f'Generated max-depth {max_depth} recipes for {e} in {s} s.')
             total += s
-
-        print(f'Generated all max-depth {max_depth} tasks for {len(self.entities)} entities in {total} s.')
 
         for d in self.depth2task:
             # Convert to sorted tuple for deterministic ordering
             self.depth2task[d] = tuple(sorted(self.depth2task[d], key=lambda t: (t.goal, t.base_entities)))
-            print(f"Depth {d} tasks: {len(self.depth2task[d])}")
 
     def _init_recipe_weighted_entity_dist(self):
         entities_cnt = dict({e: 0 for e in self.entities})

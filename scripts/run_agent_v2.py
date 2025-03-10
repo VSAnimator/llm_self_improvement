@@ -111,7 +111,7 @@ def config(env, gym_env_name):
             {
                 "type": "WordCraftEnv",
                 "name": "wordcraft",
-                "max_steps": 2,
+                "max_steps": 10,
             }
         )
     else:

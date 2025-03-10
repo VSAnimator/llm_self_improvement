@@ -278,7 +278,7 @@ class WordCraftEnv(BaseEnv):
         self.steps = 0
         self.id = config.get('problem_id', 0)
         self.category = "wordcraft"
-        self.env = WordCraftBaseEnv(max_depth=1, num_distractors=2, seed=self.id)
+        self.env = WordCraftBaseEnv(max_depth=2, num_distractors=0, seed=self.id, max_mix_steps=4)
         
     def clean_obs(self, obs: str) -> str:
         """Clean the observation
@@ -310,7 +310,7 @@ class WordCraftEnv(BaseEnv):
         obs = self.env.render()
         obs = obs.strip()
         self.goal = obs.split('\n')[0]
-        self.goal += ". You may only combine two entities at a time. You can take only a single step to make the final product."
+        self.goal += ". You may only combine two entities at a time. You can take only two steps to make the final product."
         obs = self.clean_obs(obs)
         return obs, {}
     

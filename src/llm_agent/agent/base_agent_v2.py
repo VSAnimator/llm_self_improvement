@@ -238,9 +238,9 @@ class BaseAgent:
         action = Action(text=action)
         self.action_history.append(action)
 
-        # Enforce memory size limit
-        self.observation_history = self.observation_history[-self.memory_size:]
-        self.action_history = self.action_history[-self.memory_size:]
+        # Enforce memory size limit # VISHNU: Turn this off for now
+        # self.observation_history = self.observation_history[-self.memory_size:]
+        # self.action_history = self.action_history[-self.memory_size:]
 
         return action
     
@@ -287,6 +287,12 @@ class BaseAgent:
     
     def store_episode(self):
         """Store an episode in the database"""
+        # Add one more state to the observation history
+        # If success, add a "Task complete" state
+        if self.reward_history[-1] == 1:
+            self.observation_history.append(Observation("Task complete"))
+        else:
+            self.observation_history.append(Observation("Task failed"))
         self.db.store_episode(self.environment_id, self.goal, self.category,self.observation_history, self.reasoning_history, self.action_history, self.reward_history, self.plan, self.reflection, self.summary)
 
     """ For updating rules offline """

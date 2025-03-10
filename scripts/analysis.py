@@ -20,7 +20,8 @@ for folder in sorted(txt_folders):
     # Table 3: if "intercode_sql" not in folder or "bird_intercode" not in folder or "retry" not in folder:
     # Table 4: if "intercode_sql" not in folder or "bird_gold" not in folder or "cont" not in folder:
     #if "intercode_sql" not in folder or "bird_gold" not in folder or "gpt-4o-mini" not in folder:# or "4o-mini" not in folder:
-    if 'intercode_sql' not in folder or "gold" not in folder or "chroma" in folder or "4o-mini" not in folder or 'copy' in folder:
+    #if 'intercode_sql' not in folder or "gold" not in folder or "chroma" in folder or "4o-mini" not in folder or 'copy' in folder:
+    if 'wordcraft' not in folder or "4o-mini" not in folder or "backups" in folder or "copy" in folder:
         continue
     print(folder)
     # Get all episode files
@@ -88,6 +89,10 @@ for folder in sorted(txt_folders):
     print(f"Total episodes: {total_episodes}")
     print(f"Successful episodes: {successful_episodes}")
     print(f"Success rate: {success_rate:.2f}%")
+
+    for i in range(0, len(final_rewards), 200):
+        print(f"Average success rate over {i+200} episodes:", np.mean(np.array(final_rewards[i:i+200]) > 0.99))
+
 
     continue
     print("Success dict", dict(sorted(success_count_dict.items(), key=lambda item: item[0]))) 
