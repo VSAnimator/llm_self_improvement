@@ -96,6 +96,10 @@ class BaseAgent:
                         if len(entries[i][k]) > j and len(entries[i][k][j]) > 0:
                             trajectory_string += f"{k}: {entries[i][k][j]}\n"
                 entries[i]["trajectory"] = trajectory_string
+                # If the category is "intercode_sql", then add the second-to-last action text to the goal
+                if self.category == "sql" and "action" in entries[i] and len(entries[i]["action"]) >= 2:
+                    if "SELECT" in entries[i]["action"][-2]:
+                        entries[i]["goal"] += f"\nSolution query: {entries[i]['action'][-2]}"
                 # Delete the interleaved keys from the dictionary
                 for k in interleaved_keys:
                     del entries[i][k]

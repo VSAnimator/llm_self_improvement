@@ -27,6 +27,11 @@ for folder in sorted(txt_folders):
     # Get all episode files
     episode_files = glob.glob(f'{folder}/*.txt')
 
+    # Filter files which can be cast to int
+    episode_files = [f for f in episode_files if f.split('/')[-1].split('.')[0].isdigit()]
+    # Filter out files with names >= 4800
+    episode_files = [f for f in episode_files if int(f.split('/')[-1].split('.')[0]) < 4800]
+
     total_episodes = len(episode_files)
     successful_episodes = 0
 
@@ -52,6 +57,10 @@ for folder in sorted(txt_folders):
             # Look for final reward of 1 
             if 'Reward: 1' in content:
                 successful_episodes += 1
+            # If Reward: 1 is not in the file, and Step 4 is not in the file, then skip and decrement the total count
+            if 'Reward: 1' not in content and 'Step 4' not in content:
+                total_episodes -= 1
+                continue
             # Figure out the try in which it succeeded
             # Get count of how many times Final reward: 0 shows up
             #zero_count = content.count('Final reward: 0')
