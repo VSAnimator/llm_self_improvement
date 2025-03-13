@@ -140,5 +140,5 @@ if __name__ == "__main__":
     import glob
     
     # Read the wordcraft log files and ingest them into the database
-    log_files = glob.glob("./logs/episodes/wordcraft/eval_out_of_distribution/rap_noplan/openai/gpt-4o-mini/depth2_humanic/*.txt")
+    log_files = glob.glob("./data/wordcraft/depth2_humanic/*.txt")
     ingest_multiple_logs(log_files, "./data/wordcraft/depth2_humanic/learning.db")
