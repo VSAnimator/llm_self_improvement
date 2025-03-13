@@ -25,12 +25,9 @@ class WordCraftBaseEnv(gym.Env):
         self,
         data_path='src/llm_agent/env/envs/alchemy2.json',
         recipe_book_path=None,
-        feature_type='glove',
-        shuffle_features=False,
-        random_feature_size=300,
         max_depth=1,
-        split='by_recipe',
-        train_ratio=1.0,
+        split='by_task',
+        train_ratio=0.9,
         num_distractors=0,
         uniform_distractors=False,
         max_mix_steps=1,
@@ -279,6 +276,9 @@ class WordCraftEnv(BaseEnv):
         self.id = config.get('problem_id', 0)
         self.category = "wordcraft"
         self.env = WordCraftBaseEnv(max_depth=2, num_distractors=0, seed=self.id, max_mix_steps=4)
+        # If we are in test, need to set the test mode
+        if self.config.get('split', 'train') == 'test':
+            self.env.eval('test')
         
     def clean_obs(self, obs: str) -> str:
         """Clean the observation

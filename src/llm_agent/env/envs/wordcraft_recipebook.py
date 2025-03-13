@@ -250,6 +250,9 @@ class RecipeBook:
         self.entity_dist = unnormalized/unnormalized.sum()
 
     def _init_data_split(self, split, train_ratio):
+        # Let's have a fixed split seed
+        split_seed = 42
+        split_random = np.random.RandomState(split_seed)
         self.split = split
 
         depths = range(1,self.max_depth+1)
@@ -272,7 +275,7 @@ class RecipeBook:
             all_goals = list(self.entities)
             # Sort before shuffling to ensure deterministic behavior with fixed seed
             all_goals.sort()
-            self.np_random.shuffle(all_goals)
+            split_random.shuffle(all_goals)
             if split == 'debug': train_ratio = 1.0
             train_size = int(np.ceil(train_ratio*len(all_goals)))
 
@@ -299,7 +302,7 @@ class RecipeBook:
             all_recipes = list(self.recipe2entity.keys())
             # Sort recipes before shuffling for deterministic behavior
             all_recipes.sort(key=lambda r: tuple(sorted(r.items())))
-            self.np_random.shuffle(all_recipes)
+            split_random.shuffle(all_recipes)
             train_size = int(np.ceil(train_ratio*len(all_recipes)))
             self.recipes_train = set(all_recipes[:train_size])
             self.recipes_test = set(all_recipes[train_size:])
@@ -322,7 +325,7 @@ class RecipeBook:
                 all_tasks_at_depth = list(self.depth2task[depth])
                 # Sort tasks before shuffling for deterministic behavior
                 all_tasks_at_depth.sort(key=lambda t: (t.goal, t.base_entities))
-                self.np_random.shuffle(all_tasks_at_depth)
+                split_random.shuffle(all_tasks_at_depth)
                 train_size_at_depth = int(np.ceil(train_ratio*len(all_tasks_at_depth)))
 
                 self.depth2task_train[depth] = all_tasks_at_depth[:train_size_at_depth]

@@ -120,6 +120,16 @@ def config(env, gym_env_name):
                 "type": "WordCraftEnv",
                 "name": "wordcraft",
                 "max_steps": 10,
+                "split": "train",
+            }
+        )
+    elif env == "wordcraft_test":
+        env_config.update(
+            {
+                "type": "WordCraftEnv",
+                "name": "wordcraft",
+                "max_steps": 10,
+                "split": "test",
             }
         )
     else:
@@ -174,7 +184,9 @@ def env(config):
         return TextCraftEnv(config["benchmark"])
     elif config["benchmark"]["name"] == "wordcraft":
         from llm_agent.env.envs.wordcraft import WordCraftEnv
-
+        return WordCraftEnv(config["benchmark"])
+    elif config["benchmark"]["name"] == "wordcraft_test":
+        from llm_agent.env.envs.wordcraft import WordCraftEnv
         return WordCraftEnv(config["benchmark"])
     else:
         raise ValueError(f"Invalid environment name: {config['benchmark']['name']}")
