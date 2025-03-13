@@ -60,6 +60,10 @@ Zhiqiang, this creates a new database for training runs with 3, 6, and 10 in-con
     ```
 - [WebShop](https://github.com/princeton-nlp/WebShop) (flag --env webshop): follow the instructions to set up the server, the env assumes it is running on port 3000.
 
+- [Intercode-SQL](https://github.com/princeton-nlp/intercode) (flag --env ic_sql): follow the instructions to set up and run the docker container. 
+
+- [Wordcraft](https://github.com/minqi/wordcraft) (flag --env wordcraft): no additional installation needed
+
 - [Gymnasium](https://gymnasium.farama.org) (flag --env gymnasium): Just pass the name of the gymnasium environment as an additional flag --gym_env_name
 
 - Add your own environment: see [Adding your own environment](#adding-your-own-environment)
@@ -90,7 +94,8 @@ Many of the included agent algorithms leverage a database of in-context examples
 
 - Alfworld: ```python src/llm_agent/database/ingest_alfworld.py```
 - WebShop: ```python src/llm_agent/database/ingest_webshop.py```
-- Gymnasium: TODO
+- Intercode-SQL: TODO
+- WordCraft: ```python src/llm_agent/database/ingest_wordcraft_logs.py```
 
 ### Agent algorithms
 
