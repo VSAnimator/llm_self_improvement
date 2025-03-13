@@ -98,6 +98,14 @@ def config(env, gym_env_name):
                 "max_steps": 10,
             }
         )
+    elif env == "lsystem":
+        env_config.update(
+            {
+                "type": "LSystemEnv",
+                "name": "lsystem",
+                "max_steps": 10,
+            }
+        )
     elif env == "textcraft":
         env_config.update(
             {
@@ -156,6 +164,10 @@ def env(config):
         from llm_agent.env.envs.animation_env import AnimationEnv
 
         return AnimationEnv(config["benchmark"])
+    elif config["benchmark"]["name"] == "lsystem":
+        from llm_agent.env.envs.lsystem_env import LSystemEnv
+
+        return LSystemEnv(config["benchmark"])
     elif config["benchmark"]["name"] == "textcraft":
         from llm_agent.env.envs.textcraft import TextCraftEnv
 
@@ -190,6 +202,7 @@ def test_agent(real_llm, db, env, test_config):
         or test_config.get("benchmark", "") == "animation"
         or test_config.get("benchmark", "") == "textcraft"
         or test_config.get("benchmark", "") == "wordcraft"
+        or test_config.get("benchmark", "") == "lsystem"
     ):
         test_config["give_action_space"] = True
     if test_config.get("agent_type", "react") == "react":
