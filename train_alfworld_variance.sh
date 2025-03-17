@@ -16,6 +16,7 @@ cleanup() {
 # Trap Ctrl+C and call cleanup function
 trap cleanup SIGINT
 
+'''
 # Create directories for 5 trials
 for trial in {1..5}; do
     echo "Creating directory for trial $trial"
@@ -24,12 +25,28 @@ done
 
 # Wait for all copy operations to complete
 wait
+'''
 
 PIDS=()
+
+# Define arrays for trial start tasks
+trial_start_tasks_3=(1384 1175 1792 1588 1377)
+trial_start_tasks_6=(1712 3076 3500 2236 3500)
 
 # Run 5 trials in parallel
 for trial in {1..5}; do
     echo "Starting trial $trial"
+
+    # Use proper bash array syntax with index
+    trial_start_task=${trial_start_tasks_6[$((trial-1))]}
+
+    echo "Trial start task: $trial_start_task"
+    
+    # If the start task is 3500, then skip the trial
+    if [ $trial_start_task -eq 3500 ]; then
+        echo "Skipping trial $trial because start task is 3500"
+        continue
+    fi
     
     # Run the training script in the background
     python scripts/run_agent_v2.py \
@@ -41,12 +58,15 @@ for trial in {1..5}; do
         --log_name trial_${trial}_6_ic \
         --num_ic 6 \
         --num_tasks 3500 \
-        --num_passes 1 &
+        --num_passes 1 \
+        --start_task $trial_start_task &
     
     # Capture process ID and add to array
     PIDS+=($!)
     
     echo "Trial $trial started with PID ${PIDS[-1]}"
+
+    sleep 5
 done
 
 # Wait for all trials to complete

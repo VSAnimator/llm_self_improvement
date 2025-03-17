@@ -14,12 +14,14 @@ def preprocess_ctf(record: Dict) -> List:
 def preprocess_sql(record: Dict) -> str:
     print("Record", record)
     db = record['extra']["db"]
-    return f"use {db}"
+    return f"use {db}; "
+    #return "show databases;"
 
 base_path = "/mnt/ssd/intercode/intercode_github/data/"
 DEMO_MAP = {
     "bash": {"env": BashEnv, "image_name": "intercode-nl2bash", "data_path": base_path + "nl2bash/nl2bash_fs_1.json"},
-    "sql": {"env": SqlEnv, "image_name": "docker-env-sql-ic-bird", "data_path": base_path + "sql/bird/ic_bird.json", "preprocess": preprocess_sql},
+    #"sql": {"env": SqlEnv, "image_name": "docker-env-sql-ic-bird", "data_path": base_path + "sql/bird/ic_bird.json", "preprocess": preprocess_sql},
+    "sql": {"env": SqlEnv, "image_name": "docker-env-sql-spider", "data_path": base_path + "sql/spider/ic_spider_dev.json", "preprocess": preprocess_sql},
     "ctf": {"env": CTFEnv, "image_name": "intercode-ctf", "data_path": base_path + "ctf/ic_ctf.json", "preprocess": preprocess_ctf},
 }
 

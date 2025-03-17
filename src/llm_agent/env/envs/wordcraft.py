@@ -27,7 +27,7 @@ class WordCraftBaseEnv(gym.Env):
         recipe_book_path=None,
         max_depth=1,
         split='by_task',
-        train_ratio=0.9,
+        train_ratio=0.95,
         num_distractors=0,
         uniform_distractors=False,
         max_mix_steps=1,

@@ -21,7 +21,8 @@ for folder in sorted(txt_folders):
     # Table 4: if "intercode_sql" not in folder or "bird_gold" not in folder or "cont" not in folder:
     #if "intercode_sql" not in folder or "bird_gold" not in folder or "gpt-4o-mini" not in folder:# or "4o-mini" not in folder:
     #if 'intercode_sql' not in folder or "gold" not in folder or "chroma" in folder or "4o-mini" not in folder or 'copy' in folder:
-    if 'wordcraft' not in folder or "4o-mini" not in folder or "backups" in folder or "copy" in folder:
+    if 'wordcraft' not in folder or "4o-mini" not in folder or "backups" in folder or "copy" in folder or "4tries" not in folder:
+    #if 'spider' not in folder or "4o-mini" not in folder or "backups" in folder or "copy" in folder:
         continue
     print(folder)
     # Get all episode files

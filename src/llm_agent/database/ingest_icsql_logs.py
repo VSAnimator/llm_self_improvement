@@ -129,10 +129,8 @@ if __name__ == "__main__":
     import json
     import csv
 
-    # Read the text files from the folders for each of the 5 trials and ingest them into the database
-    for trial in [5]:
-        log_files = []
-        for task_id in range(338):
-            log_file = f"./logs/episodes/intercode_sql/test/rap_noplan/openai/gpt-4o/bird_gold_generation/{task_id}.txt"
-            log_files.append(log_file)
-        ingest_multiple_logs(log_files, f"./data/intercode_sql_filtered/intercode_sql_gold_examples/learning.db")
+    log_files = []
+    for task_id in range(1038):
+        log_file = f"./logs/episodes/intercode_sql/test/rap_noplan/openai/gpt-4o-mini/create_gold_spider/{task_id}.txt"
+        log_files.append(log_file)
+    ingest_multiple_logs(log_files, f"./data/intercode_sql_filtered/intercode_sql_gold_examples_spider/learning.db")
