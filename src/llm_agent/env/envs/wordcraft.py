@@ -277,7 +277,7 @@ class WordCraftEnv(BaseEnv):
         self.category = "wordcraft"
         self.env = WordCraftBaseEnv(max_depth=2, num_distractors=0, seed=self.id, max_mix_steps=4)
         # If we are in test, need to set the test mode
-        if self.config.get('split', 'train') == 'test':
+        if config.get('split', 'train') == 'test':
             self.env.eval('test')
         
     def clean_obs(self, obs: str) -> str:
