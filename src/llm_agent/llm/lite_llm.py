@@ -41,8 +41,10 @@ class LiteLLMWrapper:
         ) -> Dict[str, Any]:
             """Base generation method"""
             try:
+                # Merge messages into a single user message
+                user_message = "\n".join([f"{msg['content']}" for msg in messages])
                 response = await SGLangBackend.generate(
-                    messages=messages,
+                    messages=[{"role": "user", "content": user_message}],
                     max_tokens=self.max_tokens,
                     stop=stop,
                     response_format=response_format,
