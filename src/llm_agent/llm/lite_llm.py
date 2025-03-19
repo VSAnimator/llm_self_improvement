@@ -45,7 +45,7 @@ class LiteLLMWrapper:
                 user_message = "\n".join([f"{msg['content']}" for msg in messages])
                 response = await SGLangBackend.generate(
                     messages=[{"role": "user", "content": user_message}],
-                    max_tokens=1024#self.max_tokens,
+                    max_tokens=1024, #self.max_tokens,
                     stop=stop,
                     response_format=response_format,
                 )
