@@ -271,6 +271,7 @@ def plot_cumulative_rewards(folder_path, granularity=1, plot_task_type=None, cum
     plt.xlabel('Number of Tasks')
     plt.ylabel(f'{"Cumulative" if cumulative else "Average"} Reward')
     plt.title(f'{"Cumulative" if cumulative else "Average"} Reward vs Number of Tasks')
+    plt.ylim(0, 1)  # Set y-axis to go from 0 to 1
     plt.legend()
     plt.grid(True)
 
@@ -329,7 +330,7 @@ def process_folder(folder_path, plot_task_type=None):
                 # Log invalid rewards
                 if not final_reward.replace('.', '', 1).isdigit():
                     print(f"Invalid reward {final_reward} for episode {episode_file}")
-                    exit()
+                    final_reward = "0"
                 # Cast to float if valid, otherwise 0
                 final_reward = float(final_reward) if final_reward.replace('.', '', 1).isdigit() else 0
                 final_rewards.append(final_reward)

@@ -74,7 +74,7 @@ def get_task_type(task_desc):
     elif "put" in task_desc:
         return "pick_and_place"
     else:
-        raise ValueError(f"Could not determine task type from description: {task_desc}")
+        return None
 
 def parse_fewshot(fewshot):
     """Parse a fewshot example into observations and actions"""
