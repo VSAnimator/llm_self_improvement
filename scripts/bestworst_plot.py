@@ -18,6 +18,7 @@ plt.semilogx(num_examples, worst_success_rates, marker='o', label='Worst Success
 
 plt.xlabel('Number of Examples (log scale)')
 plt.ylabel('Success Rate (%)')
+plt.ylim(0, 100)
 plt.title('Success Rate vs. Number of Examples (Log-Log Plot)')
 plt.legend()
 plt.grid(True, which="both", linestyle="--", linewidth=0.5)

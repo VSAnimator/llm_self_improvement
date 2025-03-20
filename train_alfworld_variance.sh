@@ -38,7 +38,7 @@ for trial in {1..5}; do
     echo "Starting trial $trial"
 
     # Use proper bash array syntax with index
-    trial_start_task=${trial_start_tasks_6[$((trial-1))]}
+    trial_start_task=${trial_start_tasks_3[$((trial-1))]}
 
     echo "Trial start task: $trial_start_task"
     
@@ -52,11 +52,11 @@ for trial in {1..5}; do
     python scripts/run_agent_v2.py \
         --llm openai/gpt-4o-mini \
         --agent_type rap_flex \
-        --db_path "$CURRENT_DIR/data/alfworld_expel_trial_${trial}_6_ic/learning.db" \
+        --db_path "$CURRENT_DIR/data/alfworld_expel_trial_${trial}/learning.db" \
         --store_episodes \
         --env alfworld \
-        --log_name trial_${trial}_6_ic \
-        --num_ic 6 \
+        --log_name trial_${trial} \
+        --num_ic 3 \
         --num_tasks 3500 \
         --num_passes 1 \
         --start_task $trial_start_task &
@@ -75,6 +75,17 @@ for pid in "${PIDS[@]}"; do
 done
 
 echo "All trials completed"
+
+# Create a directory for the archive if it doesn't exist
+ARCHIVE_DIR="$CURRENT_DIR/data/alfworld_archives"
+mkdir -p "$ARCHIVE_DIR"
+
+# Get current date and time for the archive name
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+ARCHIVE_NAME="alfworld_expel_trials_${TIMESTAMP}.tar.gz"
+
+echo "Creating compressed archive of specific backup databases..."
+
 
 
 

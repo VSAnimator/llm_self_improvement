@@ -2,18 +2,41 @@
 CURRENT_DIR=$(pwd)
 
 # Run test script
-for train_ic in 3 6 10; do
-    for test_ic in 3 6 10; do
-        for ckpt in 200 800 1600; do
+'''
+for ic in 6; do
+    for trial in 1 2 3 4 5; do
+        for ckpt in 20 40 100 200 400 1000 1500 2000 2500 3000; do
             python scripts/run_agent_v2.py \
                 --llm openai/gpt-4o-mini \
                 --agent_type rap_flex \
-                --db_path "$CURRENT_DIR/data/alfworld_expel_${train_ic}ic_backups/${ckpt}/learning.db/learning.db" \
-                --db_name expel_test_${train_ic}ic_${test_ic}ic \
+                --db_path "$CURRENT_DIR/data/alfworld_expel_trial_${trial}_${ic}_ic_backups/${ckpt}/learning.db/learning.db" \
+                --log_name trial_${trial}_${ic}ic_${ckpt} \
                 --num_passes 1 \
                 --env alfworld_test \
-                --num_ic $test_ic \
+                --num_ic $ic \
+                --parallel 2 \
                 --num_tasks 134 &
+            sleep 5
+        done
+        wait
+    done
+done
+'''
+
+for ic in 3; do
+    for trial in 1 2 3 4 5; do
+        for ckpt in 20 40 100 200 400 1000 1500 2000 2500 3000; do
+            python scripts/run_agent_v2.py \
+                --llm openai/gpt-4o-mini \
+                --agent_type rap_flex \
+                --db_path "$CURRENT_DIR/data/alfworld_expel_trial_${trial}_backups/${ckpt}/learning.db/learning.db" \
+                --log_name trial_${trial}_${ic}ic_${ckpt} \
+                --num_passes 1 \
+                --env alfworld_test \
+                --num_ic $ic \
+                --parallel 2 \
+                --num_tasks 134 &
+            sleep 5
         done
         wait
     done

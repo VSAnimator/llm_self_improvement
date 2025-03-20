@@ -22,6 +22,7 @@ for train_db_size in 10 20 40 100 200 ; do
 done
 '''
 
+'''
 for train_db_size in 10 20 40 100 200 ; do
     python scripts/run_agent_v2.py --llm openai/gpt-4o-mini --agent_type rap_noplan --num_passes 1 --env intercode_sql --num_ic 30 --num_tasks 1038 --start_task 800 --db_path "$CURRENT_DIR/data/intercode_sql_filtered/intercode_sql_gold_examples_spider_backups_clean/${train_db_size}/learning.db/learning.db" --log_name bird_gold_${train_db_size}_fixed_spider_30ic --parallel 2 &
     sleep 5
@@ -32,4 +33,15 @@ for train_db_size in 10 20 40 100 200 ; do
     python scripts/run_agent_v2.py --llm openai/gpt-4o-mini --agent_type rap_noplan --num_passes 1 --env intercode_sql --num_ic 30 --num_tasks 1038 --start_task 800 --db_path "$CURRENT_DIR/data/intercode_sql_filtered/intercode_sql_gold_examples_spider_backups/${train_db_size}/learning.db/learning.db" --log_name bird_gold_${train_db_size}_cont_spider_test_30ic --parallel 2 &
     sleep 5
 done
+wait
+'''
+
+for trial in 1 2 3 4 5; do
+    for train_db_size in 20 40 100 200 400 800; do
+        python scripts/run_agent_v2.py --llm openai/gpt-4o-mini --agent_type rap_noplan --num_passes 1 --env intercode_sql --num_ic 30 --num_tasks 1038 --start_task 800 --db_path "$CURRENT_DIR/data/intercode_sql_filtered/intercode_sql_gold_examples_spider_trial_${trial}/10/learning.db_backups/${train_db_size}/learning.db/learning.db" --log_name bird_gold_${train_db_size}_cont_spider_trial_${trial}_test_30ic --parallel 1 &
+        sleep 5
+    done
+    wait
+done
+
 wait
