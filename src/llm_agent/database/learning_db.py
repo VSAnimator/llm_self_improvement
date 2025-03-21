@@ -325,8 +325,8 @@ class LearningDB:
                      reflection: Optional[str], summary: Optional[str], nosave: bool = False):
         # Never allow nosave if we are going to be backing up the database
         curr_count = self.trajectory_cursor.execute("SELECT COUNT(*) FROM trajectories").fetchone()[0] + 1
-        if curr_count % 100 == 0 or (curr_count < 100 and curr_count % 10 == 0):
-            nosave = False
+        #if curr_count % 100 == 0 or (curr_count < 100 and curr_count % 10 == 0):
+        #    nosave = False
 
         """Store an episode in both trajectory and state databases"""
         # Store trajectory
@@ -416,6 +416,9 @@ class LearningDB:
 
         if not nosave:
             self.state_conn.commit()
+
+        if nosave:
+            return
 
         # When the database is of size divisible by 100, copy the folder
         curr_count = self.trajectory_cursor.execute("SELECT COUNT(*) FROM trajectories").fetchone()[0]

@@ -7,10 +7,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from collections import defaultdict
 from pathlib import Path
-
+from llm_agent.database.learning_db import LearningDB
 
 class RetrievalRunComparison:
-    def __init__(self, base_dir, run_folders, output_dir="comparison_results"):
+    def __init__(self, base_dir, run_folders, db_paths, output_dir="comparison_results", max_task_id=1200):
         """
         Initialize the comparison tool.
         
@@ -23,16 +23,23 @@ class RetrievalRunComparison:
         self.run_folders = run_folders
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True, parents=True)
+        self.max_task_id = max_task_id
+        self.db_paths = db_paths
+        self.run_to_db_id = {}
+        for i, run_folder in enumerate(self.run_folders):
+            self.run_to_db_id[run_folder] = self.db_paths[i]
         
         # Data structures to hold results
         self.influence_data = {}
         self.example_stats = {}
         self.run_params = {}
+        self.key_swaps = {}
         
     def load_run_data(self):
         """Load influence scores and other data from all specified runs."""
         print("Loading data from all runs...")
         
+        i = 0
         for run_folder in self.run_folders:
             run_path = self.base_dir / run_folder
             influence_path = run_path / "influence_scores.json"
@@ -50,7 +57,26 @@ class RetrievalRunComparison:
             if influence_path.exists():
                 with open(influence_path, 'r') as f:
                     self.influence_data[run_folder] = json.load(f)
-                print(f"Loaded influence data from {run_folder}")
+                #print(f"Loaded influence data from {run_folder}")
+                #print(self.influence_data[run_folder])
+                # Load the db for the run
+                db_path = self.db_paths[i]
+                db = LearningDB(db_path)
+                swapped_key_data = {}
+                key_swaps = {}
+                # For each key in the influence data, get the environment id from the db path
+                for key in self.influence_data[run_folder]:
+                    # Write the sql query to get the environment id from the db path
+                    db.trajectory_cursor.execute(f"SELECT environment_id, goal FROM trajectories WHERE id = {key}")
+                    env_id, goal = db.trajectory_cursor.fetchone()
+                    if env_id:
+                        env_id = env_id + "_" + goal
+                    else:
+                        env_id = None
+                    swapped_key_data[env_id] = self.influence_data[run_folder][key]
+                    key_swaps[key] = env_id
+                self.influence_data[run_folder] = swapped_key_data
+                self.key_swaps[run_folder] = key_swaps
             else:
                 print(f"Warning: No influence scores found for {run_folder}")
                 
@@ -58,9 +84,16 @@ class RetrievalRunComparison:
             if stats_path.exists():
                 with open(stats_path, 'r') as f:
                     self.example_stats[run_folder] = json.load(f)
+                swapped_key_data = {}
+                key_swaps = self.key_swaps[run_folder]
+                for key in self.example_stats[run_folder]:
+                    swapped_key_data[key_swaps[key]] = self.example_stats[run_folder][key]
+                self.example_stats[run_folder] = swapped_key_data
                 print(f"Loaded example stats from {run_folder}")
             else:
                 print(f"Warning: No example stats found for {run_folder}")
+
+            i += 1
     
     def create_combined_dataframe(self):
         """Create a combined DataFrame of influence scores across all runs."""
@@ -73,7 +106,7 @@ class RetrievalRunComparison:
             for example_id, scores in influence_scores.items():
                 entry = {
                     'run': run_name,
-                    'example_id': int(example_id),
+                    'example_id': example_id,
                     'direct_success_rate': scores['direct_success_rate'],
                     'cascade_success_rate': scores['cascade_success_rate'],
                     'combined_score': scores['combined_score'],
@@ -357,7 +390,7 @@ class RetrievalRunComparison:
                 f.write("|------------|------------|----------|-----------|-----------|------------|\n")
                 
                 for _, row in diff_df.iterrows():
-                    f.write(f"| {int(row['example_id'])} | {row['direct_diff']:.3f} | {row['best_run']} | {row['worst_run']} | {row['max_direct']:.3f} | {row['min_direct']:.3f} |\n")
+                    f.write(f"| {row['example_id']} | {row['direct_diff']:.3f} | {row['best_run']} | {row['worst_run']} | {row['max_direct']:.3f} | {row['min_direct']:.3f} |\n")
                 
                 f.write("\n")
                 
@@ -387,13 +420,13 @@ class RetrievalRunComparison:
             f.write("## Conclusion\n\n")
             if not diff_df.empty:
                 top_example = diff_df.iloc[0]['example_id']
-                f.write(f"Example {int(top_example)} showed the largest performance difference across runs, ")
+                f.write(f"Example {top_example} showed the largest performance difference across runs, ")
                 f.write(f"with a direct success rate difference of {diff_df.iloc[0]['direct_diff']:.3f}.\n\n")
                 f.write("Consider analyzing these high-differential examples more closely to understand why their performance varies so significantly across different configurations.\n")
             else:
                 f.write("Examples showed consistent performance across the analyzed runs. This suggests that the effectiveness of examples is relatively stable across the tested hyperparameter configurations.\n")
     
-    def find_best_examples_per_task(self, max_task_id=1200):
+    def find_best_examples_per_task(self):
         """
         For each task ID up to max_task_id, find the example that achieves the highest direct success rate.
         
@@ -403,6 +436,7 @@ class RetrievalRunComparison:
         Returns:
             dict: Dictionary mapping task IDs to their best examples across all runs
         """
+        max_task_id = self.max_task_id
         print(f"Finding best examples for the first {max_task_id} tasks...")
         
         # First, load example stats if not already loaded
@@ -412,8 +446,11 @@ class RetrievalRunComparison:
         best_examples = {}
         worst_examples = {}
         
-        # For each task ID up to max_task_id
-        for task_id in range(1, max_task_id + 1):
+        # Valid task ideas are the union of the keys of the example_stats dictionary
+        valid_task_ids = set()
+        for run_name in self.example_stats:
+            valid_task_ids.update(self.example_stats[run_name].keys())
+        for task_id in valid_task_ids:
             best_success_rate = 0
             best_example = None
             best_run = None
@@ -445,6 +482,7 @@ class RetrievalRunComparison:
             if best_example is not None:
                 best_examples[task_id] = {
                     "run": best_run,
+                    "db_id": self.run_to_db_id[best_run],
                     "success_rate": best_success_rate
                 }
 
@@ -452,6 +490,7 @@ class RetrievalRunComparison:
             if worst_example is not None:
                 worst_examples[task_id] = {
                     "run": worst_run,
+                    "db_id": self.run_to_db_id[worst_run],
                     "success_rate": worst_success_rate
                 }
         
@@ -472,6 +511,7 @@ class RetrievalRunComparison:
             df_rows.append({
                 "task_id": task_id,
                 "best_run": data["run"],
+                "db_id": data["db_id"],
                 "success_rate": data["success_rate"]
             })
         
@@ -484,12 +524,17 @@ class RetrievalRunComparison:
             df_rows.append({
                 "task_id": task_id,
                 "worst_run": data["run"],
+                "db_id": data["db_id"],
                 "success_rate": data["success_rate"]
             })
 
         df = pd.DataFrame(df_rows)
         csv_file = self.output_dir / "worst_examples_per_task.csv"
         df.to_csv(csv_file, index=False)
+
+        # Now save the key swaps
+        with open(self.output_dir / "key_swaps.json", 'w') as f:
+            json.dump(self.key_swaps, f, indent=2)
         
         return best_examples
 
@@ -510,7 +555,7 @@ class RetrievalRunComparison:
         self.analyze_run_differences()
         
         # Visualize example performance
-        self.visualize_example_performance()
+        #self.visualize_example_performance()
         
         # Generate report
         self.generate_report()
@@ -525,11 +570,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Compare influence scores across multiple retrieval runs')
     parser.add_argument('base_dir', help='Base directory containing all run folders')
     parser.add_argument('--runs', nargs='+', required=True, help='List of run folder names to compare')
+    parser.add_argument('--db_paths', nargs='+', required=True, help='List of database paths to compare')
     parser.add_argument('--output', default='comparison_results', help='Output directory for comparison results')
     parser.add_argument('--min-usage', type=int, default=5, help='Minimum usage count to consider an example')
     parser.add_argument('--diff-threshold', type=float, default=0.3, help='Minimum difference in success rate to be significant')
+    parser.add_argument('--max-task-id', type=int, default=1200, help='Maximum task ID to analyze')
     
     args = parser.parse_args()
     
-    comparator = RetrievalRunComparison(args.base_dir, args.runs, args.output)
+    comparator = RetrievalRunComparison(args.base_dir, args.runs, args.db_paths, args.output, args.max_task_id)
     comparator.run_comparison()

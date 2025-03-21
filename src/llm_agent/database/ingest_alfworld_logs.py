@@ -122,42 +122,48 @@ if __name__ == "__main__":
     import json
     import csv
 
-    '''
-    mode = "best"
+    import argparse
     
+    # Set up command line argument parsing
+    parser = argparse.ArgumentParser(description='Ingest ALFWorld logs into a database')
+    parser.add_argument('--mode', type=str, default='best', help='Mode for selecting examples (e.g., best, all)')
+    parser.add_argument('--json_file', type=str, default='compare_3ic/{mode}_examples_per_task.json', 
+                        help='Path to JSON file with examples (use {mode} for substitution)')
+    parser.add_argument('--log_file_base', type=str, default='logs/episodes/alfworld/train/rap_flex/openai/gpt-4o-mini/',
+                        help='Path to base of log files (use {mode} for substitution)')
+    parser.add_argument('--db_path', type=str, default='./data/alfworld_filtered/alfworld_{mode}_examples/learning.db',
+                        help='Path to output database (use {mode} for substitution)')
+    parser.add_argument('--task_offset', type=int, default=18,
+                        help='Offset for task IDs (default is 18)')
+    
+    args = parser.parse_args()
+    
+    # Format paths with the mode
+    mode = args.mode
+    json_file = args.json_file.format(mode=mode)
+    log_file_base = args.log_file_base.format(mode=mode)
+    db_path = args.db_path.format(mode=mode)
+    task_offset = args.task_offset + 1
+
     # Load best examples from JSON or CSV
     log_files = []
-    try:
-        with open(f"compare_3ic/{mode}_examples_per_task.json", "r") as f:
-            best_examples = json.load(f)
-            for task_id, data in best_examples.items():
-                if int(task_id) >= 19:
-                    run = data["run"]
-                    run = run.replace("analysis", "trial")
-                    task_id = int(task_id) - 19
-                    log_file = f"/mnt/ssd/agent_algo_bench/logs/episodes/alfworld/train/rap_flex/openai/gpt-4o-mini/{run}/{task_id}.txt"
-                    log_files.append(log_file)
-    except:
-        # Fallback to CSV if JSON fails
-        with open(f"compare_3ic/{mode}_examples_per_task.csv", "r") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                task_id = row["task_id"]
-                if int(task_id) >= 19:
-                    run = row["best_run"]
-                    run = run.replace("analysis", "trial")
-                    task_id = int(task_id) - 19
-                    log_file = f"/mnt/ssd/agent_algo_bench/logs/episodes/alfworld/train/rap_flex/openai/gpt-4o-mini/{run}/{task_id}.txt"
-                    log_files.append(log_file)
-    db_path = f"./data/alfworld_filtered/alfworld_{mode}_examples/learning.db"
-    
+    with open(json_file, "r") as f:
+        best_examples = json.load(f)
+        for task_id, data in best_examples.items():
+            if int(task_id) >= task_offset:
+                run = data["run"]
+                run = run.replace("analysis", "trial")
+                task_id = int(task_id) - task_offset
+                log_file = f"{log_file_base}/{run}/{task_id}.txt"
+                log_files.append(log_file)
     ingest_multiple_logs(log_files, db_path)
-    '''
 
     # Read the text files from the folders for each of the 5 trials and ingest them into the database
+    '''
     for trial in [5]:
         log_files = []
         for task_id in range(1000):
             log_file = f"./logs/episodes/alfworld/train/rap_flex/openai/gpt-4o-mini/trial_{trial}/{task_id}.txt"
             log_files.append(log_file)
         ingest_multiple_logs(log_files, f"./data/alfworld_filtered/alfworld_trial_{trial}_examples/learning.db")
+    '''

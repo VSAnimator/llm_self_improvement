@@ -23,7 +23,8 @@ for folder in sorted(txt_folders):
     #if 'intercode_sql' not in folder or "gold" not in folder or "chroma" in folder or "4o-mini" not in folder or 'copy' in folder:
     #if 'wordcraft' not in folder or "4o-mini" not in folder or "backups" in folder or "copy" in folder or "4tries" not in folder:
     #if 'spider' not in folder or "4o-mini" not in folder or "backups" in folder or "copy" in folder or "trial" not in folder or "test" not in folder or "30ic" not in folder:
-    if "alfworld" not in folder or "test" not in folder or "4o-mini" not in folder or "trial" not in folder or "3ic" not in folder:
+    #if "alfworld" not in folder or "test" not in folder or "4o-mini" not in folder or "trial" not in folder or "3ic" not in folder:
+    if "pbt" not in folder or "seg20" in folder:
         continue
     print(folder)
     # Get all episode files
@@ -98,11 +99,11 @@ for folder in sorted(txt_folders):
     success_rate = (successful_episodes / total_episodes) * 100
 
     print(f"Total episodes: {total_episodes}")
-    print(f"Successful episodes: {successful_episodes}")
+    #print(f"Successful episodes: {successful_episodes}")
     print(f"Success rate: {success_rate:.2f}%")
 
-    for i in range(0, len(final_rewards), 200):
-        print(f"Average success rate over {i+200} episodes:", np.mean(np.array(final_rewards[i:i+200]) > 0.99))
+    #for i in range(0, len(final_rewards), 200):
+    #    print(f"Average success rate over {i+200} episodes:", np.mean(np.array(final_rewards[i:i+200]) > 0.99))
 
 
     continue
