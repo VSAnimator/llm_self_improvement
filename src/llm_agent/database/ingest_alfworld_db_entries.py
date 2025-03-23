@@ -68,9 +68,9 @@ def ingest_multiple_logs(log_files, db_path, available_dbs, lower_threshold, upp
         goal = entry[1]
         category = entry[2]
         obs_list = json.loads(entry[3])
-        reasoning_list = entry[4]
+        reasoning_list = json.loads(entry[4])
         act_list = json.loads(entry[5])
-        rewards = entry[6]
+        rewards = json.loads(entry[6])
         plan = entry[7]
         
         # Convert to proper objects
