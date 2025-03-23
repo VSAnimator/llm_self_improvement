@@ -144,9 +144,9 @@ while [ $segment -le $NUM_SEGMENTS ]; do
             "$CURRENT_DIR/data/alfworld_pbt_${PBT_RUN_LABEL}_backups/trial_${trial}/segment_${segment}/"
         
         # Also create the checkpoint in the original location for backward compatibility
-        mkdir -p "$CURRENT_DIR/data/alfworld_pbt_${PBT_RUN_LABEL}_trial_${trial}/checkpoint.segment_${segment}"
-        cp -r "$CURRENT_DIR/data/alfworld_pbt_${PBT_RUN_LABEL}_trial_${trial}/"* \
-            "$CURRENT_DIR/data/alfworld_pbt_${PBT_RUN_LABEL}_trial_${trial}/checkpoint.segment_${segment}/"
+        #mkdir -p "$CURRENT_DIR/data/alfworld_pbt_${PBT_RUN_LABEL}_trial_${trial}/checkpoint.segment_${segment}"
+        #cp -r "$CURRENT_DIR/data/alfworld_pbt_${PBT_RUN_LABEL}_trial_${trial}/"* \
+        #    "$CURRENT_DIR/data/alfworld_pbt_${PBT_RUN_LABEL}_trial_${trial}/checkpoint.segment_${segment}/"
         
         log "Created checkpoint for trial $trial segment $segment"
     done

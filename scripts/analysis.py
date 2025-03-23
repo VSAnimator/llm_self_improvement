@@ -61,9 +61,9 @@ for folder in sorted(txt_folders):
             if 'Reward: 1' in content:
                 successful_episodes += 1
             # If Reward: 1 is not in the file, and Step 4 is not in the file, then skip and decrement the total count
-            #if 'Reward: 1' not in content and 'Step 4' not in content:
-            #    total_episodes -= 1
-            #    continue
+            if 'Reward: 1' not in content and 'Step 2' not in content:
+                total_episodes -= 1
+                continue
             # Figure out the try in which it succeeded
             # Get count of how many times Final reward: 0 shows up
             #zero_count = content.count('Final reward: 0')
