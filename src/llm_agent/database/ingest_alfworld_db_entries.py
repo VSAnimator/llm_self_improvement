@@ -1,7 +1,6 @@
 import os
 from llm_agent.database.learning_db import LearningDB
 from llm_agent.env.base_env import Observation, Action
-from llm_agent.in_context.alfworld_fewshots import get_task_type
 
 def ingest_multiple_logs(log_files, db_path, available_dbs, lower_threshold, upper_threshold):
     """

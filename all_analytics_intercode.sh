@@ -9,4 +9,4 @@ for id in "${TRIAL_IDS[@]}"; do
     python scripts/retrieval_analytics.py logs/episodes/intercode_sql/test/rap_noplan/openai/gpt-4o-mini/bird_gold_10_cont_spider_trial_${id}/ --output analysis_intercode_sql_${id}
 done
 
-python scripts/compare_runs.py . --runs analysis_intercode_sql_1 analysis_intercode_sql_2 analysis_intercode_sql_3 analysis_intercode_sql_4 analysis_intercode_sql_5 --output compare_intercode_sql --max-task-id 800
+python scripts/compare_runs.py . --runs analysis_intercode_sql_1 analysis_intercode_sql_2 analysis_intercode_sql_3 analysis_intercode_sql_4 analysis_intercode_sql_5 --output compare_intercode_sql --max-task-id 800 --db_paths data/intercode_sql_filtered/intercode_sql_gold_examples_spider_trial_1/10/learning.db/learning.db data/intercode_sql_filtered/intercode_sql_gold_examples_spider_trial_2/10/learning.db/learning.db data/intercode_sql_filtered/intercode_sql_gold_examples_spider_trial_3/10/learning.db/learning.db data/intercode_sql_filtered/intercode_sql_gold_examples_spider_trial_4/10/learning.db/learning.db data/intercode_sql_filtered/intercode_sql_gold_examples_spider_trial_5/10/learning.db/learning.db

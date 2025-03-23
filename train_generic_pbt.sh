@@ -5,9 +5,9 @@ CURRENT_DIR=$(pwd)
 
 # Define parameters for this PBT run
 # Check if all required parameters are provided
-if [ $# -lt 6 ]; then
+if [ $# -lt 7 ]; then
     echo "Error: Missing required parameters"
-    echo "Usage: $0 ENV_NAME INITIAL_FOLDER NUM_IC INITIAL_SEGMENT_SIZE TOTAL_TASKS AGENT_TYPE"
+    echo "Usage: $0 ENV_NAME INITIAL_FOLDER NUM_IC INITIAL_SEGMENT_SIZE TOTAL_TASKS AGENT_TYPE SPLIT"
     exit 1
 fi
 
@@ -17,6 +17,7 @@ NUM_IC=$3                                # Number of in-context examples
 INITIAL_SEGMENT_SIZE=$4                  # Initial segment size
 TOTAL_TASKS=$5                           # Total number of tasks
 AGENT_TYPE=$6                            # Agent algorithm type
+SPLIT=$7                                 # Split (train or test)
 PBT_RUN_LABEL="${NUM_IC}ic_seg${INITIAL_SEGMENT_SIZE}"  # Auto-generated label
 
 # Define the growth factor for segment size (e.g., 2.0 for doubling)
@@ -37,6 +38,7 @@ log "Number of in-context examples: ${NUM_IC}"
 log "Initial segment size: ${INITIAL_SEGMENT_SIZE}"
 log "Run label: ${PBT_RUN_LABEL}"
 log "Segment growth factor: ${SEGMENT_GROWTH_FACTOR}"
+log "Using split: ${SPLIT}"
 
 # Function to clean up background processes on script exit
 cleanup() {
@@ -63,22 +65,22 @@ for trial in {1..5}; do
 done
 
 # Check if we're resuming from specific task numbers
-if [ "$7" == "--resume" ]; then
+if [ "$8" == "--resume" ]; then
     log "Resuming from specified task numbers"
     
     # Get the current segment from command line
-    RESUME_SEGMENT=$8
+    RESUME_SEGMENT=$9
     if [ -z "$RESUME_SEGMENT" ]; then
         echo "Error: Must specify segment number when resuming"
         exit 1
     fi
     
     # Get task numbers for each trial
-    RESUME_TASK_1=$9
-    RESUME_TASK_2=${10}
-    RESUME_TASK_3=${11}
-    RESUME_TASK_4=${12}
-    RESUME_TASK_5=${13}
+    RESUME_TASK_1=${10}
+    RESUME_TASK_2=${11}
+    RESUME_TASK_3=${12}
+    RESUME_TASK_4=${13}
+    RESUME_TASK_5=${14}
     # Initialize current task counters with resume values
     declare -a current_tasks=($RESUME_TASK_1 $RESUME_TASK_2 $RESUME_TASK_3 $RESUME_TASK_4 $RESUME_TASK_5)
     
@@ -252,7 +254,7 @@ while [ $segment -le $NUM_SEGMENTS ]; do
         log "Calculating accuracy for trial $trial on segment $segment"
         
         # In a real implementation, you would calculate this from results
-        accuracy=$(python -c "from scripts.folder_acc import calculate_accuracy; print(calculate_accuracy('logs/episodes/${ENV_NAME}/train/${AGENT_TYPE}/openai/gpt-4o-mini/pbt_${PBT_RUN_LABEL}_trial_${trial}_segment_${segment}', segment_size=$current_segment_size))")
+        accuracy=$(python -c "from scripts.folder_acc import calculate_accuracy; print(calculate_accuracy('logs/episodes/${ENV_NAME}/${SPLIT}/${AGENT_TYPE}/openai/gpt-4o-mini/pbt_${PBT_RUN_LABEL}_trial_${trial}_segment_${segment}', segment_size=$current_segment_size))")
         accuracies+=($accuracy)
         
         log "Trial $trial accuracy: $accuracy"
