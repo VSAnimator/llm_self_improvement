@@ -4,7 +4,7 @@
 TASK_TYPES=("substep" "substep_interaction" "all")
 TRIAL_IDS=(1 2 3 4 5)
 SEGMENTS=(1 2 3 4 5 6 7)
-IC_CONFIGS=("3ic" "6ic")
+IC_CONFIGS=("6ic")
 
 # First, copy all segment runs to a single shared folder per trial and IC configuration
 for ic in "${IC_CONFIGS[@]}"; do

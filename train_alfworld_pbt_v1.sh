@@ -1,8 +1,10 @@
+#!/bin/bash
+
 # Get current directory
 CURRENT_DIR=$(pwd)
 
 # Define a label for this PBT run - change this for different runs
-PBT_RUN_LABEL="3ic_seg20"
+PBT_RUN_LABEL="6ic_seg20"
 
 # Define the growth factor for segment size (e.g., 2.0 for doubling)
 SEGMENT_GROWTH_FACTOR=2.0
@@ -47,31 +49,86 @@ done
 TOTAL_TASKS=3500
 INITIAL_SEGMENT_SIZE=20
 
-# Initialize current task counters for each trial (all starting at 0)
-declare -a current_tasks=(0 0 0 0 0)
-
-# Calculate number of segments dynamically based on growth factor
-segment=1
-remaining_tasks=$TOTAL_TASKS
-current_segment_size=$INITIAL_SEGMENT_SIZE
-NUM_SEGMENTS=0
-
-while [ $remaining_tasks -gt 0 ]; do
-    remaining_tasks=$((remaining_tasks - current_segment_size))
-    current_segment_size=$(python -c "import math; print(int(math.ceil($current_segment_size * $SEGMENT_GROWTH_FACTOR)))")
-    NUM_SEGMENTS=$((NUM_SEGMENTS + 1))
+# Check if we're resuming from specific task numbers
+if [ "$1" == "--resume" ]; then
+    log "Resuming from specified task numbers"
     
-    # Cap the segment size to remaining tasks
-    if [ $current_segment_size -gt $remaining_tasks ] && [ $remaining_tasks -gt 0 ]; then
-        current_segment_size=$remaining_tasks
+    # Get the current segment from command line
+    RESUME_SEGMENT=$2
+    if [ -z "$RESUME_SEGMENT" ]; then
+        echo "Error: Must specify segment number when resuming"
+        exit 1
     fi
-done
+    
+    # Get task numbers for each trial
+    RESUME_TASK_1=$3
+    RESUME_TASK_2=$4
+    RESUME_TASK_3=$5
+    RESUME_TASK_4=$6
+    RESUME_TASK_5=$7
+    
+    # Initialize current task counters with resume values
+    declare -a current_tasks=($RESUME_TASK_1 $RESUME_TASK_2 $RESUME_TASK_3 $RESUME_TASK_4 $RESUME_TASK_5)
+    
+    # Set segment to the resume segment
+    segment=$RESUME_SEGMENT
+    
+    # Calculate segment size based on the segment number
+    current_segment_size=$INITIAL_SEGMENT_SIZE
+    for ((i=1; i<segment; i++)); do
+        current_segment_size=$(python -c "import math; print(int(math.ceil($current_segment_size * $SEGMENT_GROWTH_FACTOR)))")
+    done
+    
+    log "Resuming at segment $segment with segment size $current_segment_size"
+    log "Resume task numbers: ${current_tasks[*]}"
+else
+    # Initialize current task counters for each trial (all starting at 0)
+    declare -a current_tasks=(0 0 0 0 0)
+    
+    # Calculate number of segments dynamically based on growth factor
+    segment=1
+    remaining_tasks=$TOTAL_TASKS
+    current_segment_size=$INITIAL_SEGMENT_SIZE
+    NUM_SEGMENTS=0
+    
+    while [ $remaining_tasks -gt 0 ]; do
+        remaining_tasks=$((remaining_tasks - current_segment_size))
+        current_segment_size=$(python -c "import math; print(int(math.ceil($current_segment_size * $SEGMENT_GROWTH_FACTOR)))")
+        NUM_SEGMENTS=$((NUM_SEGMENTS + 1))
+        
+        # Cap the segment size to remaining tasks
+        if [ $current_segment_size -gt $remaining_tasks ] && [ $remaining_tasks -gt 0 ]; then
+            current_segment_size=$remaining_tasks
+        fi
+    done
+    
+    log "Calculated $NUM_SEGMENTS segments with growth factor $SEGMENT_GROWTH_FACTOR"
+    
+    # Reset for actual run
+    segment=1
+    current_segment_size=$INITIAL_SEGMENT_SIZE
+fi
 
-log "Calculated $NUM_SEGMENTS segments with growth factor $SEGMENT_GROWTH_FACTOR"
-
-# Reset for actual run
-segment=1
-current_segment_size=$INITIAL_SEGMENT_SIZE
+# Calculate NUM_SEGMENTS if resuming
+if [ "$1" == "--resume" ]; then
+    temp_segment=1
+    temp_segment_size=$INITIAL_SEGMENT_SIZE
+    remaining_tasks=$TOTAL_TASKS
+    NUM_SEGMENTS=0
+    
+    while [ $remaining_tasks -gt 0 ]; do
+        remaining_tasks=$((remaining_tasks - temp_segment_size))
+        temp_segment_size=$(python -c "import math; print(int(math.ceil($temp_segment_size * $SEGMENT_GROWTH_FACTOR)))")
+        NUM_SEGMENTS=$((NUM_SEGMENTS + 1))
+        
+        # Cap the segment size to remaining tasks
+        if [ $temp_segment_size -gt $remaining_tasks ] && [ $remaining_tasks -gt 0 ]; then
+            temp_segment_size=$remaining_tasks
+        fi
+    done
+    
+    log "Total segments: $NUM_SEGMENTS"
+fi
 
 # Main loop for population-based training
 while [ $segment -le $NUM_SEGMENTS ]; do
@@ -90,7 +147,31 @@ while [ $segment -le $NUM_SEGMENTS ]; do
         fi
         
         # Calculate end task for this segment
-        end_task=$((current_task + current_segment_size))
+        # When resuming, we need to ensure we're using the correct segment size
+        # for the current trial's progress
+        if [ "$1" == "--resume" ]; then
+            # Calculate the target end task based on segment boundaries
+            target_task=0
+            temp_segment=1
+            temp_segment_size=$INITIAL_SEGMENT_SIZE
+            
+            while [ $temp_segment -le $segment ]; do
+                target_task=$((target_task + temp_segment_size))
+                
+                if [ $temp_segment -lt $segment ]; then
+                    temp_segment_size=$(python -c "import math; print(int(math.ceil($temp_segment_size * $SEGMENT_GROWTH_FACTOR)))")
+                fi
+                
+                temp_segment=$((temp_segment + 1))
+            done
+            
+            end_task=$target_task
+        else
+            # Normal calculation for non-resume mode
+            end_task=$((current_task + current_segment_size))
+        fi
+        
+        # Cap at total tasks regardless of mode
         if [ $end_task -gt $TOTAL_TASKS ]; then
             end_task=$TOTAL_TASKS
         fi
@@ -105,7 +186,7 @@ while [ $segment -le $NUM_SEGMENTS ]; do
             --store_episodes \
             --env alfworld \
             --log_name pbt_${PBT_RUN_LABEL}_trial_${trial}_segment_${segment} \
-            --num_ic 3 \
+            --num_ic 6 \
             --num_tasks $end_task \
             --num_passes 1 \
             --start_task $current_task &

@@ -35,8 +35,8 @@ def calculate_accuracy(folder_path, segment_size=100):
             # Look for final reward of 1
             if 'Reward: 1' in content:
                 successful_episodes += 1
-            # If Reward: 1 is not in the file, and Step 4 is not in the file, then skip and decrement the total count
-            elif 'Step 4' not in content:
+            # If Reward: 1 is not in the file, and Step 1 is not in the file, then skip and decrement the total count
+            elif 'Step 1' not in content:
                 total_episodes -= 1
     
     # Calculate success rate
