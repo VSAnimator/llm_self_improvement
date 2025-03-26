@@ -4,7 +4,6 @@ import argparse
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
 from collections import defaultdict
 from pathlib import Path
 from llm_agent.database.learning_db import LearningDB
@@ -269,91 +268,6 @@ class RetrievalRunComparison:
         
         return param_df
     
-    def visualize_example_performance(self, top_n=10):
-        """
-        Visualize performance differences of the top examples across runs.
-        
-        Args:
-            top_n (int): Number of top differential examples to visualize
-        """
-        print(f"Visualizing top {top_n} examples with differential performance...")
-        
-        # Get differential performance data
-        diff_df = self.find_differential_performance()
-        
-        if diff_df.empty:
-            print("No differential examples found. Cannot create visualizations.")
-            return
-        
-        # Get combined data
-        combined_df = pd.read_csv(self.output_dir / "combined_influence_data.csv")
-        
-        # Get top examples with largest direct success rate difference
-        top_examples = diff_df.nlargest(top_n, 'direct_diff')['example_id'].tolist()
-        
-        # Plot direct success rate for each example across runs
-        for example_id in top_examples:
-            example_data = combined_df[combined_df['example_id'] == example_id].copy()
-            example_data = example_data.sort_values('direct_success_rate')
-            
-            plt.figure(figsize=(10, 6))
-            
-            # Create a bar chart
-            bars = plt.bar(example_data['run'], example_data['direct_success_rate'], alpha=0.7)
-            
-            # Add usage count as text on each bar
-            for i, bar in enumerate(bars):
-                usage = example_data.iloc[i]['usage_count']
-                plt.text(
-                    bar.get_x() + bar.get_width()/2, 
-                    0.05, 
-                    f"Used: {int(usage)}", 
-                    ha='center', 
-                    rotation=90, 
-                    color='black'
-                )
-            
-            plt.title(f"Example {example_id} Performance Across Runs")
-            plt.xlabel("Run")
-            plt.ylabel("Direct Success Rate")
-            plt.ylim(0, 1.0)
-            plt.xticks(rotation=45, ha='right')
-            plt.tight_layout()
-            
-            plt.savefig(self.output_dir / f"example_{example_id}_comparison.png", dpi=300)
-            plt.close()
-        
-        # Create a heatmap of the top examples across runs
-        self._create_performance_heatmap(combined_df, top_examples)
-    
-    def _create_performance_heatmap(self, df, example_ids):
-        """
-        Create a heatmap showing performance of selected examples across runs.
-        
-        Args:
-            df (DataFrame): Combined data
-            example_ids (list): List of example IDs to include
-        """
-        # Filter data to only selected examples
-        filtered_df = df[df['example_id'].isin(example_ids)]
-        
-        # Create a pivot table: runs x examples with direct success rate as values
-        pivot_df = filtered_df.pivot_table(
-            index='run', 
-            columns='example_id', 
-            values='direct_success_rate',
-            aggfunc='mean'
-        )
-        
-        # Create the heatmap
-        plt.figure(figsize=(12, 8))
-        sns.heatmap(pivot_df, annot=True, cmap="YlGnBu", vmin=0, vmax=1, fmt=".2f")
-        
-        plt.title("Direct Success Rate of Top Differential Examples Across Runs")
-        plt.tight_layout()
-        plt.savefig(self.output_dir / "top_examples_heatmap.png", dpi=300)
-        plt.close()
-    
     def generate_report(self):
         """Generate a comprehensive comparison report."""
         print("Generating comparison report...")
@@ -553,9 +467,6 @@ class RetrievalRunComparison:
         
         # Analyze run differences
         self.analyze_run_differences()
-        
-        # Visualize example performance
-        #self.visualize_example_performance()
         
         # Generate report
         self.generate_report()

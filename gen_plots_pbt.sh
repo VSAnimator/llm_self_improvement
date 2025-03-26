@@ -3,7 +3,7 @@
 # Define arrays for task types, trial IDs, and IC configurations
 TASK_TYPES=("substep" "substep_interaction" "all")
 TRIAL_IDS=(1 2 3 4 5)
-SEGMENTS=(1 2 3 4 5 6 7)
+SEGMENTS=(1 2 3 4 5 6 7 8)
 IC_CONFIGS=("6ic")
 
 # First, copy all segment runs to a single shared folder per trial and IC configuration

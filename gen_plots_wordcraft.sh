@@ -15,6 +15,7 @@ for ic_run in ""; do
         python scripts/plot_from_folder.py logs/episodes/wordcraft/train/rap_noplan/openai/gpt-4o-mini/wordcraft_depth_2_humanic_train_${id}/ --granularity 200
     done
 
+    python scripts/plot_from_folder.py $folder_paths --granularity 200 --multiple_folders
     # Also run pass@k plots
     python scripts/plot_from_folder.py $folder_paths --granularity 200 --multiple_folders --task_type pass_at_k
 done

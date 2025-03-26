@@ -3,6 +3,7 @@ import glob
 import numpy as np
 from llm_agent.in_context.alfworld_fewshots import get_task_type
 import re
+import csv
 
 def nonhomogeneous_mean(arrays_list):
     """
@@ -64,6 +65,44 @@ def nonhomogeneous_max(arrays_list):
     
     # Calculate max along axis 0, ignoring NaNs
     return np.nanmax(padded_arrays, axis=0)
+
+def save_plot_data_to_csv(x_data, y_data, labels, output_path):
+    """
+    Save plot data to a CSV file.
+    
+    Args:
+        x_data: List of x-axis data points for each series
+        y_data: List of y-axis data points for each series
+        labels: List of labels for each series
+        output_path: Path to save the CSV file
+    """
+    # Create CSV filename from the plot filename
+    csv_path = output_path.replace('.png', '.csv')
+    
+    # Determine the maximum length of any data series
+    max_length = max(len(x) for x in x_data)
+    
+    with open(csv_path, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        
+        # Write header row with series labels
+        header = ['index']
+        for label in labels:
+            header.extend([f'{label}_x', f'{label}_y'])
+        writer.writerow(header)
+        
+        # Write data rows
+        for i in range(max_length):
+            row = [i]
+            for j in range(len(x_data)):
+                if i < len(x_data[j]):
+                    row.extend([x_data[j][i], y_data[j][i]])
+                else:
+                    row.extend(['', ''])
+            writer.writerow(row)
+    
+    print(f"Plot data saved to {csv_path}")
+    return csv_path
 
 def plot_cumulative_rewards(folder_path, granularity=1, plot_task_type=None, cumulative=True, multiple_folders=False, existing_plot=None):
     """
@@ -149,7 +188,9 @@ def plot_cumulative_rewards(folder_path, granularity=1, plot_task_type=None, cum
         else:
             # If folder_path is a list, use the parent of the first folder
             parent_folder = os.path.dirname(os.path.normpath(folder_paths[0]))
-            subfolder_name = "average_multiple_folders" + ("_6_ic" if "6_ic" in folder_path[0] else "_3_ic")
+            # Include the last part of the first folder path in the subfolder name
+            first_folder_basename = os.path.basename(os.path.normpath(folder_paths[0]))
+            subfolder_name = f"average_multiple_folders_{first_folder_basename}" + ("_6_ic" if "6_ic" in folder_paths[0] else "_3_ic")
     else:
         # Original single folder processing
         final_rewards, task_type_rewards, pick_up_successes, interaction_successes, put_successes, interaction_subtype_successes = process_folder(
@@ -181,6 +222,11 @@ def plot_cumulative_rewards(folder_path, granularity=1, plot_task_type=None, cum
     else:
         plt.figure(figsize=(10, 6))
     
+    # Lists to store all plot data for CSV export
+    all_x_data = []
+    all_y_data = []
+    all_labels = []
+    
     # Plot based on task_type parameter
     if plot_task_type == 'substep':
         # Plot success rates for pickup, interaction, and put steps
@@ -196,6 +242,9 @@ def plot_cumulative_rewards(folder_path, granularity=1, plot_task_type=None, cum
                 else:
                     y_pick_up = pick_up_rate[::granularity]
                 plt.plot(x_pick_up, y_pick_up, marker='o', label=f'{subfolder_name} - Pick up success rate')
+                all_x_data.append(x_pick_up)
+                all_y_data.append(y_pick_up)
+                all_labels.append(f'{subfolder_name} - Pick up success rate')
         
         if interaction_successes:
             if cumulative:
@@ -209,6 +258,9 @@ def plot_cumulative_rewards(folder_path, granularity=1, plot_task_type=None, cum
                 else:
                     y_interaction = interaction_rate[::granularity]
                 plt.plot(x_interaction, y_interaction, marker='s', label=f'{subfolder_name} - Interaction success rate')
+                all_x_data.append(x_interaction)
+                all_y_data.append(y_interaction)
+                all_labels.append(f'{subfolder_name} - Interaction success rate')
         
         if put_successes:
             if cumulative:
@@ -222,6 +274,9 @@ def plot_cumulative_rewards(folder_path, granularity=1, plot_task_type=None, cum
                 else:
                     y_put = put_rate[::granularity]
                 plt.plot(x_put, y_put, marker='^', label=f'{subfolder_name} - Put success rate')
+                all_x_data.append(x_put)
+                all_y_data.append(y_put)
+                all_labels.append(f'{subfolder_name} - Put success rate')
     elif plot_task_type == 'substep_interaction':
         if interaction_subtype_successes:
             for interaction_subtype, successes in interaction_subtype_successes.items():
@@ -236,12 +291,21 @@ def plot_cumulative_rewards(folder_path, granularity=1, plot_task_type=None, cum
                     else:
                         y_interaction_subtype = interaction_subtype_rate[::granularity]
                     plt.plot(x_interaction_subtype, y_interaction_subtype, marker='s', label=f'{subfolder_name} - Interaction {interaction_subtype} success rate')
+                    all_x_data.append(x_interaction_subtype)
+                    all_y_data.append(y_interaction_subtype)
+                    all_labels.append(f'{subfolder_name} - Interaction {interaction_subtype} success rate')
     elif plot_task_type is None:
         # Plot only overall cumulative reward
         print(f"Plotting overall cumulative reward")
         plt.plot(x_points, y_points, marker='o', label=f'{subfolder_name} - Overall')
+        all_x_data.append(x_points)
+        all_y_data.append(y_points)
+        all_labels.append(f'{subfolder_name} - Overall')
     elif plot_task_type == 'pass_at_k':
         plt.plot(x_points[:len(pass_at_k)], pass_at_k, marker='x', label=f'{subfolder_name} - Pass@k')
+        all_x_data.append(x_points[:len(pass_at_k)])
+        all_y_data.append(pass_at_k)
+        all_labels.append(f'{subfolder_name} - Pass@k')
     elif plot_task_type == 'all':
         # Plot cumulative rewards for all task types
         for task_type_name, rewards in task_type_rewards.items():
@@ -256,6 +320,9 @@ def plot_cumulative_rewards(folder_path, granularity=1, plot_task_type=None, cum
                 else:
                     y_points_by_type = cumulative_rewards_by_type[::granularity]
                 plt.plot(x_points_by_type, y_points_by_type, marker='x', label=f'{subfolder_name} - {task_type_name}')
+                all_x_data.append(x_points_by_type)
+                all_y_data.append(y_points_by_type)
+                all_labels.append(f'{subfolder_name} - {task_type_name}')
     else:
         # Plot only the specified task type
         if plot_task_type in task_type_rewards:
@@ -265,6 +332,9 @@ def plot_cumulative_rewards(folder_path, granularity=1, plot_task_type=None, cum
             if x_points_by_type:  # Only plot if there are data points
                 y_points_by_type = [cumulative_rewards_by_type[i-1] / i for i in x_points_by_type]
                 plt.plot(x_points_by_type, y_points_by_type, marker='x', label=f'{subfolder_name} - {plot_task_type}')
+                all_x_data.append(x_points_by_type)
+                all_y_data.append(y_points_by_type)
+                all_labels.append(f'{subfolder_name} - {plot_task_type}')
         else:
             print(f"Warning: Task type '{plot_task_type}' not found in the data")
     
@@ -279,6 +349,9 @@ def plot_cumulative_rewards(folder_path, granularity=1, plot_task_type=None, cum
     output_path = os.path.join(parent_folder, f'cumulative_reward_plot_{subfolder_name}_{str(plot_task_type)}_{str(cumulative)}.png')
     if existing_plot is None:
         plt.savefig(output_path)
+        # Save the plot data to CSV
+        if all_x_data:
+            save_plot_data_to_csv(all_x_data, all_y_data, all_labels, output_path)
     
     # Only close the plot if we created a new one
     if existing_plot is None:
@@ -438,6 +511,11 @@ if __name__ == "__main__":
         # Create a single figure that will be shared across all folders
         fig = plt.figure(figsize=(12, 8))
         
+        # Lists to store all plot data for CSV export
+        all_x_data = []
+        all_y_data = []
+        all_labels = []
+        
         # Plot each folder individually but on the same figure
         for folder in args.folder_path:
             print(f"Processing folder: {folder}")
@@ -452,10 +530,22 @@ if __name__ == "__main__":
         cumulative_str = "cumulative" if args.cumulative else "average"
         # Identify if any of the folders contain 3_ic or 6_ic in their path
         ic_type = "_6_ic" if any("6_ic" in folder for folder in args.folder_path) else "_3_ic"
-        output_path = os.path.join(output_dir, f'combined_plot_{task_type_str}_{cumulative_str}{ic_type}.png')
+        # Get the name of the first folder to include in the output filename
+        first_folder_name = os.path.basename(os.path.normpath(args.folder_path[0]))
+        output_path = os.path.join(output_dir, f'combined_plot_{task_type_str}_{cumulative_str}{ic_type}_{first_folder_name}.png')
         plt.savefig(output_path)
+        
+        # Extract data from the plot for CSV export
+        for line in plt.gca().get_lines():
+            all_x_data.append(line.get_xdata())
+            all_y_data.append(line.get_ydata())
+            all_labels.append(line.get_label())
+        
+        # Save the plot data to CSV
+        if all_x_data:
+            save_plot_data_to_csv(all_x_data, all_y_data, all_labels, output_path)
+        
         plt.close()
         print(f"Combined plot saved to {output_path}")
         
     plot_cumulative_rewards(folder_path, args.granularity, args.task_type, args.cumulative, multiple_folders)
-

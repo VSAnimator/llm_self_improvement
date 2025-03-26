@@ -152,7 +152,7 @@ if __name__ == "__main__":
     # For each, create a copy of the db path's folder, then ingest only the logs that pass the threshold
     i = 0
     current_db_dir = None
-    all_thresholds = [40, 100, 200, 400, 1000, 1500, 2000, 2500]
+    all_thresholds = [40, 100, 200, 400, 1000, 1500, 2000, 2500, 3000, 3500, 4000]
     for threshold in all_thresholds:
         # Create a copy of the db path's folder
         # Create the new database path with the threshold
