@@ -3,8 +3,8 @@ CURRENT_DIR=$(pwd)
 
 # Run test script
 
-for ic in 3 6; do
-    for ckpt in 100 200 400 1000 1500 2000; do
+for ic in 6; do
+    for ckpt in 2500 3000 3500; do
         python scripts/run_agent_v2.py \
             --llm openai/gpt-4o-mini \
             --agent_type rap_flex \

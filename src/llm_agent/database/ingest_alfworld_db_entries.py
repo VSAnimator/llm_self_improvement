@@ -58,7 +58,11 @@ def ingest_multiple_logs(log_files, db_path, available_dbs, lower_threshold, upp
         entries = source_db.trajectory_cursor.fetchall()
 
         # Remove all entries that have a id greater than the threshold
+        print("Pre-filtering entries: ", len(entries))
+        print([int(entry[8]) for entry in entries])
+        print("Thresholds: ", lower_threshold, upper_threshold)
         entries = [entry for entry in entries if int(entry[8]) >= lower_threshold and int(entry[8]) < upper_threshold]
+        print("Post-filtering entries: ", len(entries))
         all_entries.extend(entries)
 
     # Ingest all entries
@@ -150,10 +154,11 @@ if __name__ == "__main__":
     import shutil
     # DB starts with 18 entries. We'd like to save the DB with inner key up to 40, 100, 200, 400, 1000, 1500, 2000, 2500
     # For each, create a copy of the db path's folder, then ingest only the logs that pass the threshold
-    i = 0
+    i = -1
     current_db_dir = None
-    all_thresholds = [40, 100, 200, 400, 1000, 1500, 2000, 2500, 3000, 3500, 4000]
+    all_thresholds = [40, 100, 200, 400, 1000, 1500, 2000, 2500, 3000, 3500]
     for threshold in all_thresholds:
+        i += 1
         # Create a copy of the db path's folder
         # Create the new database path with the threshold
         # Get the directory paths
@@ -182,4 +187,3 @@ if __name__ == "__main__":
                 filtered_log_files.append(log_file)
         # Ingest only the logs that pass the threshold
         ingest_multiple_logs(filtered_log_files, new_db_path, dbs, previous_threshold, threshold)
-        i += 1

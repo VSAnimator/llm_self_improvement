@@ -9,12 +9,13 @@ for ic_run in ""; do
     for id in "${TRIAL_IDS[@]}"; do
         folder_paths+="logs/episodes/intercode_sql/test/rap_noplan/openai/gpt-4o-mini/bird_gold_10_cont_spider_trial_${id}${ic_run}/ "
     done
-    python scripts/plot_from_folder.py $folder_paths --task_type all --granularity 200 --multiple_folders
+    python scripts/plot_from_folder.py $folder_paths --task_type all --granularity 100 --multiple_folders
 
     for id in "${TRIAL_IDS[@]}"; do
-        python scripts/plot_from_folder.py logs/episodes/intercode_sql/test/rap_noplan/openai/gpt-4o-mini/bird_gold_10_cont_spider_trial_${id}${ic_run}/ --granularity 200
+        python scripts/plot_from_folder.py logs/episodes/intercode_sql/test/rap_noplan/openai/gpt-4o-mini/bird_gold_10_cont_spider_trial_${id}${ic_run}/ --granularity 100
     done
 
+    python scripts/plot_from_folder.py $folder_paths --granularity 100 --multiple_folders
     # Also run pass@k plots
-    python scripts/plot_from_folder.py $folder_paths --granularity 200 --multiple_folders --task_type pass_at_k
+    python scripts/plot_from_folder.py $folder_paths --granularity 100 --multiple_folders --task_type pass_at_k
 done
