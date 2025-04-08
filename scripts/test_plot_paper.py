@@ -8,11 +8,14 @@ def plot_performance(csv_file, title=None, output_file=None, fig_width=4, fig_he
 
     # Extract relevant columns
     tasks = df['Number of Training Tasks']
-    performance = df['Average']
-
-    # Plot average
+    
+    # Plot average and any other non-Trial columns
     plt.figure(figsize=(fig_width, fig_height), dpi=300)
-    plt.plot(tasks, performance, marker='o', linestyle='-', color='blue', label='Average', linewidth=2)
+    
+    # Plot all non-Trial columns
+    non_trial_cols = [col for col in df.columns if 'Trial' not in col and col != 'Number of Training Tasks']
+    for col in non_trial_cols:
+        plt.plot(tasks, df[col], marker='o', linestyle='-', linewidth=2, label=col)
 
     # Plot individual trials with lighter dashed lines
     trial_cols = [col for col in df.columns if 'Trial' in col]
@@ -21,7 +24,7 @@ def plot_performance(csv_file, title=None, output_file=None, fig_width=4, fig_he
 
     # Customize labels and title with adjustable font size
     plt.xlabel('Number of Training Tasks', fontsize=font_size)
-    plt.ylabel('Average Performance', fontsize=font_size)
+    plt.ylabel('Success Rate', fontsize=font_size)
     plt.title(title, fontsize=font_size+2)
 
     # Grid for readability
