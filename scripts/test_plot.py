@@ -15,9 +15,13 @@ def extract_folder_info(folder_path, regex_pattern):
     print(f"Extracting folder info from {folder_path}")
     print(f"Regex pattern: {regex_pattern}")
     match = re.search(regex_pattern, folder_path)
-    if match and match.group(1).isdigit() and match.group(2).isdigit():
+    num_groups = len(match.groups())
+    if num_groups == 2:
         return int(match.group(1)), int(match.group(2))
-    return None, None
+    elif num_groups == 1:
+        return 1, int(match.group(1))
+    else:
+        return None, None
 
 def save_plot_data_to_csv(x_data, y_data, labels, output_path):
     """
@@ -41,7 +45,7 @@ def save_plot_data_to_csv(x_data, y_data, labels, output_path):
             writer.writerow(row)
     print(f"Plot data saved to {csv_path}")
 
-def plot_success_rates(folder_pattern, regex_pattern, output_path, segment_size=100):
+def plot_success_rates(folder_pattern, regex_pattern, output_path, segment_size=100, reverse_args=False):
     """
     Plot task success rates against folder labels for folders matching the pattern.
     Shows individual trials as light dashed lines and the average as a darker solid line.
@@ -59,6 +63,8 @@ def plot_success_rates(folder_pattern, regex_pattern, output_path, segment_size=
     
     for folder in folders:
         trial_id, training_tasks = extract_folder_info(folder, regex_pattern)
+        if reverse_args:
+            trial_id, training_tasks = training_tasks, trial_id
         if trial_id is not None and training_tasks is not None:
             success_rate = calculate_accuracy(folder, segment_size)
             if trial_id not in trial_data:
@@ -132,7 +138,7 @@ if __name__ == "__main__":
     parser.add_argument('--output', '-o', default='success_rate_plot.png', help='Output file path')
     parser.add_argument('--segment-size', '-s', type=int, default=1000, 
                         help='Number of most recent tasks to consider for accuracy calculation')
-    
+    parser.add_argument('--reverse_args', '-r', action='store_true', help='Reverse the order of the regex pattern')
     args = parser.parse_args()
     
-    plot_success_rates(args.folder_pattern, args.regex_pattern, args.output, args.segment_size)
+    plot_success_rates(args.folder_pattern, args.regex_pattern, args.output, args.segment_size, args.reverse_args)

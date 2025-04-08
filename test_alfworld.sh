@@ -2,10 +2,9 @@
 CURRENT_DIR=$(pwd)
 
 # Run test script
-'''
 for ic in 6; do
     for trial in 1 2 3 4 5; do
-        for ckpt in 20 40 100 200 400 1000 1500 2000 2500 3000; do
+        for ckpt in 3500; do
             python scripts/run_agent_v2.py \
                 --llm openai/gpt-4o-mini \
                 --agent_type rap_flex \
@@ -21,8 +20,9 @@ for ic in 6; do
         wait
     done
 done
-'''
 
+
+'''
 for ic in 3; do
     for trial in 1 2 3 4 5; do
         for ckpt in 20 40 100 200 400 1000 1500 2000 2500 3000; do
@@ -41,3 +41,4 @@ for ic in 3; do
         wait
     done
 done
+'''
