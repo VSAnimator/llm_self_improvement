@@ -19,7 +19,8 @@ trap cleanup SIGINT
 # Create directories for 5 trials
 for trial in {1..5}; do
     echo "Creating directory for trial $trial"
-    cp -r "$CURRENT_DIR/data/alfworld_expel" "$CURRENT_DIR/data/alfworld_expel_trial_${trial}_6_ic"
+    mkdir -p "$CURRENT_DIR/data/openrouter/alfworld/quasar/"
+    cp -r "$CURRENT_DIR/data/alfworld_expel/" "$CURRENT_DIR/data/openrouter/alfworld/quasar/trial_${trial}_6_ic"
 done
 
 # Wait for all copy operations to complete
@@ -27,37 +28,22 @@ wait
 
 PIDS=()
 
-# Define arrays for trial start tasks
-#trial_start_tasks_3=(1384 1175 1792 1588 1377)
-trial_start_tasks_6=(0 0 0 0 0)
-
 # Run 5 trials in parallel
 for trial in {1..5}; do
     echo "Starting trial $trial"
-
-    # Use proper bash array syntax with index
-    trial_start_task=${trial_start_tasks_3[$((trial-1))]}
-
-    echo "Trial start task: $trial_start_task"
-    
-    # If the start task is 3500, then skip the trial
-    if [ $trial_start_task -eq 3500 ]; then
-        echo "Skipping trial $trial because start task is 3500"
-        continue
-    fi
     
     # Run the training script in the background
     python scripts/run_agent_v2.py \
-        --llm openai/gpt-4o-mini \
+        --llm openrouter/openrouter/quasar-alpha \
         --agent_type rap_flex \
-        --db_path "$CURRENT_DIR/data/alfworld_expel_trial_${trial}/learning.db" \
+        --db_path "$CURRENT_DIR/data/openrouter/alfworld/quasar/trial_${trial}_6_ic/learning.db" \
         --store_episodes \
         --env alfworld \
         --log_name trial_${trial} \
-        --num_ic 3 \
+        --num_ic 6 \
         --num_tasks 3500 \
         --num_passes 1 \
-        --start_task $trial_start_task &
+        --start_task 0 &
     
     # Capture process ID and add to array
     PIDS+=($!)
@@ -75,7 +61,7 @@ done
 echo "All trials completed"
 
 # Create a directory for the archive if it doesn't exist
-ARCHIVE_DIR="$CURRENT_DIR/data/alfworld_archives"
+ARCHIVE_DIR="$CURRENT_DIR/data/together/alfworld_archives"
 mkdir -p "$ARCHIVE_DIR"
 
 # Get current date and time for the archive name
