@@ -84,3 +84,11 @@ logs/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Generated plots
+*.png
+*.csv
+*.pdf
+*.html
+*.json
+*.txt
