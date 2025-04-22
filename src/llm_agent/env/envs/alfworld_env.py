@@ -180,6 +180,9 @@ class AlfWorldEnv(BaseEnv):
                 * cool object with target: Cool an object you have taken/picked up with the target. The target should be a fridge. You should go to the target in your last action. You can cool no matter there are other objects in/on the target or not.
                 * use target: Use the object. The object should be a desklamp. You should be in/on a place where the object appears.
                 * look: Look around and see what you are facing. Only look when nothing happens.
+                Replace "target" with the desired location/object.
+                Replace "object" with the desired object.
+                Neither the word "target" nor "object" should be in the action command.
             """.strip("\n")
         }
         

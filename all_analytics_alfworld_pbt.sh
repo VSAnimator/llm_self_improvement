@@ -8,7 +8,7 @@ IC_VALUES=("_6_ic")
 for id in "${TRIAL_IDS[@]}"; do
     for ic in "${IC_VALUES[@]}"; do
         echo "Running retrieval analytics for trial ${id} with ${ic}"
-        python scripts/retrieval_analytics.py logs/episodes/alfworld/train/rap_flex/openai/pbt_6ic_seg20_stitched/trial_${id}/ --output analysis/alfworld_${id}_pbt_6ic_seg20_stitched
+        python scripts/retrieval_analytics.py logs/episodes/alfworld/train/rap_flex/openai/gpt-4o-mini/pbt_6ic_seg20_stitched/trial_${id}/ --output analysis/alfworld_${id}_pbt_6ic_seg20_stitched
     done
 done
 

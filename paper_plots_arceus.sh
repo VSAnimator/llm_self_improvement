@@ -1,0 +1,9 @@
+python scripts/test_plot_paper.py --csv_file wordcraft_test_success_rate_plot.csv --title Wordcraft
+python scripts/test_plot_paper.py --csv_file wordcraft_pbt_test_success_rate_plot.csv --title Wordcraft
+python scripts/test_plot_paper.py --csv_file wordcraft_best_filtered_success_rate_plot.csv --title Wordcraft
+python scripts/test_plot_paper.py --csv_file wordcraft_comparison_success_rate_plot.csv --title Wordcraft
+python scripts/test_plot_paper.py --csv_file alfworld_test_pbt_success_rate_plot.csv --title Alfworld
+python scripts/test_plot_paper.py --csv_file alfworld_test_pbt_zero_comparison_plot.csv --title Alfworld
+python scripts/test_plot_paper.py --csv_file alfworld_comparison_success_rate_plot.csv --title Alfworld
+python scripts/test_plot_paper.py --csv_file wordcraft_filtered_success_rate_bestworst.csv --title Wordcraft
+python scripts/test_plot_paper.py --csv_file wordcraft_zero_comparison.csv --title Wordcraft

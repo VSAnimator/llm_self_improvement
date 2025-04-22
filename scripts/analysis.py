@@ -27,7 +27,6 @@ for folder in sorted(txt_folders):
     #if "intercode_pbt" not in folder or "800_test" not in folder:
     #if "alfworld_best_examples" not in folder or "4o-mini" not in folder or "test" not in folder:
     if "baseline" not in folder:
-    #if "baseline" not in folder:
         continue
     print(folder)
     # Get all episode files
@@ -65,6 +64,7 @@ for folder in sorted(txt_folders):
                 successful_episodes += 1
             # If Reward: 1 is not in the file, and Step 4 is not in the file, then skip and decrement the total count
             if 'Reward: 1' not in content and 'Step 1' not in content:
+                #print(f"Skipping episode {episode_file} because it doesn't have a final reward of 1 or a step of 1")
                 total_episodes -= 1
                 continue
             # Figure out the try in which it succeeded

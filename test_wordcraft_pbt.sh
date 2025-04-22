@@ -17,5 +17,5 @@ for trial in 1 2 3 4 5; do
             --db_path "$CURRENT_DIR/data/wordcraft_pbt_10ic_seg10_trial_${trial}_backups/${ckpt}/learning.db/learning.db" &
         sleep 5
     done
-    wait
 done
+wait
