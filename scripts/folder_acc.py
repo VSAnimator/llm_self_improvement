@@ -46,7 +46,7 @@ def calculate_accuracy(folder_path, segment_size=100):
     success_rate = (successful_episodes / total_episodes)
     return success_rate
 
-def calculate_pass_at_k(folder_paths, segment_size=100):
+def calculate_pass_at_k(folder_paths):
     """
     Calculate pass@k metric across multiple folders where files with the same name
     correspond to the same task. Simulates the probability of at least 1 success in k attempts
@@ -72,9 +72,6 @@ def calculate_pass_at_k(folder_paths, segment_size=100):
     
     # Sort files numerically
     base_files = sorted(base_files, key=lambda x: int(os.path.basename(x).split('.')[0]))
-    
-    # Get the last segment_size files (or all if less than segment_size)
-    base_files = base_files[-segment_size:] if len(base_files) > segment_size else base_files
     
     # Extract task IDs from filenames
     task_ids = [os.path.basename(f).split('.')[0] for f in base_files]
