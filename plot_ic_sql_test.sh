@@ -17,4 +17,9 @@ SEGMENT_SIZE=1000
 echo "Plotting InterCode SQL test success rates..."
 python scripts/test_plot.py "$FOLDER_PATTERN" "$REGEX_PATTERN" --output "$OUTPUT_PATH" --segment-size "$SEGMENT_SIZE" --reverse_args
 
+# Also run pass@k plots
+FOLDER_PATTERN="logs/episodes/intercode_sql/test/rap_noplan/openai/gpt-4o-mini/intercode_sql_spider_baseline_trial_*"
+OUTPUT_PATH="intercode_sql_test_pass_at_k_plot.png"
+python scripts/test_plot_k.py "$FOLDER_PATTERN" --output "$OUTPUT_PATH"
+
 echo "Plot generation complete."

@@ -15,7 +15,7 @@ def extract_folder_info(folder_path, regex_pattern):
     print(f"Extracting folder info from {folder_path}")
     print(f"Regex pattern: {regex_pattern}")
     match = re.search(regex_pattern, folder_path)
-    num_groups = len(match.groups())
+    num_groups = len(match.groups()) if match else 0
     if num_groups == 2:
         return int(match.group(1)), int(match.group(2))
     elif num_groups == 1:

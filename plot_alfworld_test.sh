@@ -17,4 +17,9 @@ SEGMENT_SIZE=1000
 echo "Plotting ALFWorld test success rates..."
 python scripts/test_plot.py "$FOLDER_PATTERN" "$REGEX_PATTERN" --output "$OUTPUT_PATH" --segment-size "$SEGMENT_SIZE"
 
+# Also run pass@k plots
+FOLDER_PATTERN="logs/episodes/alfworld_test/eval_out_of_distribution/rap_flex/openai/gpt-4o-mini/alfworld_baseline_trial_*_6ic"
+OUTPUT_PATH="alfworld_test_pass_at_k_plot.png"
+python scripts/test_plot_k.py "$FOLDER_PATTERN" --output "$OUTPUT_PATH"
+
 echo "Plot generation complete."

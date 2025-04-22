@@ -26,7 +26,7 @@ for folder in sorted(txt_folders):
     #if "alfworld" not in folder or "test" not in folder or "4o-mini" not in folder or "trial" not in folder or "3ic" not in folder:
     #if "intercode_pbt" not in folder or "800_test" not in folder:
     #if "alfworld_best_examples" not in folder or "4o-mini" not in folder or "test" not in folder:
-    if "together" not in folder:
+    if "baseline" not in folder:
     #if "baseline" not in folder:
         continue
     print(folder)

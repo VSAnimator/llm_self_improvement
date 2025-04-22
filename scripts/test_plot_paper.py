@@ -39,7 +39,7 @@ def plot_performance(csv_file, title=None, output_file=None, fig_width=4, fig_he
     
     # Generate output filename if not provided
     if output_file is None:
-        output_file = f"{csv_file.split('.')[0]}_w{fig_width}_h{fig_height}_fs{font_size}.png"
+        output_file = f"{csv_file.split('.')[0]}_w{fig_width}_h{fig_height}_fs{font_size}.pdf"
     
     plt.savefig(output_file)
     print(f"Plot saved to {output_file}")

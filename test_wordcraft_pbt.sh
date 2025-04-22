@@ -3,7 +3,7 @@ CURRENT_DIR=$(pwd)
 
 # Run test script
 for trial in 1 2 3 4 5; do
-    for ckpt in 40 100 200 400 1000 1500 2500 3000 3700; do
+    for ckpt in 40 100 200 400 1000 1500 2000 2500 3000 3700; do
         python scripts/run_agent_v2.py \
             --llm openai/gpt-4o-mini \
             --agent_type rap_noplan \
