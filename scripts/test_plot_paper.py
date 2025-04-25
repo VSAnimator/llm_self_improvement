@@ -52,6 +52,9 @@ def plot_performance(csv_file, title=None, output_file=None, fig_width=4, fig_he
         # Remove in-graph legend
         plt.legend().set_visible(False)
         
+        # Store reference to the main figure
+        main_fig = plt.gcf()
+        
         # Create a separate figure for the vertical legend (stacked)
         figlegend_vertical = plt.figure(figsize=(2, 1))
         figlegend_vertical.legend(lines, [line.get_label() for line in lines], 
@@ -72,7 +75,8 @@ def plot_performance(csv_file, title=None, output_file=None, fig_width=4, fig_he
         figlegend_horizontal.savefig(legend_output_horizontal, bbox_inches='tight')
         print(f"Horizontal legend saved to {legend_output_horizontal}")
         
-        # Adjust layout for the main figure
+        # Switch back to the main figure before adjusting layout
+        plt.figure(main_fig.number)
         plt.tight_layout()
     else:
         # For other plots, don't show any legend
