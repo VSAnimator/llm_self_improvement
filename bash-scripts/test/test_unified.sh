@@ -7,8 +7,6 @@ CURRENT_DIR=$(pwd)
 source "$CURRENT_DIR/agent_configs/load_config.sh" --base default
 
 # Default test parameters
-TEST_NUM_TASKS=134
-TEST_ENV_TYPE="${ENV_TYPE}_test"
 CHECKPOINT=""
 TEST_PARALLEL=1
 
@@ -27,11 +25,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --env)
       ENV_TYPE="$2"
-      TEST_ENV_TYPE="${ENV_TYPE}_test" # Update test env to match
-      shift 2
-      ;;
-    --test_env)
-      TEST_ENV_TYPE="$2"
       shift 2
       ;;
     --agent_type)
@@ -71,7 +64,6 @@ while [[ $# -gt 0 ]]; do
       echo "Options:"
       echo "  --config CONFIG_STRING    Configuration string (format: base:env:agent:llm:custom)"
       echo "  --env ENV_TYPE            Base environment type (alfworld, intercode_sql, wordcraft)"
-      echo "  --test_env TEST_ENV_TYPE  Test environment type (default: ENV_TYPE_test)"
       echo "  --agent_type AGENT_TYPE   Agent type (rap_flex, rap_noplan, etc.)"
       echo "  --llm LLM                 LLM model to use"
       echo "  --num_ic NUM_IC           Number of in-context examples"
@@ -138,24 +130,38 @@ for trial in $(seq 1 $NUM_TRIALS); do
         
         # Set log name for this test run
         if [ -z "$LOG_NAME" ]; then
-            TEST_LOG_NAME="${ENV_TYPE}_trial_${trial}_ckpt_${ckpt}"
+            TEST_LOG_NAME="${ENV_TYPE}_trial_${trial}/ckpt_${ckpt}"
         else
-            TEST_LOG_NAME="${LOG_NAME}_trial_${trial}_ckpt_${ckpt}"
+            TEST_LOG_NAME="${LOG_NAME}_trial_${trial}/ckpt_${ckpt}"
         fi
         
         echo "Testing checkpoint ${ckpt} for trial ${trial}"
         
-        # Run test in background
-        python scripts/run_agent_v2.py \
-            --llm "$LLM" \
-            --agent_type "$AGENT_TYPE" \
+        # Comment out the actual run and just echo the command
+        echo Would run: python scripts/run_agent_v2.py \
+            --llm $LLM \
+            --agent_type $AGENT_TYPE \
             --num_passes 1 \
-            --env "$TEST_ENV_TYPE" \
-            --num_ic "$NUM_IC" \
-            --num_tasks "$TEST_NUM_TASKS" \
-            --db_path "$DB_PATH" \
-            --log_name "$TEST_LOG_NAME" \
-            --parallel "$TEST_PARALLEL" &
+            --env $ENV_TYPE \
+            --num_ic $NUM_IC \
+            --num_tasks $TEST_NUM_TASKS \
+            --db_path $DB_PATH \
+            --log_name $TEST_LOG_NAME \
+            --split test \
+            --parallel $TEST_PARALLEL
+        
+        # Original command (commented out)
+        # python scripts/run_agent_v2.py \
+        #     --llm "$LLM" \
+        #     --agent_type "$AGENT_TYPE" \
+        #     --num_passes 1 \
+        #     --env "$ENV_TYPE" \
+        #     --num_ic "$NUM_IC" \
+        #     --num_tasks "$TEST_NUM_TASKS" \
+        #     --db_path "$DB_PATH" \
+        #     --log_name "$TEST_LOG_NAME" \
+        #     --split "test" \
+        #     --parallel "$TEST_PARALLEL" &
         
         # Capture process ID
         PIDS+=($!)

@@ -215,7 +215,6 @@ def test_agent(real_llm, db, env, test_config):
         or test_config.get("benchmark", "") == "textcraft"
         or test_config.get("benchmark", "") == "wordcraft"
         or test_config.get("benchmark", "") == "lsystem"
-        or True
     ):
         test_config["give_action_space"] = True
     if test_config.get("agent_type", "react") == "react":
