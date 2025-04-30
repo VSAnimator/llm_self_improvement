@@ -11,6 +11,9 @@ def plot_performance(csv_file, title=None, output_file=None, fig_width=4, fig_he
     
     # Plot average and any other non-Trial columns
     plt.figure(figsize=(fig_width, fig_height), dpi=300)
+
+    # Rename "Average" to "Avg of 5 trials" in columns
+    df.rename(columns={'Average': 'Avg of 5 trials'}, inplace=True)
     
     # Create the plot
     ax = plt.gca()
@@ -18,6 +21,11 @@ def plot_performance(csv_file, title=None, output_file=None, fig_width=4, fig_he
     # Remove top and right spines
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
+
+    # If the columns "Traj-Bootstrap", "+DB-Selection" and "+Exemplar-Selection" exist, reorder to that particular order
+    if 'Traj-Bootstrap' in df.columns and '+DB-Selection' in df.columns and '+Exemplar-Selection' in df.columns:
+        df = df[['Traj-Bootstrap', '+DB-Selection', '+Exemplar-Selection']]
+
     
     # Plot all non-Trial columns
     non_trial_cols = [col for col in df.columns if 'Trial' not in col and col != 'Number of Training Tasks']
@@ -32,23 +40,26 @@ def plot_performance(csv_file, title=None, output_file=None, fig_width=4, fig_he
         plt.plot(tasks, df[trial], linestyle='--', alpha=0.6, linewidth=1)
 
     # Customize labels and title with adjustable font size
-    plt.xlabel('Number of Training Tasks', fontsize=font_size)
+    plt.xlabel('Num. Training Tasks', fontsize=font_size)
     plt.ylabel('Success Rate', fontsize=font_size)
     plt.title(title, fontsize=font_size+2)
 
     # Grid for readability
     plt.grid(True, linestyle='--', alpha=0.7)
 
-    # Customize tick font sizes
+    # Customize tick font sizes and format
     plt.xticks(fontsize=font_size-1)
     plt.yticks(fontsize=font_size-1)
+    
+    # Format y-axis to show at most 2 decimal places
+    ax.yaxis.set_major_formatter(plt.FormatStrFormatter('%.2f'))
 
     # Generate output filename if not provided
     if output_file is None:
         output_file = f"{csv_file.split('.')[0]}_w{fig_width}_h{fig_height}_fs{font_size}.pdf"
     
     # Handle legend placement based on title
-    if title and 'InterCode' in title:
+    if title and ('InterCode' in title or '-Human_Examples' in non_trial_cols):
         # Remove in-graph legend
         plt.legend().set_visible(False)
         
