@@ -3,9 +3,15 @@ import re
 import shutil
 from collections import defaultdict
 
+'''
 log_path = "pbt_6ic_seg20_log.txt"
 log_root = "logs/episodes/alfworld/train/rap_flex/openai/gpt-4o-mini/pbt_6ic_seg20"
 output_root = "logs/episodes/alfworld/train/rap_flex/openai/gpt-4o-mini/pbt_6ic_seg20_stitched"
+'''
+
+log_path = "pbt_wordcraft_10ic_seg10_log.txt"
+log_root = "logs/episodes/wordcraft/train/rap_noplan/openai/gpt-4o-mini/pbt_10ic_seg10"
+output_root = "logs/episodes/wordcraft/train/rap_noplan/openai/gpt-4o-mini/pbt_10ic_seg10_stitched"
 
 def parse_pbt_log(log_path):
     replacements = defaultdict(dict)
