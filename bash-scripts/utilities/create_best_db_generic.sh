@@ -18,7 +18,7 @@ trap cleanup SIGINT
 
 # Set environment variables (can be overridden before running the script)
 # Parse command line arguments
-if [ "$#" -lt 4 ]; then
+if [ "$#" -lt 3 ]; then
     echo "Error: Missing required arguments."
     echo "Usage: $0 <SOURCE_DIR> <TARGET_DIR_BASE> <ENV_NAME> <JSON_SUFFIX>"
     echo "  SOURCE_DIR: Source template directory"
@@ -28,16 +28,16 @@ if [ "$#" -lt 4 ]; then
     exit 1
 fi
 
-SOURCE_DIR="$1"
-TARGET_DIR_BASE="$2"
-ENV_NAME="$3"
-JSON_SUFFIX="$4"
+#SOURCE_DIR="$1"
+TARGET_DIR_BASE="$1"
+ENV_NAME="$2"
+JSON_SUFFIX="$3"
 
 # Create directories for best and worst examples
-for mode in best worst; do
-    echo "Creating directory for $mode examples"
-    cp -r "$SOURCE_DIR" "$TARGET_DIR_BASE/${ENV_NAME}_${mode}_examples"
-done
+#for mode in best worst; do
+#    echo "Creating directory for $mode examples"
+#    cp -r "$SOURCE_DIR" "$TARGET_DIR_BASE/${ENV_NAME}_${mode}_examples"
+#done
 
 # Ingest the best and worst examples into the databases
 for mode in best worst; do
