@@ -94,12 +94,18 @@ def main():
     #df = df.tail(500)
     if args.test_set_path is not None:
         test_df = pd.DataFrame(test_data)
+        # Create train and validation splits from the main dataset
+        train_size = int(len(df) * 0.8)
+        train_df = df.head(train_size)
+        val_df = df.tail(len(df) - train_size)
     else:
-        # Do the train/test split
-        # Split off the last 20% of data for testing
+        # Do the train/val/test split
+        # Split off the last 20% of data for testing, and 10% for validation
         test_size = int(len(df) * 0.2)
+        val_size = int(len(df) * 0.1)
         test_df = df.tail(test_size)
-        df = df.head(len(df) - test_size)
+        val_df = df.iloc[-(test_size + val_size):-test_size]
+        train_df = df.head(len(df) - test_size - val_size)
     
     # Create output directory if it doesn't exist
     os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
@@ -109,11 +115,12 @@ def main():
     df.to_csv(args.output_path, index=False)
     
     # Print statistics
-    success_rate = df['success'].mean()
-    print(f"Dataset created with {len(df)} examples")
-    print(f"Success rate: {success_rate:.2f}")
-    print(f"Successful examples: {df['success'].sum()}")
-    print(f"Failed examples: {len(df) - df['success'].sum()}")
+    train_success_rate = train_df['success'].mean()
+    val_success_rate = val_df['success'].mean()
+    test_success_rate = test_df['success'].mean()
+    print(f"Train dataset created with {len(train_df)} examples, success rate: {train_success_rate:.2f}")
+    print(f"Validation dataset created with {len(val_df)} examples, success rate: {val_success_rate:.2f}")
+    print(f"Test dataset created with {len(test_df)} examples, success rate: {test_success_rate:.2f}")
     
     # Compute embeddings for entire dataset, then use sklearn to train a classifier
     print("Computing embeddings for the dataset...")
@@ -125,19 +132,24 @@ def main():
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.ensemble import GradientBoostingClassifier
     from sklearn.metrics import accuracy_score, classification_report
+    from sklearn.calibration import CalibratedClassifierCV
     import joblib
 
     # Load a pre-trained sentence transformer model
     model = SentenceTransformer('all-MiniLM-L6-v2')
     
     # Compute embeddings for all inputs
-    inputs = df['input'].tolist()
-    embeddings = model.encode(inputs, show_progress_bar=True)
+    train_inputs = train_df['input'].tolist()
+    val_inputs = val_df['input'].tolist()
     test_inputs = test_df['input'].tolist()
+    
+    train_embeddings = model.encode(train_inputs, show_progress_bar=True)
+    val_embeddings = model.encode(val_inputs, show_progress_bar=True)
     test_embeddings = model.encode(test_inputs, show_progress_bar=True)
     
-    # Split the data into training and testing sets
-    X_train, y_train = embeddings, df['success']
+    # Prepare the data
+    X_train, y_train = train_embeddings, train_df['success']
+    X_val, y_val = val_embeddings, val_df['success']
     X_test, y_test = test_embeddings, test_df['success']
     
     # Train a logistic regression classifier
@@ -145,10 +157,31 @@ def main():
     #classifier = LogisticRegression(max_iter=1000, class_weight='balanced')
     #classifier.fit(X_train, y_train)
 
+    # Combine train and validation data for k-fold cross-validation
+    print("Combining train and validation data for k-fold cross-validation...")
+    X_combined = np.vstack((X_train, X_val))
+    y_combined = np.concatenate((y_train, y_val))
+    
+    # Train a random forest classifier with k-fold cross-validation for calibration
+    print("Training random forest classifier with cross-validation...")
+    base_classifier = RandomForestClassifier(n_estimators=500, random_state=42, class_weight='balanced')
+    
+    # Use CalibratedClassifierCV with k-fold cross-validation
+    print("Using k-fold cross-validation for classifier calibration...")
+    classifier = CalibratedClassifierCV(base_classifier, cv=5, method='isotonic', n_jobs=-1)
+    classifier.fit(X_combined, y_combined)
+
+    '''
     # Also train a random forest classifier
     print("Training random forest classifier...")
-    classifier = RandomForestClassifier(n_estimators=500, random_state=42, class_weight='balanced')
-    classifier.fit(X_train, y_train)
+    base_classifier = RandomForestClassifier(n_estimators=500, random_state=42, class_weight='balanced')
+    base_classifier.fit(X_train, y_train)
+
+    # Calibrate the classifier using isotonic regression on the validation set
+    print("Calibrating classifier with isotonic regression...")
+    classifier = CalibratedClassifierCV(base_classifier, cv='prefit', method='sigmoid')
+    classifier.fit(X_val, y_val)
+    '''
 
     # Boosted tree
     print("Training boosted tree classifier...")
@@ -223,10 +256,31 @@ def main():
     plt.ylabel('Precision')
     plt.legend()
     plt.savefig(os.path.join(os.path.dirname(args.output_path), "precision_recall_curve.png"))
-
     # Check the calibration of the classifier
     from sklearn.calibration import CalibrationDisplay
-    CalibrationDisplay.from_estimator(classifier, X_test, y_test, n_bins=10)
+    
+    # Create calibration display
+    disp = CalibrationDisplay.from_estimator(classifier, X_test, y_test, n_bins=10)
+    
+    # Force x-axis to have ticks for all bins
+    bin_edges = np.linspace(0, 1, 11)  # 11 edges for 10 bins
+    disp.ax_.set_xticks(bin_edges)
+    
+    # Get the histogram counts from the calibration display
+    counts = np.histogram(disp.y_prob, bins=10)[0]
+    print(f"Counts: {counts}")
+    
+    '''
+    # Add count annotations to each bin
+    for i, count in enumerate(counts):
+        # Add text annotation for all bins, even if empty
+        bin_center = (bin_edges[i] + bin_edges[i+1]) / 2
+        bin_height = 0.1  # Position above the bin
+        plt.text(bin_center, bin_height, f'n={count}', 
+                horizontalalignment='center', size='small')
+    '''
+    
+    plt.title('Calibration Curve')
     plt.savefig(os.path.join(os.path.dirname(args.output_path), "calibration_curve.png"))
 
     # Save the model and encoder
