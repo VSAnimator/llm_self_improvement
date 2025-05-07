@@ -53,3 +53,63 @@ if __name__ == "__main__":
         # Clear lists for next trial
         train_dbs = []
         test_folders = []
+
+    '''
+    # Alfworld db path "data/alfworld_expel_trial_1_6_ic_backups/100/learning.db/learning.db"
+    # Test folder path "logs/episodes/alfworld_test/eval_out_of_distribution/rap_flex/openai/gpt-4o-mini/trial_*_6ic_*"
+    for trial in range(1, 6):
+        for i in [100, 200, 400, 1000, 1500, 2000, 2500, 3000, 3500]:
+            train_dbs.append(f"data/alfworld_expel_trial_{trial}_6_ic_backups/{i}/learning.db/learning.db")
+            test_folders.append(f"logs/episodes/alfworld_test/eval_out_of_distribution/rap_flex/openai/gpt-4o-mini/trial_{trial}_6ic_{i}")
+
+        trial_output_dir = f"{output_base_dir}/alfworld_trial_{trial}"
+        generate_all_calibration_plots(train_dbs, test_folders, trial_output_dir)
+        
+        # Clear lists for next trial
+        train_dbs = []
+        test_folders = []
+    
+    # Alfworld pbt db path "/data/rl/agent_algo_bench/data/alfworld_pbt_6ic_seg20_trial_3_backups/100/learning.db/learning.db"
+    # Test folder path "logs/episodes/alfworld_test/eval_out_of_distribution/rap_flex/openai/gpt-4o-mini/pbt_trial_*_6ic_*"
+    for trial in range(1, 6):
+        for i in [100, 200, 400, 1000, 1500, 2000, 2500, 3000, 3500]:
+            train_dbs.append(f"data/alfworld_pbt_6ic_seg20_trial_{trial}_backups/{i}/learning.db/learning.db")
+            test_folders.append(f"logs/episodes/alfworld_test/eval_out_of_distribution/rap_flex/openai/gpt-4o-mini/pbt_trial_{trial}_6ic_{i}")
+
+        trial_output_dir = f"{output_base_dir}/alfworld_pbt_trial_{trial}"
+        generate_all_calibration_plots(train_dbs, test_folders, trial_output_dir)
+        
+        # Clear lists for next trial
+        train_dbs = []
+        test_folders = []
+    '''
+        
+    '''
+    # Intercode db path "data/intercode_sql_filtered/intercode_sql_gold_examples_spider_trial_1/10/learning.db_backups/10/learning.db/learning.db"
+    # Test folder path "logs/episodes/intercode_sql/test/rap_noplan/openai/gpt-4o-mini/bird_gold_*_cont_spider_trial_*_test"
+    for trial in range(1, 6):
+        for i in [100, 200, 400, 800]:
+            train_dbs.append(f"data/intercode_sql_filtered/intercode_sql_gold_examples_spider_trial_{trial}/10/learning.db_backups/{i}/learning.db/learning.db")
+            test_folders.append(f"logs/episodes/intercode_sql/test/rap_noplan/openai/gpt-4o-mini/bird_gold_{i}_cont_spider_trial_{trial}_test")
+
+        trial_output_dir = f"{output_base_dir}/intercode_trial_{trial}"
+        generate_all_calibration_plots(train_dbs, test_folders, trial_output_dir)
+        
+        # Clear lists for next trial
+        train_dbs = []
+        test_folders = []
+
+    # Intercode db path "data/intercode_sql_pbt_6ic_seg10_trial_1_backups/100/learning.db/learning.db"
+    # Test folder path "logs/episodes/intercode_sql/test/rap_noplan/openai/gpt-4o-mini/intercode_pbt_trial_*_6ic_*_test"
+    for trial in range(1, 6):
+        for i in [100, 200, 400, 800]:
+            train_dbs.append(f"data/intercode_sql_pbt_6ic_seg10_trial_{trial}_backups/{i}/learning.db/learning.db")
+            test_folders.append(f"logs/episodes/intercode_sql/test/rap_noplan/openai/gpt-4o-mini/intercode_pbt_trial_{trial}_6ic_{i}_test")
+
+        trial_output_dir = f"{output_base_dir}/intercode_pbt_trial_{trial}"
+        generate_all_calibration_plots(train_dbs, test_folders, trial_output_dir)
+        
+        # Clear lists for next trial
+        train_dbs = []
+        test_folders = []
+    '''

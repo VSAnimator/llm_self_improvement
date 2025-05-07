@@ -137,11 +137,11 @@ def success_probability(db_path, test_set_path, output_path):
     
     # Train a random forest classifier with k-fold cross-validation for calibration
     print("Training random forest classifier with cross-validation...")
-    base_classifier = RandomForestClassifier(n_estimators=500, random_state=42, class_weight='balanced')
+    base_classifier = RandomForestClassifier(n_estimators=len(X_combined)//7, random_state=42, class_weight='balanced')
     
     # Use CalibratedClassifierCV with k-fold cross-validation
     print("Using k-fold cross-validation for classifier calibration...")
-    classifier = CalibratedClassifierCV(base_classifier, cv=5, method='isotonic', n_jobs=-1)
+    classifier = CalibratedClassifierCV(base_classifier, cv=5, method='sigmoid', n_jobs=-1)
     classifier.fit(X_combined, y_combined)
     
     # Evaluate the classifier
@@ -183,7 +183,19 @@ def success_probability(db_path, test_set_path, output_path):
     from sklearn.calibration import CalibrationDisplay
     
     # Create calibration display
-    disp = CalibrationDisplay.from_estimator(classifier, X_test, y_test, n_bins=10)
+    # Define consistent bins for both display and histogram
+    n_bins = 10
+    disp = CalibrationDisplay.from_estimator(classifier, X_test, y_test, n_bins=n_bins)
+    
+    # Get the bin edges from the calibration display
+    bin_edges = np.linspace(0, 1, n_bins + 1)
+    # Use the same bins for the histogram
+    counts = np.histogram(disp.y_prob, bins=bin_edges)
+    
+    # Save the counts to a csv file
+    with open(os.path.join(os.path.dirname(output_path), "calibration_counts.csv"), 'w') as f:
+        for x, y in zip(counts[0], counts[1]):
+            f.write(f"{x},{y}\n")
     
     plt.title('Calibration Curve')
     plt.savefig(os.path.join(os.path.dirname(output_path), "calibration_curve.png"))
