@@ -408,3 +408,17 @@ class BaseAgent:
         self.reflection = None
         self.summary = None
         self.in_context_data = None
+
+    def clean_history(self):
+        """Clean the agent's history"""
+        nothing_indices = [i for i in range(len(self.observation_history)) if "Nothing happens" in self.observation_history[i].structured]
+        
+        for idx in sorted(nothing_indices, reverse=True):
+            del self.observation_history[idx]
+            if idx > 0:
+                if idx-1 < len(self.reasoning_history):
+                    del self.reasoning_history[idx-1]
+                if idx-1 < len(self.action_history):
+                    del self.action_history[idx-1]
+                if idx-1 < len(self.reward_history):
+                    del self.reward_history[idx-1]

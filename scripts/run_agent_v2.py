@@ -10,6 +10,7 @@ from llm_agent.agent.agents import (
     RAP,
     RAPNoPlan,
     RAPFlex,
+    RAPFlexDiagnostic,
     RAPRefine,
     RAPDiversity,
     Synapse,
@@ -229,6 +230,8 @@ def test_agent(real_llm, db, env, test_config):
         return RAPNoPlan(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "rap_flex":
         return RAPFlex(real_llm, db, env, test_config)
+    elif test_config.get("agent_type", "react") == "rap_flex_diagnostic":
+        return RAPFlexDiagnostic(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "rap_refine":
         return RAPRefine(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "rap_diversity":

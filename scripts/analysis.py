@@ -27,7 +27,8 @@ for folder in sorted(txt_folders):
     #if "intercode_pbt" not in folder or "800_test" not in folder:
     #if "alfworld_best_examples" not in folder or "4o-mini" not in folder or "test" not in folder:
     #if "baseline" not in folder or "gpt-4o" not in folder or "4o-mini" in folder:
-    if "redo" not in folder:
+    #if "redo" not in folder:
+    if "pbt_best" not in folder:
         continue
     print(folder)
     # Get all episode files

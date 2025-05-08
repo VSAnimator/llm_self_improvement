@@ -166,6 +166,9 @@ def success_probability(db_path, test_set_path, output_path):
     fpr, tpr, thresholds = roc_curve(y_test, y_prob)
     roc_auc = auc(fpr, tpr)
     print(f"ROC AUC: {roc_auc:.4f}")
+    # Log the roc auc to a file
+    with open(os.path.join(os.path.dirname(output_path), "roc_auc.txt"), 'w') as f:
+        f.write(f"ROC AUC: {roc_auc:.4f}")
 
     # Save a plot of the ROC curve
     import matplotlib.pyplot as plt

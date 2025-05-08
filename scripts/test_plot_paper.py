@@ -24,7 +24,7 @@ def plot_performance(csv_file, title=None, output_file=None, fig_width=4, fig_he
 
     # If the columns "Traj-Bootstrap", "+DB-Selection" and "+Exemplar-Selection" exist, reorder to that particular order
     if 'Traj-Bootstrap' in df.columns and '+DB-Selection' in df.columns and '+Exemplar-Selection' in df.columns:
-        df = df[['Traj-Bootstrap', '+DB-Selection', '+Exemplar-Selection']]
+        df = df[['Traj-Bootstrap', '+DB-Selection', '+Exemplar-Selection', '+DB-Selection+Exemplar-Selection']]
 
     
     # Plot all non-Trial columns

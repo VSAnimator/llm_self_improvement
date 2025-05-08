@@ -47,7 +47,7 @@ if __name__ == "__main__":
             test_folders.append(f"logs/episodes/wordcraft/test/rap_noplan/openai/gpt-4o-mini/wordcraft_depth_2_humanic_test_{trial}_10ic_{i}")
         
         # Create trial-specific output directory
-        trial_output_dir = f"{output_base_dir}/wordcraft_trial_{trial}"
+        trial_output_dir = f"{output_base_dir}/wordcraft/wordcraft_trial_{trial}"
         generate_all_calibration_plots(train_dbs, test_folders, trial_output_dir)
         
         # Clear lists for next trial
