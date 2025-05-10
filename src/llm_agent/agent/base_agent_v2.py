@@ -84,6 +84,50 @@ class BaseAgent:
                 trajectory_dict[key] = repr([f"{i+1}. {a.text}" for i, a in enumerate(available_actions)])
         return self._trajectory_to_string(trajectory_dict)
     
+    def _create_conversation_for_finetune(self) -> List[Dict]:
+        """Create a conversation in the format used for fine-tuning
+        
+        Returns:
+            List[Dict]: List of messages in the format used by OpenAI's fine-tuning API
+        """
+        messages = []
+        
+        # Add system message
+        system_prompt = """You are a ReAct agent that helps users accomplish tasks. 
+Given a goal, you will receive observations about the environment and respond with your reasoning and actions.
+For each observation, first think through the problem step by step (Thought), then decide on an action (Action).
+Your actions should be clear, concise, and directly executable in the environment."""
+        messages.append({
+            "role": "system",
+            "content": system_prompt
+        })
+        
+        # Add goal and initial observation
+        if self.goal:
+            initial_obs = self.observation_history[0].structured if self.observation_history else ""
+            messages.append({
+                "role": "user",
+                "content": f"Goal: {self.goal}\nInitial observation: {initial_obs}"
+            })
+        
+        # Process each step in the trajectory
+        for i in range(len(self.reasoning_history)):
+            # Add assistant's response with reasoning and action
+            if i < len(self.reasoning_history) and i < len(self.action_history):
+                assistant_content = f"Thought: {self.reasoning_history[i]}\nAction: {self.action_history[i].text}"
+                messages.append({
+                    "role": "assistant",
+                    "content": assistant_content
+                })
+            
+            # Add next observation if available
+            if i + 1 < len(self.observation_history):
+                messages.append({
+                    "role": "user",
+                    "content": f"Observation: {self.observation_history[i+1].structured}"
+                })
+        return messages
+    
     def _roll_up_trajectory(self, entries):
         interleaved_keys = ["observation", "reasoning", "action"]
         """Roll up the trajectory into a single string"""
@@ -246,6 +290,19 @@ class BaseAgent:
         # self.observation_history = self.observation_history[-self.memory_size:]
         # self.action_history = self.action_history[-self.memory_size:]
 
+        return action
+    
+    async def act_finetune(self, observation: Observation) -> Tuple[Action, List[Dict]]:
+        """Select an action from available actions given the current observation"""
+        conversation = self._create_conversation_for_finetune()
+        response = await self.llm.generate_chat(conversation, stop=None)
+        # Strip the "Action: " prefix
+        # Also get the reasoning
+        action = response.split("Action:")[1].strip()
+        reasoning = response.split("Thought:")[1].split("Action:")[0].strip()
+        action = Action(text=action)
+        self.action_history.append(action)
+        self.reasoning_history.append(reasoning)
         return action
     
     """ Main components used by agent's process_feedback function """

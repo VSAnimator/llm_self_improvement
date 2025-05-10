@@ -12,3 +12,4 @@ from .autoguide import AutoGuide
 from .automanual import AutoManual
 from .trad import TRAD
 from .rap_flex_diagnostic import RAPFlexDiagnostic
+from .finetune import FinetuneAgent

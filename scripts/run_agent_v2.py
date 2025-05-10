@@ -18,6 +18,7 @@ from llm_agent.agent.agents import (
     AutoGuide,
     AutoManual,
     TRAD,
+    FinetuneAgent,
 )
 from llm_agent.env.base_env import Observation, Action
 from llm_agent.llm.lite_llm import LiteLLMWrapper
@@ -246,6 +247,8 @@ def test_agent(real_llm, db, env, test_config):
         return AutoGuide(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "automanual":
         return AutoManual(real_llm, db, env, test_config)
+    elif test_config.get("agent_type", "react") == "finetune":
+        return FinetuneAgent(real_llm, db, env, test_config)
     else:
         raise ValueError(
             f"Invalid agent type: {test_config.get('agent_type', 'react')}"
