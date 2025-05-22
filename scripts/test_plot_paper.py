@@ -25,10 +25,11 @@ def plot_performance(csv_file, title=None, output_file=None, fig_width=4, fig_he
     # If the columns "Traj-Bootstrap", "+DB-Selection" and "+Exemplar-Selection" exist, reorder to that particular order
     if 'Traj-Bootstrap' in df.columns and '+DB-Selection' in df.columns and '+Exemplar-Selection' in df.columns:
         df = df[['Traj-Bootstrap', '+DB-Selection', '+Exemplar-Selection', '+DB-Selection+Exemplar-Selection']]
-
+        # Replace "Selection" with "Curation"
+        df.rename(columns={'+DB-Selection': '+DB-Curation', '+Exemplar-Selection': '+Exemplar-Curation', '+DB-Selection+Exemplar-Selection': '+DB+Exemplar-Curation'}, inplace=True)
     
     # Plot all non-Trial columns
-    non_trial_cols = [col for col in df.columns if 'Trial' not in col and col != 'Number of Training Tasks']
+    non_trial_cols = [col for col in df.columns if 'Trial' not in col and "Stdev" not in col and col != 'Number of Training Tasks']
     lines = []
     for col in non_trial_cols:
         line, = plt.plot(tasks, df[col], marker='o', linestyle='-', linewidth=2, label=col)

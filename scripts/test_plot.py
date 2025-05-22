@@ -126,6 +126,10 @@ def plot_success_rates(folder_pattern, regex_pattern, output_path, segment_size=
     all_y_values.append(avg_y_values)
     labels = [f'Trial {trial_id}' for trial_id in trial_plots.keys()]
     labels.append('Average')
+    # Also add the stdev
+    stdev_y_values = [np.std(success_rates_by_task[task_count]) for task_count in training_tasks_list]
+    all_y_values.append(stdev_y_values)
+    labels.append('Stdev')
     save_plot_data_to_csv(avg_x_values, all_y_values, labels, output_path)
     
     # Show the plot

@@ -57,10 +57,11 @@ def calculate_pass_at_k(folder_paths):
         segment_size: Number of most recent tasks to consider
         
     Returns:
-        dict: Dictionary mapping k values to their corresponding pass@k accuracy
+        tuple: (dict mapping k values to their corresponding pass@k accuracy, 
+               dict mapping k values to standard deviation)
     """
     if not folder_paths:
-        return {1: 0.0}
+        return {1: 0.0}, {1: 0.0}
     
     # Get all episode files from the first folder to establish task IDs
     base_folder = folder_paths[0]
@@ -68,7 +69,7 @@ def calculate_pass_at_k(folder_paths):
     base_files = [f for f in base_files if os.path.basename(f).split('.')[0].isdigit()]
     
     if not base_files:
-        return {k: 0.0 for k in range(1, len(folder_paths) + 1)}
+        return {k: 0.0 for k in range(1, len(folder_paths) + 1)}, {k: 0.0 for k in range(1, len(folder_paths) + 1)}
     
     # Sort files numerically
     base_files = sorted(base_files, key=lambda x: int(os.path.basename(x).split('.')[0]))
@@ -100,8 +101,11 @@ def calculate_pass_at_k(folder_paths):
     
     # Calculate pass@k for each k from 1 to len(folder_paths)
     pass_at_k = {}
+    task_probabilities = {}
+    
     for k in range(1, len(folder_paths) + 1):
         successful_tasks = 0
+        task_probs = []
         
         for task_id, outcomes in results.items():
             # Calculate probability of at least 1 success in k attempts
@@ -133,11 +137,22 @@ def calculate_pass_at_k(folder_paths):
                     prob_success = 1 - (choose_k_failures / choose_k_trials)
             
             successful_tasks += prob_success
+            task_probs.append(prob_success)
         
         # Calculate average across all tasks
         pass_at_k[k] = successful_tasks / total_tasks if total_tasks > 0 else 0.0
+        task_probabilities[k] = task_probs
     
-    return pass_at_k
+    # Calculate standard error of the mean for each k
+    stdev_at_k = {}
+    import numpy as np
+    for k, probs in task_probabilities.items():
+        if probs:
+            stdev_at_k[k] = np.std(probs) / np.sqrt(len(probs))
+        else:
+            stdev_at_k[k] = 0.0
+    
+    return pass_at_k, stdev_at_k
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Calculate accuracy on the last 100 tasks in a folder.')

@@ -21,7 +21,7 @@ def load_curve_data(file_path):
     return x_values, y_values
 
 def plot_curves_from_folder(folder_path, title):
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(4, 3))
     trial_files = []
     all_roc_aucs = []
     all_x_values = []
@@ -72,11 +72,7 @@ def plot_curves_from_folder(folder_path, title):
             all_roc_aucs.append(roc_aucs)
 
     # Now let's plot the roc_auc for all trials
-    plt.figure(figsize=(8, 6))
-    
-    # Plot each trial's ROC AUC curve
-    for i, (x_vals, roc_vals) in enumerate(zip(all_x_values, all_roc_aucs)):
-        plt.plot(x_vals, roc_vals, linestyle='--', marker='o', label=f'Trial {i+1}', alpha=0.5)
+    plt.figure(figsize=(4, 3))
     
     # Calculate and plot the average across all trials if we have multiple trials
     if len(all_x_values) > 1:
@@ -95,30 +91,42 @@ def plot_curves_from_folder(folder_path, title):
                 avg_roc_aucs.append(sum(values) / len(values))
             
             # Plot the average as a thicker line
-            plt.plot(common_x, avg_roc_aucs, marker='o', linewidth=3, color='black', label='Average')
+            plt.plot(common_x, avg_roc_aucs, marker='o', linewidth=3, label='Average')
     
-    plt.xlabel("Num training tasks")
-    plt.ylabel("ROC AUC")
-    plt.legend()
+    # Plot each trial's ROC AUC curve
+    for i, (x_vals, roc_vals) in enumerate(zip(all_x_values, all_roc_aucs)):
+        plt.plot(x_vals, roc_vals, linestyle='--', marker='o', label=f'Trial {i+1}', alpha=0.3)
+
+    plt.xlabel("Num training tasks", fontsize=17)
+    plt.ylabel("ROC AUC", fontsize=17)
+    # Make ticks big too
+    plt.tick_params(axis='both', which='major', labelsize=17)
+    plt.tick_params(axis='both', which='minor', labelsize=17)
+    #plt.legend()
     plt.grid(False)
     plt.ylim(0, 1)
-    plt.savefig(os.path.join(folder_path, f"{title.lower().replace(' ', '_')}_roc_auc.png"), bbox_inches='tight')
+    plt.savefig(os.path.join(folder_path, f"{title.lower().replace(' ', '_')}_roc_auc.pdf"), bbox_inches='tight')
     
     fig, ax_1 = plt.subplots()
+    # Set figure width/height
+    fig.set_size_inches(4, 3)
 
     for idx, trial_file in enumerate(trial_files):
         x, y = load_curve_data(trial_file)
-        ax_1.plot(x, y, marker='o', label=f'Trial {idx+1}')
+        ax_1.plot(x, y, label=f'Trial {idx+1}', linestyle='-', alpha=0.7)
     
     #plt.title(title)
-    ax_1.set_xlabel("Mean Predicted Probability")
-    ax_1.set_ylabel("Fraction of Positives")
-    ax_1.legend(loc='center left', bbox_to_anchor=(1.15, 0.5))
+    ax_1.set_xlabel("Predicted Prob of Task Success", fontsize=12)
+    ax_1.set_ylabel("Observed Task Success Rate", fontsize=12)
+    # Make the ticks a 
+    ax_1.tick_params(axis='both', which='major', labelsize=17)
+    ax_1.tick_params(axis='both', which='minor', labelsize=17)
+    #ax_1.legend(loc='center left', bbox_to_anchor=(1.15, 0.5))
     
     # Add a diagonal reference line (perfect calibration)
-    ax_1.plot([0, 1], [0, 1], 'k--', alpha=0.5)
-    ax_1.set_xlim(0, 1)
-    ax_1.set_ylim(0, 1)
+    ax_1.plot([0, 1], [0, 1], 'k--', alpha=0.25)
+    ax_1.set_xlim(-0.05, 1.05)
+    ax_1.set_ylim(-0.05, 1.05)
 
     # Remove grid
     ax_1.grid(False)
@@ -128,7 +136,7 @@ def plot_curves_from_folder(folder_path, title):
     plt.subplots_adjust(right=0.85)
     
     # Save a version without the bars
-    plt.savefig(os.path.join(folder_path, f"{title.lower().replace(' ', '_')}_plot_no_bars.png"), 
+    plt.savefig(os.path.join(folder_path, f"{title.lower().replace(' ', '_')}_plot_no_bars.pdf"), 
                 bbox_inches='tight')
 
     ax_2 = ax_1.twinx()
@@ -152,7 +160,7 @@ def plot_curves_from_folder(folder_path, title):
     # Set both x and y axes to range from 0 to 1
     plt.tight_layout()
     plt.subplots_adjust(right=0.85)
-    plt.savefig(os.path.join(folder_path, f"{title.lower().replace(' ', '_')}_plot.png"), 
+    plt.savefig(os.path.join(folder_path, f"{title.lower().replace(' ', '_')}_plot.pdf"), 
                 bbox_inches='tight')
     plt.close()
 

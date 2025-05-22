@@ -44,7 +44,7 @@ def plot_pass_at_k(folder_pattern, output_path):
     print(f"Found {len(folders)} folders matching pattern")
     
     # Calculate pass@k for all folders together
-    pass_at_k_data = calculate_pass_at_k(folders)
+    pass_at_k_data, stdev_at_k_data = calculate_pass_at_k(folders)
     
     if not pass_at_k_data:
         print("No valid data points found.")
@@ -56,6 +56,7 @@ def plot_pass_at_k(folder_pattern, output_path):
     # Plot pass@k
     k_values = sorted(pass_at_k_data.keys())
     success_rates = [pass_at_k_data[k] for k in k_values]
+    stdev_rates = [stdev_at_k_data[k] for k in k_values]
     plt.plot(k_values, success_rates, 'o-', linewidth=2, markersize=6, 
              label='All Folders')
     
@@ -74,7 +75,8 @@ def plot_pass_at_k(folder_pattern, output_path):
     # Save data to CSV
     all_y_values = [success_rates]
     labels = ['All Folders']
-    
+    all_y_values.append(stdev_rates)
+    labels.append('Stdev')
     save_plot_data_to_csv(k_values, all_y_values, labels, output_path)
     
     # Show the plot
