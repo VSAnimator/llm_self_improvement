@@ -348,25 +348,3 @@ class WordCraftEnv(BaseEnv):
             "type": "string",
             "description": "Output strings with the names of the two entities we would like to combine in this step."
         }
-        
-# Let's test the environment
-'''
-if __name__ == "__main__":
-    env = WordCraftEnv({'max_steps': 100, 'problem_id': 0})
-    #env.reset()
-    #env.env.set_seed(0)
-    #env.reset()
-    for i in range(10):
-        env.env.set_seed(i)
-        env.reset()
-        env.env.render()
-        continue
-        action = input("Enter an action: ")
-        obs, reward, done, info = env.step(action)
-        print(f"Reward: {reward}")
-        print(f"Done: {done}")
-        print(f"Info: {info}")
-        env.env.render()
-        if done:
-            env.reset()
-'''

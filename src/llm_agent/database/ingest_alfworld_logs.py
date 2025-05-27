@@ -157,13 +157,3 @@ if __name__ == "__main__":
                 log_file = f"{log_file_base}/{run}/{task_id}.txt"
                 log_files.append(log_file)
     ingest_multiple_logs(log_files, db_path)
-
-    # Read the text files from the folders for each of the 5 trials and ingest them into the database
-    '''
-    for trial in [5]:
-        log_files = []
-        for task_id in range(1000):
-            log_file = f"./logs/episodes/alfworld/train/rap_flex/openai/gpt-4o-mini/trial_{trial}/{task_id}.txt"
-            log_files.append(log_file)
-        ingest_multiple_logs(log_files, f"./data/alfworld_filtered/alfworld_trial_{trial}_examples/learning.db")
-    '''

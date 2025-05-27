@@ -286,10 +286,6 @@ Your actions should be clear, concise, and directly executable in the environmen
         action = Action(text=action)
         self.action_history.append(action)
 
-        # Enforce memory size limit # VISHNU: Turn this off for now
-        # self.observation_history = self.observation_history[-self.memory_size:]
-        # self.action_history = self.action_history[-self.memory_size:]
-
         return action
     
     async def act_finetune(self, observation: Observation) -> Tuple[Action, List[Dict]]:
