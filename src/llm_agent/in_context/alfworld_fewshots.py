@@ -243,17 +243,3 @@ def get_fewshots_for_goal(goal: str) -> list:
     """
     task_type = get_task_type(goal)
     return PARSED_FEWSHOTS[task_type]
-
-#test_goal = "put the apple in the fridge"
-#print(get_fewshots_for_goal(test_goal)[0])
-#print(FILTERED_FEWSHOTS['pick_and_place'][0])
-
-# Try running parse_fewshot_lists
-'''
-goal, plan, obs_list, thought_list, act_list = PARSED_FEWSHOTS_LISTS['pick_and_place'][2]
-print(goal)
-print(plan)
-print(obs_list)
-print(thought_list)
-print(act_list)
-'''

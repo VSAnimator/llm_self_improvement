@@ -1,5 +1,4 @@
 from llm_agent.agent.base_agent_v2 import BaseAgent
-from ...env.base_env import Observation, Action
 
 class Synapse(BaseAgent):
     def __init__(self, *args):
@@ -11,5 +10,7 @@ class Synapse(BaseAgent):
         reasoning = await self.reason(obs, valid_actions, in_context_data)
         action = await self.act(obs, valid_actions, reasoning) 
         return action
-    
+
+    async def analyze_episode(self):
+        self.clean_history()
         

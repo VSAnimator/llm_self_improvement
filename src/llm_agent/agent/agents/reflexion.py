@@ -1,5 +1,4 @@
 from llm_agent.agent.base_agent_v2 import BaseAgent
-from ...env.base_env import Observation, Action
 
 class Reflexion(BaseAgent):
     def __init__(self, *args):
@@ -20,4 +19,5 @@ class Reflexion(BaseAgent):
         """Process feedback from the environment"""
         if self.reward_history[-1] < 1:
             await self.reflect()
+        self.clean_history()
         

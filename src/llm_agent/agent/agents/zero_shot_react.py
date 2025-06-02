@@ -11,3 +11,6 @@ class ZeroShotReact(BaseAgent):
         reasoning = await self.reason(obs, valid_actions)
         action = await self.act(obs, valid_actions, reasoning) 
         return action
+    
+    async def analyze_episode(self):
+        self.clean_history()

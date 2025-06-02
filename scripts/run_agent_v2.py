@@ -407,16 +407,6 @@ def main():
             )
 
             learning_db = LearningDBPostgreSQL(db_path=db_path)
-        elif args.db_type == "chroma":
-            from llm_agent.database.learning_db_chroma import (
-                LearningDB as LearningDBChroma,
-            )
-
-            learning_db = LearningDBChroma(
-                db_path=db_path,
-                config_type="server" if args.store_episodes else "lite",
-                port=args.db_port,
-            )
         else:
             raise ValueError(f"Invalid database type: {args.db_type}")
         agent_config["multiline_action"] = args.multiline

@@ -1,10 +1,6 @@
-import os
 from typing import Dict, List, Optional, Tuple, Any, Union
-from enum import Enum
 from logging import getLogger
 from ..env.base_env import Observation, Action
-from ..agent.generate_plan import generate_plan
-from ..agent.trajectory_reflection import trajectory_summary, observation_summary
 
 logger = getLogger(__name__)
 
@@ -222,16 +218,6 @@ Your actions should be clear, concise, and directly executable in the environmen
         if filtered_environment_id == "self":
             filtered_environment_id = self.environment_id
         return self._get_in_context_data(key_types, keys, value_types, outcome, k, filtered_environment_id=filtered_environment_id)
-    
-    # A wrapper function for the get_in_context_data function when getting rule-level data
-    def get_rule_data(self, trajectory_key_types, trajectory_keys, state_key_types, state_keys, value_types, outcome, k, window, filtered_environment_id="self") -> List[Dict]:
-        """Retrieve rule-level in-context examples from the database"""
-        # Rules can apply to any state, so we need to combine the trajectory and state keys
-        if filtered_environment_id == "self":
-            filtered_environment_id = self.environment_id
-        key = trajectory_keys + state_keys
-        key_type = trajectory_key_types + state_key_types
-        return self._get_in_context_data(key_type, key, value_types, outcome, k, filtered_environment_id=filtered_environment_id)
 
     async def create_plan(self, observation: Observation, available_actions: List[Action], in_context_data = None) -> str:
         """Generate a plan for the agent to follow"""
@@ -243,7 +229,14 @@ Your actions should be clear, concise, and directly executable in the environmen
         if in_context_data:
             system_prompt += self._in_context_prompt(in_context_data)
         conversation.append({"role": "system", "content": system_prompt})
-        plan = await generate_plan(conversation, self.goal, self.llm)
+        curr_prompt = f"goal: {self.goal}\n plan: "
+        conversation.append({"role": "user", "content": curr_prompt})
+        try:
+            plan = await self.llm.generate_chat(conversation)
+            plan = plan.strip()
+        except Exception as e:
+            logger.error(f"Error generating plan: {str(e)}")
+            plan = ""
         self.plan = plan
         return plan
 
@@ -301,7 +294,7 @@ Your actions should be clear, concise, and directly executable in the environmen
         self.reasoning_history.append(reasoning)
         return action
     
-    """ Main components used by agent's process_feedback function """
+    """ Main components used by agent's analyze_episode function """
     
     async def reflect(self, in_context_data = None) -> List[Dict]:
         """Reflect on the conversation and observation"""
@@ -328,20 +321,6 @@ Your actions should be clear, concise, and directly executable in the environmen
         self.reflection = response
         return response
     
-    async def summarize(self, obs=None) -> str:
-        """Summarize the conversation and observation"""
-        conversation = []
-        conversation = self._create_conversation(conversation, None, None, None)
-        if obs is None:
-            summary = await trajectory_summary(self.goal, conversation, self.llm)
-        else:
-            prev_obs = self.observation_history[-1] if len(self.observation_history) > 0 else Observation(None)
-            summary = await observation_summary(self.goal, obs, prev_obs, self.llm)
-        # Create an observation object again
-        self.summary = summary
-        summary = Observation(summary)
-        return summary
-    
     def store_episode(self):
         """Store an episode in the database"""
         # Add one more state to the observation history
@@ -351,91 +330,11 @@ Your actions should be clear, concise, and directly executable in the environmen
         else:
             self.observation_history.append(Observation("Task failed"))
         self.db.store_episode(self.environment_id, self.goal, self.category,self.observation_history, self.reasoning_history, self.action_history, self.reward_history, self.plan, self.reflection, self.summary)
-
-    """ For updating rules offline """
-
-    def _get_contrastive_pairs(self):
-        """Get contrastive pairs of episodes"""
-        # Fetch contrastive pairs from database and return
-        contrastive_pairs = self.db.get_contrastive_pairs()
-        return contrastive_pairs
     
-    def _get_similar_sets(self, n, k):
-        """Get similar sets of episodes"""
-        # Fetch similar sets from database and return
-        similar_sets = self.db.get_similar_sets(n, k)
-        return similar_sets
-    
-    async def _generate_rule(self, data, mode, success = None):
-        """Generate a rule from the given data"""
-        if mode == "pair":
-            sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given trajectories from both a successful attempt and a failed attempt at the same task. Given the key divergence in the actions taken between the two trajectories, create a rule that helps the agent successfully achieve similar goals in the future."
-            user_prompt = f"Successful trajectory: {data[0]}\nFailed trajectory: {data[1]}\n Rule: "
-        elif mode == "similar":
-            sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given trajectories from agents that successfully achieved a set of similar goals. Create a rule that generalizes the shared strategies used to achieve these goals, helping the agent successfully achieve similar goals in the future. Make the rule as specific as possible to the set of trajectories provided." # Can ask for it to be general if we want...
-            user_prompt = f"Successful trajectories: "
-            for i, elem in enumerate(data):
-                user_prompt += f"Example {i+1}: {elem}\n"
-            user_prompt += "Rule: " # Can ask for this to be single line if we want...
-        elif mode == "vanilla":
-            success_string = "successfully achieved" if success else "failed to achieve"
-            sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given a trajectory from an agent that {success_string} a goal, as well as a set of existing rules that may apply to this trajectory. Would you like to update an existing rule or create a new one?"
-            user_prompt = f"Trajectory: {data[0]}\nExisting rules: {data[1]}\n Update or create a new rule? (update/create): "
-            response = await self.llm.generate_chat([{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}])
-            if response == "update":
-                # Update the rule
-                sys_prompt = f"You are an evaluator that updates rules on how to successfully achieve a goal. You are given a trajectory from an agent that {success_string} a goal, as well as a set of existing rules that may apply to this trajectory. You must update the rule that is most relevant to the trajectory, refining the rule by correcting any errors or adding any missing information."
-                user_prompt = f"Trajectory: {data[0]}\nExisting rules: {data[1]}\n Update the rule that best matches the trajectory (rule_id: rule_content): "
-            elif response == "create":
-                # Create a new rule
-                sys_prompt = f"You are an evaluator that generates rules on how to successfully achieve a goal. You are given a trajectory from an agent that {success_string} a goal, as well as a set of existing rules that may apply to this trajectory. Create a new rule that helps the agent successfully achieve similar goals in the future."
-                user_prompt = f"Trajectory: {data[0]}\nExisting rules: {data[1]}\n Create a new rule that helps the agent successfully achieve similar goals in the future. Rule: "
-        response = await self.llm.generate_chat([{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}], stop=None)
-        print(response)
-        return response
-    
-    async def generate_rules(self, mode, environment_id):
-        if mode == "pair":
-            contrastive_pairs = self._get_contrastive_pairs()
-            for pair in contrastive_pairs:
-                pair[0] = self._trajectory_to_string(pair[0])
-                pair[1] = self._trajectory_to_string(pair[1])
-                self._generate_rule(pair, mode)
-        elif mode == "similar":
-            contrastive_pairs = self._get_contrastive_pairs()
-            similar_sets = self._get_similar_sets(n = 5, k = 3)
-            print("Similar sets", similar_sets)
-            for set in similar_sets:
-                for i in range(len(set)):
-                    set[i] = self._trajectory_to_string(set[i])
-                await self._generate_rule(set, mode)
-        elif mode == "vanilla":
-            # What rules apply to this trajectory? Do match on goal/category/observation/reasoning? 
-            # Let's assume we can return rules in the "value_types"
-            # Check if success or failure by seeing if 1 in reward_history
-            success = 1 in self.reward_history
-            current_trajectory = self._create_conversation(keys=["goal", "plan", "observation", "reasoning", "action"], available_actions=[])
-            relevant_rules = self.get_trajectory_data(key_types=["goal", "category"], keys=[self.goal, self.category], value_types=["rule_content"], k=3)
-            self._generate_rule([current_trajectory, relevant_rules], mode, success) # Either an update or a new rule
-
-    async def consolidate_rules(self):
-        """Consolidate rules"""
-        pass
-
-    """ Placeholder functions for agent's choose_action and process_feedback functions """
+    """ Placeholder functions for agent's choose_action and analyze_episode functions """
     
     async def choose_action(self, obs, valid_actions):
         """Choose an action from available actions given the current observation"""
-        pass
-    
-    async def analyze_episode(self):
-        """Process feedback from the environment"""
-        pass
-
-    """ Rule generation functions """
-
-    async def batch_analyze_episodes(self):
-        """Update rules offline"""
         pass
 
     """ Between-episode functions for the outer loop """
