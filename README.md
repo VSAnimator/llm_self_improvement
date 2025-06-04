@@ -1,6 +1,6 @@
-# Reverie
+# Self-Generated In-Context Examples Improve LLM Agents for Sequential Decision-Making Tasks
 
-This repository contains code for an LLM-powered agent that can interact with the ALFWorld environment.
+This repository contains code for the paper [Self-Generated In-Context Examples Improve LLM Agents for Sequential Decision-Making Tasks](https://arxiv.org/abs/2505.00234). 
 
 ## Installation
 

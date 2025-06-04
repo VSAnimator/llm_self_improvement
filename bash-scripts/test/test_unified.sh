@@ -20,7 +20,6 @@ while [[ $# -gt 0 ]]; do
       if [[ -n "${CONFIG_PARTS[1]}" ]]; then source "$CURRENT_DIR/agent_configs/env/${CONFIG_PARTS[1]}.sh" 2>/dev/null; fi
       if [[ -n "${CONFIG_PARTS[2]}" ]]; then source "$CURRENT_DIR/agent_configs/agent/${CONFIG_PARTS[2]}.sh" 2>/dev/null; fi
       if [[ -n "${CONFIG_PARTS[3]}" ]]; then source "$CURRENT_DIR/agent_configs/llm/${CONFIG_PARTS[3]}.sh" 2>/dev/null; fi
-      if [[ -n "${CONFIG_PARTS[4]}" ]]; then source "$CURRENT_DIR/agent_configs/custom/${CONFIG_PARTS[4]}.sh" 2>/dev/null; fi
       shift 2
       ;;
     --env)
@@ -62,7 +61,7 @@ while [[ $# -gt 0 ]]; do
     --help)
       echo "Usage: $0 [options]"
       echo "Options:"
-      echo "  --config CONFIG_STRING    Configuration string (format: base:env:agent:llm:custom)"
+      echo "  --config CONFIG_STRING    Configuration string (format: base:env:agent:llm)"
       echo "  --env ENV_TYPE            Base environment type (alfworld, intercode_sql, wordcraft)"
       echo "  --agent_type AGENT_TYPE   Agent type (rap_flex, rap_noplan, etc.)"
       echo "  --llm LLM                 LLM model to use"
@@ -130,7 +129,7 @@ for trial in $(seq 1 $NUM_TRIALS); do
         
         # Set log name for this test run
         if [ -z "$LOG_NAME" ]; then
-            TEST_LOG_NAME="${ENV_TYPE}_trial_${trial}/ckpt_${ckpt}"
+            TEST_LOG_NAME="${CONFIG_STRING}_trial_${trial}/ckpt_${ckpt}"
         else
             TEST_LOG_NAME="${LOG_NAME}_trial_${trial}/ckpt_${ckpt}"
         fi
@@ -149,19 +148,6 @@ for trial in $(seq 1 $NUM_TRIALS); do
             --log_name $TEST_LOG_NAME \
             --split test \
             --parallel $TEST_PARALLEL
-        
-        # Original command (commented out)
-        # python scripts/run_agent_v2.py \
-        #     --llm "$LLM" \
-        #     --agent_type "$AGENT_TYPE" \
-        #     --num_passes 1 \
-        #     --env "$ENV_TYPE" \
-        #     --num_ic "$NUM_IC" \
-        #     --num_tasks "$TEST_NUM_TASKS" \
-        #     --db_path "$DB_PATH" \
-        #     --log_name "$TEST_LOG_NAME" \
-        #     --split "test" \
-        #     --parallel "$TEST_PARALLEL" &
         
         # Capture process ID
         PIDS+=($!)

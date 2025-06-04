@@ -16,7 +16,6 @@ while [[ $# -gt 0 ]]; do
       if [[ -n "${CONFIG_PARTS[1]}" ]]; then source "$CURRENT_DIR/agent_configs/env/${CONFIG_PARTS[1]}.sh" 2>/dev/null; fi
       if [[ -n "${CONFIG_PARTS[2]}" ]]; then source "$CURRENT_DIR/agent_configs/agent/${CONFIG_PARTS[2]}.sh" 2>/dev/null; fi
       if [[ -n "${CONFIG_PARTS[3]}" ]]; then source "$CURRENT_DIR/agent_configs/llm/${CONFIG_PARTS[3]}.sh" 2>/dev/null; fi
-      if [[ -n "${CONFIG_PARTS[4]}" ]]; then source "$CURRENT_DIR/agent_configs/custom/${CONFIG_PARTS[4]}.sh" 2>/dev/null; fi
       shift 2
       ;;
     # Keep all existing command line options for overriding config values
@@ -131,20 +130,6 @@ run_agent() {
         --split train \
         --store_episodes
     
-    # Original command (commented out)
-    # python scripts/run_agent_v2.py \
-    #     --llm $LLM \
-    #     --agent_type $AGENT_TYPE \
-    #     --num_passes 1 \
-    #     --env $env \
-    #     --num_ic $NUM_IC \
-    #     --num_tasks $NUM_TASKS \
-    #     --start_task $start_task \
-    #     --db_path $trial_db_path \
-    #     --log_name $trial_log_name \
-    #     --split train \
-    #     --store_episodes &
-    
     # Capture process ID and add to array
     PIDS+=($!)
     
@@ -175,7 +160,7 @@ for trial in $(seq 1 $NUM_TRIALS); do
   
   # Set log name
   if [ -z "$LOG_NAME" ]; then
-    TRIAL_LOG_NAME="${ENV_TYPE}_trial_${trial}"
+    TRIAL_LOG_NAME="${CONFIG_PARTS[0]}_${CONFIG_PARTS[1]}_${CONFIG_PARTS[2]}_${CONFIG_PARTS[3]}_trial_${trial}"
   else
     TRIAL_LOG_NAME="${LOG_NAME}_trial_${trial}"
   fi
