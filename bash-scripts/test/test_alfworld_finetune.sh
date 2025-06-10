@@ -10,7 +10,7 @@ for trial in 1 2 3 4 5; do
         --log_name finetune_trial_${trial} \
         --num_passes 1 \
         --env alfworld_test \
-        --num_ic 6 \
+        --num_ic 0 \
         --parallel 10 \
         --num_tasks 134
 done
