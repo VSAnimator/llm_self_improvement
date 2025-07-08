@@ -40,7 +40,7 @@ The repository is organized as follows:
   - **llm/**: LLM wrappers and utilities
 
 - **scripts/**: Executable scripts for running experiments
-  - **run_agent_v2.py**: Main script for running agents on environments
+  - **run_agent.py**: Main script for running agents on environments
   - **train_*.sh**: Scripts for training agents on specific environments
   - **test_*.sh**: Scripts for testing agents on specific environments
 
@@ -79,7 +79,7 @@ The `scripts/` directory contains various utilities for running experiments:
 ### Main Agent Runner
 
 ```bash
-python scripts/run_agent_v2.py --llm <llm_name> --agent_type <agent_type> --db_path <database_path> --db_name <database_name> --num_passes <num_passes>
+python scripts/run_agent.py --llm <llm_name> --agent_type <agent_type> --db_path <database_path> --db_name <database_name> --num_passes <num_passes>
 ```
 
 Key parameters:
@@ -92,7 +92,7 @@ Key parameters:
 
 Example:
 ```bash
-python scripts/run_agent_v2.py --llm openai/gpt-4o-mini --agent_type rap --db_path /data/rl/clone_test/data/alfworld_expel/learning.db --db_name expel_rap_testonly --num_passes 1
+python scripts/run_agent.py --llm openai/gpt-4o-mini --agent_type rap --db_path /data/rl/clone_test/data/alfworld_expel/learning.db --db_name expel_rap_testonly --num_passes 1
 ```
 
 ### Database Ingestion Scripts
