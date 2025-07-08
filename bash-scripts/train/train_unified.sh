@@ -117,7 +117,7 @@ run_agent() {
     echo "Starting trial $trial for $env"
     
     # Echo the command that would be run
-    echo Would run: python scripts/run_agent_v2.py \
+    echo Would run: python scripts/run_agent.py \
         --llm $LLM \
         --agent_type $AGENT_TYPE \
         --num_passes 1 \

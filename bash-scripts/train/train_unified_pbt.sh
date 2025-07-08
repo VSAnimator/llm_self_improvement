@@ -216,7 +216,7 @@ while [ $segment -le $NUM_SEGMENTS ]; do
         log "Running trial $trial from task $current_task to $end_task"
         
         # Echo the training script command for this segment
-        echo "Would run: python scripts/run_agent_v2.py \
+        echo "Would run: python scripts/run_agent.py \
             --llm ${LLM:-openai/gpt-4o-mini} \
             --agent_type ${AGENT_TYPE} \
             --db_path \"$CURRENT_DIR/data/${ENV_TYPE}_pbt_${PBT_RUN_LABEL}_trial_${trial}/learning.db\" \

@@ -1,5 +1,5 @@
 from typing import List, Tuple, Dict, Optional, Any
-from ..base_agent_v2 import BaseAgent
+from ..base_agent import BaseAgent
 from ...env.base_env import Observation, Action
 
 class FinetuneAgent(BaseAgent):
