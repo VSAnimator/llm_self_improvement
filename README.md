@@ -29,9 +29,28 @@ This repository contains code for the paper [Self-Generated In-Context Examples 
 
 ---
 
-## Current experimental usage
+## Repository Structure
 
-### Self-generate database from train environments
+The repository is organized as follows:
+
+- **src/llm_agent/**: Core implementation of the agent framework
+  - **env/**: Environment implementations ([detailed documentation](src/llm_agent/env/README.md))
+  - **agent/**: Agent implementations
+  - **database/**: Database utilities for storing and retrieving in-context examples
+  - **llm/**: LLM wrappers and utilities
+
+- **scripts/**: Executable scripts for running experiments
+  - **run_agent_v2.py**: Main script for running agents on environments
+  - **train_*.sh**: Scripts for training agents on specific environments
+  - **test_*.sh**: Scripts for testing agents on specific environments
+
+- **data/**: Data storage for environment data and in-context examples
+
+## Current Experimental Usage
+
+### (Optional) Step 1: Ingest Data into Database
+
+### Step 2: Self-generate Database from Train Environments
 
 Run the train_alfworld.sh script to generate a database of in-context examples:
 
@@ -39,17 +58,61 @@ Run the train_alfworld.sh script to generate a database of in-context examples:
 ./train_alfworld.sh
 ```
 
-Zhiqiang, this creates a new database for training runs with 3, 6, and 10 in-context examples. These databases are copies of the alfworld_expel database that has the initial human-curated in-context examples. The script launches 3 parallel processes, each running the training script with a different number of in-context examples. If run correctly, the script will 1) create 3 new databases, 2) run 3 training processes, 3) create 3 new databases with the training results, while saving backup copies of the original databases. There should be no errors, and the databases should contain all of the trajectories from the training runs (can check the trajectory_*.json files to confirm).
+This script:
+1. Creates new databases for training runs with 3, 6, and 10 in-context examples
+2. Copies the initial human-curated in-context examples from the alfworld_expel database
+3. Launches 3 parallel processes, each running the training script with a different number of in-context examples
+4. Creates new databases with the training results, while saving backup copies of the original databases
 
-### Run on test environments with generated database
+You can verify successful execution by checking the trajectory_*.json files to confirm they contain all trajectories from the training runs.
+
+### Step 3: Run on Test Environments with Generated Database
 
 ```bash
 ./test_alfworld.sh
 ```
 
+## Scripts Usage
+
+The `scripts/` directory contains various utilities for running experiments:
+
+### Main Agent Runner
+
+```bash
+python scripts/run_agent_v2.py --llm <llm_name> --agent_type <agent_type> --db_path <database_path> --db_name <database_name> --num_passes <num_passes>
+```
+
+Key parameters:
+- `--llm`: LLM to use (e.g., openai/gpt-4o-mini)
+- `--agent_type`: Agent algorithm to use (e.g., rap, expel)
+- `--db_path`: Path to the database of in-context examples
+- `--db_name`: Name of the database to use
+- `--num_passes`: Number of passes through the environment
+- `--env`: Environment to use (default: alfworld)
+
+Example:
+```bash
+python scripts/run_agent_v2.py --llm openai/gpt-4o-mini --agent_type rap --db_path /data/rl/clone_test/data/alfworld_expel/learning.db --db_name expel_rap_testonly --num_passes 1
+```
+
+### Database Ingestion Scripts
+
+The repository includes scripts for ingesting data into the database:
+
+```bash
+# For ALFWorld
+python src/llm_agent/database/ingest_alfworld.py
+
+# For WebShop
+python src/llm_agent/database/ingest_webshop.py
+
+# For WordCraft
+python src/llm_agent/database/ingest_wordcraft_logs.py
+```
+
 ## Options
 
-### Environments supported
+### Environments Supported
 
 - [Alfworld](https://github.com/alfworld/alfworld) (flag --env alfworld): text-based kitchen simulator. Download data:
     ```bash
@@ -58,37 +121,20 @@ Zhiqiang, this creates a new database for training runs with 3, 6, and 10 in-con
     export ALFWORLD_DATA=./data/alfworld
     alfworld-download
     ```
-- [WebShop](https://github.com/princeton-nlp/WebShop) (flag --env webshop): follow the instructions to set up the server, the env assumes it is running on port 3000.
 
 - [Intercode-SQL](https://github.com/princeton-nlp/intercode) (flag --env ic_sql): follow the instructions to set up and run the docker container. 
 
 - [Wordcraft](https://github.com/minqi/wordcraft) (flag --env wordcraft): no additional installation needed
 
-- [Gymnasium](https://gymnasium.farama.org) (flag --env gymnasium): Just pass the name of the gymnasium environment as an additional flag --gym_env_name
-
 - Add your own environment: see [Adding your own environment](#adding-your-own-environment)
 
-### LLM options
+### LLM Options
 
-We use the LiteLLM wrapper. 
+For API LLMs, we support arbitrary LLMs that are supported by LiteLLM. Make sure to set the API key in the appropriate environment variable.
 
-API LLMs tested:
-1. OpenAI (GPT-4o, GPT-4o-mini)
-2. Anthropic (Claude 3.5 Sonnet)
-3. Google (Gemini 2 Flash)
-4. Meta (Llama 3.1 8B)
-5. Together (Llama 3.1 70B)
+For local LLMs, set up [VLLM](https://github.com/vllm-project/vllm), and point the script to the port via the flag --vllm_port.
 
-For API LLMs, make sure to set the API key in the appropriate environment variable.
-
-Local LLMs tested:
-1. Llama 3.1 8B
-
-For local LLMs, set up [VLLM](link), and point the script to the port via the flag --vllm_port.
-
-Feel free to try any other API or local LLMs that are supported by LiteLLM. Make sure that the LLM options chosen (ex. structured outputs) are supported by the LLM.
-
-### Data sources
+### Data Sources
 
 Many of the included agent algorithms leverage a database of in-context examples to learn. You have the option to start with an empty database or load a pre-existing database. The data sources for the included environments are:
 
@@ -97,26 +143,42 @@ Many of the included agent algorithms leverage a database of in-context examples
 - Intercode-SQL: TODO
 - WordCraft: ```python src/llm_agent/database/ingest_wordcraft_logs.py```
 
-### Agent algorithms
+### Agent Algorithms
 
-TODO
+The repository supports several agent algorithms:
 
-## Example usage
+1. **TODO**
 
-```bash
-python scripts/run_agent_v2.py --llm openai/gpt-4o-mini --agent_type rap --db_path /data/rl/clone_test/data/alfworld_expel/learning.db --db_name expel_rap_testonly --num_passes 1
-```
+More details on agent algorithms can be found in the paper.
 
 ## Extensibility
 
-### Adding your own environment
+### Adding Your Own Environment
 
-src/llm_agent/env/base_env.py defines the interface for environments. To add your own environment, you can either subclass the existing environment or implement the interface yourself.
+The `src/llm_agent/env/base_env.py` file defines the interface for environments. To add your own environment:
 
-### Adding your own agent algorithm
+1. Create a new Python file in `src/llm_agent/env/envs/`
+2. Implement a class that inherits from `BaseEnv`
+3. Implement the required methods: `reset()`, `step()`, and `get_action_space()`
+4. Optionally implement `get_available_actions()`
 
-TODO
+See the [Environment README](src/llm_agent/env/README.md) for detailed instructions and examples.
 
-### Creating your own database
+### Adding Your Own Agent Algorithm
 
-TODO
+To add a new agent algorithm:
+
+1. Create a new Python file in `src/llm_agent/agent/`
+2. Implement a class that inherits from `BaseAgent`
+3. Implement the required methods: `choose_action()`, optionally `analyze_episode()`
+4. Register your agent in `src/llm_agent/agent/__init__.py`
+
+See the [Agent README](src/llm_agent/agent/README.md) for detailed instructions and examples.
+
+### Creating Your Own Database
+
+See the [Database README](src/llm_agent/database/README.md) for details on the database interface. We have implemented versions with both SQLite and PostgreSQL backends. 
+
+## License
+
+[MIT License](LICENSE)
