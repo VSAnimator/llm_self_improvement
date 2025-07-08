@@ -1,4 +1,4 @@
 #!/bin/bash
-# RAP-Flex agent configuration
+# TrajBS-Flex agent configuration
 
-export AGENT_TYPE="rap_flex" 
+export AGENT_TYPE="trajbs_flex"

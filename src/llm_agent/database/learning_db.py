@@ -10,8 +10,21 @@ import os
 import random
 
 class LearningDB:
+    """
+    SQLite-based learning database for storing and retrieving agent experiences.
+    
+    This implementation uses SQLite for data storage and FAISS for vector similarity search.
+    It's suitable for single-process applications and smaller datasets.
+    
+    Args:
+        db_path: Path to store the SQLite database files
+    """
     def __init__(self, db_path: str = "data/learning.db"):
-        """Initialize the learning database with SQLite and FAISS indices
+        """
+        Initialize the learning database with SQLite and FAISS indices
+        
+        Creates separate database files for trajectories and states, and initializes
+        FAISS indices for vector similarity search.
         
         Args:
             db_path: Path to store the SQLite database
@@ -19,7 +32,7 @@ class LearningDB:
         self.db_path = db_path
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         
-        # Initialize SQLite connections
+        # Initialize SQLite connections for trajectories and states
         self.trajectory_conn = sqlite3.connect(db_path)
         self.trajectory_cursor = self.trajectory_conn.cursor()
         
@@ -28,7 +41,8 @@ class LearningDB:
         
         self.rule_conn = sqlite3.connect(os.path.join(os.path.dirname(db_path), 'learning_rules.db'))
         self.rule_cursor = self.rule_conn.cursor()
-        # Create trajectory table
+        
+        # Create trajectory table with fields for all trajectory components and their embeddings
         self.trajectory_cursor.execute("""
             CREATE TABLE IF NOT EXISTS trajectories (
                 id INTEGER PRIMARY KEY,
@@ -50,7 +64,7 @@ class LearningDB:
             )
         """)
         
-        # Create state table
+        # Create state table with fields for state components and their embeddings
         self.state_cursor.execute("""
             CREATE TABLE IF NOT EXISTS states (
                 id INTEGER PRIMARY KEY,
@@ -85,13 +99,13 @@ class LearningDB:
         self.state_conn.commit()
         self.rule_conn.commit()
         
-        # Initialize sentence transformer
+        # Initialize sentence transformer for text embedding
         self.model = SentenceTransformer('all-MiniLM-L6-v2')
         
-        # Initialize FAISS indices
+        # Initialize FAISS indices for vector similarity search
         self.index_path = os.path.dirname(db_path)
         
-        # Trajectory-level indices
+        # Trajectory-level indices for different fields
         self.trajectory_indices = {
             'goal': self._load_or_create_index('goal'),
             'category': self._load_or_create_index('category'),
@@ -100,7 +114,7 @@ class LearningDB:
             'summary': self._load_or_create_index('summary')
         }
         
-        # State-level indices
+        # State-level indices for different fields
         self.state_indices = {
             'state': self._load_or_create_index('state'),
             'reasoning': self._load_or_create_index('reasoning'),
@@ -114,14 +128,15 @@ class LearningDB:
             'content': self._load_or_create_index('rule_content')
         }
 
-        # Mode for random trajectory retrieval
+        # Mode for random trajectory retrieval (useful for testing)
         self.random_trajectory_retrieval = False
         
-        # Load id mappings
+        # Load ID mappings between FAISS indices and database IDs
         self.trajectory_id_mappings = {}
         self.state_id_mappings = {}
         self.rule_id_mappings = {}
         
+        # Load trajectory ID mappings
         for field in self.trajectory_indices.keys():
             mapping_path = os.path.join(self.index_path, f"trajectory_{field}_id_mapping.json")
             if os.path.exists(mapping_path):
@@ -129,7 +144,8 @@ class LearningDB:
                     self.trajectory_id_mappings[field] = json.load(f)
             else:
                 self.trajectory_id_mappings[field] = {}
-                
+        
+        # Load state ID mappings        
         for field in self.state_indices.keys():
             mapping_path = os.path.join(self.index_path, f"state_{field}_id_mapping.json")
             if os.path.exists(mapping_path):
@@ -137,22 +153,8 @@ class LearningDB:
                     self.state_id_mappings[field] = json.load(f)
             else:
                 self.state_id_mappings[field] = {}
-
-        # A little corrective thing for the state indices
-        if False: # Off for now
-            for field in self.state_indices.keys():
-                # Find the largest index in the mapping
-                max_index = max([int(k) for k in self.state_id_mappings["state"].keys()])
-                max_index += 100
-                # Now figure out the offset of key and value in the mapping
-                field_max_index = max([int(k) for k in self.state_id_mappings[field].keys()])
-                offset = self.state_id_mappings[field][str(field_max_index)] - field_max_index
-                # Now add in key-value pairs up to the max_index
-                print(f"Field: {field}, max_index: {max_index}, field_max_index: {field_max_index}, offset: {offset}")
-                #input("Press enter to continue")
-                for i in range(field_max_index+1, max_index+1):
-                    self.state_id_mappings[field][str(i)] = i + offset
-                
+        
+        # Load rule ID mappings        
         for field in self.rule_indices.keys():
             mapping_path = os.path.join(self.index_path, f"rule_{field}_id_mapping.json")
             if os.path.exists(mapping_path):
@@ -162,17 +164,38 @@ class LearningDB:
                 self.rule_id_mappings[field] = {}
 
     def _load_or_create_index(self, field: str) -> faiss.IndexFlatIP:
-        """Load existing FAISS index or create new one"""
+        """
+        Load existing FAISS index or create new one for a specific field
+        
+        FAISS indices enable efficient similarity search for vector embeddings.
+        
+        Args:
+            field: The field name for which to load or create an index
+            
+        Returns:
+            A FAISS index for the specified field
+        """
         index_path = os.path.join(self.index_path, f"{field}.index")
         if os.path.exists(index_path):
             return faiss.read_index(index_path)
-        return faiss.IndexFlatIP(384)
+        return faiss.IndexFlatIP(384)  # 384 is the dimension of all-MiniLM-L6-v2 embeddings
 
     def _save_index(self, field: str, index: faiss.IndexFlatIP, is_trajectory: bool = True):
-        """Save FAISS index to disk"""
+        """
+        Save FAISS index to disk along with ID mappings
+        
+        This ensures that indices and their mappings persist between sessions.
+        
+        Args:
+            field: The field name for which to save the index
+            index: The FAISS index to save
+            is_trajectory: Whether this is a trajectory-level index (vs. state-level)
+        """
+        # Save the FAISS index
         index_path = os.path.join(self.index_path, f"{field}.index")
         faiss.write_index(index, index_path)
         
+        # Save the ID mapping
         prefix = "trajectory_" if is_trajectory else "state_"
         mapping_path = os.path.join(self.index_path, f"{prefix}{field}_id_mapping.json")
         mappings = self.trajectory_id_mappings if is_trajectory else self.state_id_mappings
@@ -183,14 +206,16 @@ class LearningDB:
         """
         Compute top-k nearest neighbors by averaging distances across several FAISS indices.
         
+        This enables multi-field search, where similarity is computed across multiple fields
+        (e.g., goal and category) to find the most relevant entries.
+        
         Args:
-            indices (list): List of FAISS indices.
-            queries (np.ndarray): Query points (shape: [num_queries, dim]).
-            k (int): Number of nearest neighbors to retrieve.
+            indices: List of FAISS indices to search
+            query_embeddings: List of query embeddings for each index
+            k: Number of nearest neighbors to retrieve
         
         Returns:
-            np.ndarray: Indices of the top-k nearest neighbors (shape: [num_queries, k]).
-            np.ndarray: Averaged distances to the top-k nearest neighbors (shape: [num_queries, k]).
+            Distances and indices of the top-k nearest neighbors
         """
         num_queries = 1
         all_distances = []
@@ -237,13 +262,27 @@ class LearningDB:
         return np.array(top_k_distances), np.array(top_k_neighbors) 
 
     def _get_top_k_by_keys(self, key_type: Union[str, List[str]], key: Union[str, List[str]], k: int = 5) -> List[Dict]:
-        """Get top k entries based on key_types and keys"""
+        """
+        Get top k entries based on key_types and keys using vector similarity search
+        
+        This is the core retrieval method that powers similarity search across
+        trajectories, states, and rules.
+        
+        Args:
+            key_type: Field(s) to match against (e.g., "goal", "category")
+            key: Value(s) to match against for each key_type
+            k: Number of entries to retrieve
+            
+        Returns:
+            List of entry IDs and their distances
+        """
         # Determine if this is a trajectory or state level search
         trajectory_keys = {'environment_id', 'goal', 'category', 'plan', 'reflection', 'summary'} 
         rule_keys = {'name', 'context', 'content'}
         is_trajectory = any(kt in trajectory_keys for kt in key_type)
         is_rule = any(kt in rule_keys for kt in key_type)
 
+        # Select the appropriate indices and mappings
         if is_rule:
             indices = self.rule_indices
             mappings = self.rule_id_mappings
@@ -251,19 +290,19 @@ class LearningDB:
             indices = self.trajectory_indices if is_trajectory else self.state_indices
             mappings = self.trajectory_id_mappings if is_trajectory else self.state_id_mappings
 
+        # For testing: random retrieval mode
         if self.random_trajectory_retrieval:
             # Randomly select k indices
-            # Ordered syntax: entry_ids = [mappings[key_type[0]][str(i)] for i in I]
-            # Random syntax: entry_ids = [mappings[key_type[0]][str(i)] for i in random.sample(range(len(mappings[key_type[0]])), k)]
             entry_ids = [mappings[key_type[0]][str(i)] for i in random.sample(range(len(mappings[key_type[0]])), k)]
             print(f"Randomly selected {k} entries")
             return entry_ids, [0.0 for _ in range(k)]
 
-        # Encode all keys
+        # Encode all keys using the sentence transformer
         key_embeddings = []
         for elem in key:
             key_embeddings.append(self.model.encode([elem])[0])
 
+        # Perform multi-field search
         D, I = self._compute_top_k_nearest_neighbors_by_avg_distance([indices[elem] for elem in key_type], key_embeddings, k)
 
         # Filter invalid results
@@ -273,10 +312,23 @@ class LearningDB:
         if not I:
             return [], []
         
+        # Convert FAISS indices to database IDs
         entry_ids = [mappings[key_type[0]][str(i)] for i in I]
         return entry_ids, D
     
     def _filter_by_outcome(self, ids, outcome):
+        """
+        Filter trajectories by outcome (winning or losing)
+        
+        This allows retrieving only successful or failed episodes.
+        
+        Args:
+            ids: List of trajectory IDs to filter
+            outcome: "winning" for successful episodes, anything else for failed episodes
+            
+        Returns:
+            Filtered list of trajectory IDs and their indices in the original list
+        """
         cursor = self.trajectory_cursor
         cursor.execute(f"""
             SELECT * FROM trajectories WHERE id IN ({', '.join(map(str, ids))})

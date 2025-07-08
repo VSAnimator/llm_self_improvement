@@ -1,29 +1,42 @@
-from typing import Dict, List, Optional, Tuple, Any, Union
+from typing import Dict, List, Optional, Tuple, Union
 from logging import getLogger
 from ..env.base_env import Observation, Action
 
 logger = getLogger(__name__)
 
 class BaseAgent:
-    """Base agent class that uses an LLM to select actions"""
+    """
+    Base agent class that uses an LLM to select actions in sequential environments.
+    
+    This class provides core primitives for building different agent algorithms:
+    1. Decision-making components (create_plan, reason, act)
+    2. In-context learning utilities (get_trajectory_data, get_state_data)
+    3. Episode analysis tools (reflect, store_episode, clean_history)
+    
+    Subclasses should implement the choose_action method to define their specific
+    decision-making process using these primitives.
+    """
     
     def __init__(self, llm, db, env, config):
-        """Initialize the agent
+        """
+        Initialize the agent with LLM, database, environment, and configuration.
         
         Args:
             llm: LLM instance to use for decision making
+            db: Database for storing and retrieving episodes
+            env: Environment the agent will interact with
             config: Configuration dictionary containing agent parameters
         """
         self.config = config
 
-        # LLM
+        # LLM configuration
         self.llm = llm
         self.max_retries = config.get('max_retries', 3)
         self.memory_size = config.get('memory_size', 50)
         self.temperature = config.get('temperature', 0.7)
         self.num_ic = config.get('num_ic', None)
         
-        # Trajectory history
+        # Trajectory history storage
         self.observation_history: List[Observation] = []
         self.reasoning_history: List[str] = []
         self.action_history: List[Action] = []
@@ -33,12 +46,13 @@ class BaseAgent:
         self.reflection: Optional[str] = None
         self.summary: Optional[str] = None
         
-        # Environment info
+        # Environment information
         self.environment_id: Optional[str] = env.id
         self.goal: Optional[str] = env.goal if hasattr(env, 'goal') else None
         self.category: Optional[str] = env.category if hasattr(env, 'category') else None
         self.action_space: Optional[str] = env.get_action_space() if hasattr(env, 'get_action_space') else None
-        # Database
+        
+        # Database for in-context learning
         self.db = db
 
         # File to log to
@@ -47,7 +61,15 @@ class BaseAgent:
     """ Helper functions """
 
     def _trajectory_to_string(self, trajectory):
-        """Convert a trajectory to a string"""
+        """
+        Convert a trajectory dictionary to a formatted string representation.
+        
+        Args:
+            trajectory: Dictionary containing trajectory components
+            
+        Returns:
+            String representation of the trajectory
+        """
         # First roll up the trajectory
         trajectory = self._roll_up_trajectory([trajectory])[0]
         key_order = ["goal", "plan", "trajectory", "available_actions"]
@@ -59,7 +81,19 @@ class BaseAgent:
         return trajectory_string
 
     def _create_conversation(self, keys: List[str], available_actions: List[Action]) -> List[Dict]:
-        """Create a conversation with the observation and action history"""
+        """
+        Create a conversation string with the observation and action history.
+        
+        This formats the agent's history into a structured conversation that can be
+        used as input to the LLM for decision making.
+        
+        Args:
+            keys: List of keys to include in the conversation
+            available_actions: List of available actions
+            
+        Returns:
+            Formatted conversation string
+        """
         # First create a dictionary of the current trajectory. Valid keys are "plan", "observation", "reasoning", "action"
         trajectory_dict = {}
         # Sort keys according to the following order: goal, plan, observation, reasoning, action, available_actions
@@ -81,7 +115,11 @@ class BaseAgent:
         return self._trajectory_to_string(trajectory_dict)
     
     def _create_conversation_for_finetune(self) -> List[Dict]:
-        """Create a conversation in the format used for fine-tuning
+        """
+        Create a conversation in the format used for fine-tuning.
+        
+        This formats the agent's history into the specific format expected by
+        OpenAI's fine-tuning API, with alternating user and assistant messages.
         
         Returns:
             List[Dict]: List of messages in the format used by OpenAI's fine-tuning API
@@ -125,8 +163,19 @@ Your actions should be clear, concise, and directly executable in the environmen
         return messages
     
     def _roll_up_trajectory(self, entries):
+        """
+        Roll up the trajectory into a single string representation.
+        
+        This interleaves observations, reasoning, and actions to create a
+        coherent narrative of the agent's interaction with the environment.
+        
+        Args:
+            entries: List of dictionaries containing trajectory components
+            
+        Returns:
+            List of dictionaries with rolled-up trajectories
+        """
         interleaved_keys = ["observation", "reasoning", "action"]
-        """Roll up the trajectory into a single string"""
         value_type = list(entries[0].keys())
         if any(k in value_type for k in interleaved_keys):
             for i in range(len(entries)):
@@ -145,9 +194,19 @@ Your actions should be clear, concise, and directly executable in the environmen
                     del entries[i][k]
         return entries
     
-    # Level of abstraction of the in-context data should come in here
     def _in_context_prompt(self, in_context_data):
-        """Create a system prompt containing in-context examples from similar episodes"""
+        """
+        Create a system prompt containing in-context examples from similar episodes.
+        
+        This formats retrieved examples into a system prompt that can guide the LLM's
+        decision making by providing relevant examples of successful or failed episodes.
+        
+        Args:
+            in_context_data: Dictionary or list of dictionaries containing in-context examples
+            
+        Returns:
+            Formatted system prompt with in-context examples
+        """
         in_context_list = []
         # If this is a dictionary, we need to unpack it
         if isinstance(in_context_data, dict):
@@ -185,7 +244,24 @@ Your actions should be clear, concise, and directly executable in the environmen
         return system_prompt
     
     def _get_in_context_data(self, key_type, key, value_type, outcome="winning", k=5, window=20, filtered_environment_id=None) -> List[Dict]:
-        """Retrieve in context examples from the database"""
+        """
+        Retrieve in-context examples from the database.
+        
+        This is the core method for retrieving relevant examples based on specified
+        key types and values. It supports both trajectory-level and state-level retrieval.
+        
+        Args:
+            key_type: Type(s) of keys to match against in the database
+            key: Value(s) of keys to match
+            value_type: Type(s) of values to extract from matched examples
+            outcome: Whether to retrieve "winning" or "losing" examples
+            k: Number of examples to retrieve
+            window: Window size for state-level retrieval
+            filtered_environment_id: Optional environment ID to filter by
+            
+        Returns:
+            List of dictionaries containing retrieved examples
+        """
         success_entries, failure_entries = self.db.get_similar_entries(key_type, key, outcome=outcome, k=k, window=window, filtered_environment_id=filtered_environment_id)
         if self.f:
             success_entry_ids = [entry['id'] for entry in success_entries]
@@ -204,23 +280,75 @@ Your actions should be clear, concise, and directly executable in the environmen
 
     # A wrapper function for the get_in_context_data function when getting state-level data with a window
     def get_state_data(self, trajectory_key_types, trajectory_keys, state_key_types, state_keys, value_types, outcome, k, window, filtered_environment_id="self") -> List[Dict]:
+        """
+        Retrieve state-level in-context examples from the database.
+        
+        This method performs a two-stage retrieval process:
+        1. First identifies relevant trajectories using trajectory-level keys
+        2. Then finds the most relevant states within those trajectories using state-level keys
+        3. Finally extracts a window of states around the most relevant state
+        
+        This allows finding not just similar trajectories, but the most relevant parts
+        of those trajectories for the current situation.
+        
+        Args:
+            trajectory_key_types: Types of keys for trajectory-level matching
+            trajectory_keys: Values of keys for trajectory-level matching
+            state_key_types: Types of keys for state-level matching
+            state_keys: Values of keys for state-level matching
+            value_types: Types of values to extract
+            outcome: Whether to retrieve "winning" or "losing" examples
+            k: Number of examples to retrieve
+            window: Window size around the matched state
+            filtered_environment_id: Optional environment ID to filter by
+            
+        Returns:
+            List of dictionaries containing retrieved examples
+        """
         # Combine the trajectory and state keys for now since the wrapped function will split them back out
         if filtered_environment_id == "self":
             filtered_environment_id = self.environment_id
         key = trajectory_keys + state_keys
         key_type = trajectory_key_types + state_key_types
-        """Retrieve state-level in-context examples from the database"""
         return self._get_in_context_data(key_type, key, value_types, outcome, k, window, filtered_environment_id=filtered_environment_id)
     
-    # A wrapper function for the get_in_context_data function when getting trajectory-level data
     def get_trajectory_data(self, key_types, keys, value_types, outcome, k, filtered_environment_id="self") -> List[Dict]:
-        """Retrieve trajectory-level in-context examples from the database"""
+        """
+        Retrieve trajectory-level in-context examples from the database.
+        
+        This method retrieves entire trajectories that match the specified keys,
+        useful for high-level planning and understanding complete episodes.
+        
+        Args:
+            key_types: Types of keys for trajectory-level matching
+            keys: Values of keys for trajectory-level matching
+            value_types: Types of values to extract
+            outcome: Whether to retrieve "winning" or "losing" examples
+            k: Number of examples to retrieve
+            filtered_environment_id: Optional environment ID to filter by
+            
+        Returns:
+            List of dictionaries containing retrieved examples
+        """
         if filtered_environment_id == "self":
             filtered_environment_id = self.environment_id
         return self._get_in_context_data(key_types, keys, value_types, outcome, k, filtered_environment_id=filtered_environment_id)
 
     async def create_plan(self, observation: Observation, available_actions: List[Action], in_context_data = None) -> str:
-        """Generate a plan for the agent to follow"""
+        """
+        Generate a high-level plan for the agent to follow.
+        
+        This is one of the core decision-making primitives that uses the LLM to
+        create a plan for achieving the goal based on the initial observation.
+        
+        Args:
+            observation: Initial observation from the environment
+            available_actions: List of available actions
+            in_context_data: Optional in-context examples to guide planning
+            
+        Returns:
+            Generated plan as a string
+        """
         conversation = []
         system_prompt = f"You are an expert at generating high-level plans of actions to achieve a goal. "
         if self.config.get("diversity_mode", False):
@@ -241,7 +369,20 @@ Your actions should be clear, concise, and directly executable in the environmen
         return plan
 
     async def reason(self, observation: Observation, available_actions, in_context_data = None) -> List[Dict]:
-        """Reason about the conversation and observation"""
+        """
+        Reason about the current observation and available actions.
+        
+        This is one of the core decision-making primitives that uses the LLM to
+        generate reasoning about the current state and possible next actions.
+        
+        Args:
+            observation: Current observation from the environment
+            available_actions: List of available actions
+            in_context_data: Optional in-context examples to guide reasoning
+            
+        Returns:
+            Generated reasoning as a string
+        """
         self.observation_history.append(observation)
         conversation = []
         # Add system prompt
@@ -259,13 +400,26 @@ Your actions should be clear, concise, and directly executable in the environmen
         return reasoning
 
     async def act(self, observation: Observation, available_actions: List[Action], reasoning: Union[str, None] = None, in_context_data= None) -> Tuple[Action, List[Dict]]:
-        """Select an action from available actions given the current observation"""
+        """
+        Select an action from available actions given the current observation.
+        
+        This is one of the core decision-making primitives that uses the LLM to
+        select an action based on the current observation and reasoning.
+        
+        Args:
+            observation: Current observation from the environment
+            available_actions: List of available actions
+            reasoning: Optional reasoning about the current state
+            in_context_data: Optional in-context examples to guide action selection
+            
+        Returns:
+            Selected action
+        """
         # Create a conversation with observations and actions so far
         conversation = []
         # Want the system prompt to be standardized. Should have environment and goal info, as well as observation and action format. 
         system_prompt = f"""You are an agent in an environment. Given the current observation, you must select an action to take towards achieving the goal: {self.goal}."""
         # If this is a TRAD agent, we want to add the action space to the system prompt
-        #print("Action space", self.action_space)
         if self.config.get("give_action_space", False):
             system_prompt += "\nHere is your action space:\n" + self.action_space['description']
         if in_context_data:
@@ -282,7 +436,18 @@ Your actions should be clear, concise, and directly executable in the environmen
         return action
     
     async def act_finetune(self, observation: Observation) -> Tuple[Action, List[Dict]]:
-        """Select an action from available actions given the current observation"""
+        """
+        Select an action using a fine-tuned model.
+        
+        This method is used by the FinetuneAgent to directly map observations to
+        actions using a fine-tuned LLM, bypassing the standard reasoning and planning steps.
+        
+        Args:
+            observation: Current observation from the environment
+            
+        Returns:
+            Selected action
+        """
         conversation = self._create_conversation_for_finetune()
         response = await self.llm.generate_chat(conversation, stop=None)
         # Strip the "Action: " prefix
@@ -294,10 +459,19 @@ Your actions should be clear, concise, and directly executable in the environmen
         self.reasoning_history.append(reasoning)
         return action
     
-    """ Main components used by agent's analyze_episode function """
-    
     async def reflect(self, in_context_data = None) -> List[Dict]:
-        """Reflect on the conversation and observation"""
+        """
+        Reflect on the completed episode.
+        
+        This generates reflections on what worked well and what could be improved,
+        which can be stored and used as in-context examples for future episodes.
+        
+        Args:
+            in_context_data: Optional in-context examples to guide reflection
+            
+        Returns:
+            Generated reflection as a string
+        """
         user_prompt = self._create_conversation(["goal", "plan", "observation", "reasoning", "action"], [])
         # Identify success or failure
         reward = self.reward_history[-1]
@@ -307,12 +481,9 @@ Your actions should be clear, concise, and directly executable in the environmen
             success = False
         # Create success vs failure reflection prompt
         if success: 
-            #reflection_prompt = f"Your are provided with an ultimately successful trajectory of observations and actions taken. Taking into consideration the entire planning, reasoning, and execution, outline the key aspects of the trajectory that you would repeat in the future, and key mistakes you made that you would avoid in the future/any areas for improvement. Generate a response that is optimally tailored to improve the performance of agents' future attempts at this goal."
             reflection_prompt = "You are provided with an ultimately successful trajectory of observations and actions taken."
         else:
-            #reflection_prompt = f"Your are provided with an ultimately failed trajectory of observations and actions taken. Taking into consideration the entire planning, reasoning, and execution, outline the key aspects of the trajectory that you would repeat in the future, and key mistakes you made that you would avoid in the future/any areas for improvement. Generate a response that is optimally tailored to improve the performance of agents' future attempts at this goal."
             reflection_prompt = "You are provided with an ultimately failed trajectory of observations and actions taken."
-        #reflection_prompt += " What are up to three key facts about this task in this environment that you would like to remember for future attempts at this goal?"
         reflection_prompt += "You will have to solve this exact goal again in the future. Write down three key facts about this task in this environment that will be provided to you in the future."
         system_prompt = f"You are an agent in an environment. Given the goal: {self.goal}, {reflection_prompt}"
         if in_context_data:
@@ -322,7 +493,12 @@ Your actions should be clear, concise, and directly executable in the environmen
         return response
     
     def store_episode(self):
-        """Store an episode in the database"""
+        """
+        Store an episode in the database for future retrieval.
+        
+        This saves the complete episode data including observations, reasoning,
+        actions, rewards, plan, reflection, and summary to the database.
+        """
         # Add one more state to the observation history
         # If success, add a "Task complete" state
         if self.reward_history[-1] == 1:
@@ -331,38 +507,13 @@ Your actions should be clear, concise, and directly executable in the environmen
             self.observation_history.append(Observation("Task failed"))
         self.db.store_episode(self.environment_id, self.goal, self.category,self.observation_history, self.reasoning_history, self.action_history, self.reward_history, self.plan, self.reflection, self.summary)
     
-    """ Placeholder functions for agent's choose_action and analyze_episode functions """
-    
-    async def choose_action(self, obs, valid_actions):
-        """Choose an action from available actions given the current observation"""
-        pass
-
-    """ Between-episode functions for the outer loop """
-        
-    def clear_history(self):
-        """Clear the agent's history"""
-        self.observation_history = []
-        self.action_history = []
-        self.reasoning_history = []
-        self.reward_history = []
-        self.plan = None
-        self.in_context_data = None
-        self.reflection = None
-        self.summary = None
-
-    def reset(self):
-        """Reset agent state between episodes"""
-        self.observation_history = []
-        self.action_history = []
-        self.reasoning_history = []
-        self.reward_history = []
-        self.plan = None
-        self.reflection = None
-        self.summary = None
-        self.in_context_data = None
-
     def clean_history(self):
-        """Clean the agent's history"""
+        """
+        Clean the agent's history by removing unnecessary observations.
+        
+        This removes "Nothing happens" observations and their corresponding
+        reasoning, actions, and rewards to create a cleaner history.
+        """
         nothing_indices = [i for i in range(len(self.observation_history)) if "Nothing happens" in self.observation_history[i].structured]
         
         for idx in sorted(nothing_indices, reverse=True):
@@ -374,3 +525,54 @@ Your actions should be clear, concise, and directly executable in the environmen
                     del self.action_history[idx-1]
                 if idx-1 < len(self.reward_history):
                     del self.reward_history[idx-1]
+    
+    """ Placeholder functions for agent's choose_action and analyze_episode functions """
+    
+    async def choose_action(self, obs, valid_actions):
+        """
+        Choose an action from available actions given the current observation.
+        
+        This is the main method that subclasses should implement to define their
+        specific decision-making process using the primitives provided by BaseAgent.
+        
+        Args:
+            obs: Current observation from the environment
+            valid_actions: List of valid actions that can be taken
+            
+        Returns:
+            Selected action to take
+        """
+        pass
+
+    """ Between-episode functions for the outer loop """
+        
+    def clear_history(self):
+        """
+        Clear the agent's history completely.
+        
+        This resets all history variables to empty lists or None.
+        """
+        self.observation_history = []
+        self.action_history = []
+        self.reasoning_history = []
+        self.reward_history = []
+        self.plan = None
+        self.in_context_data = None
+        self.reflection = None
+        self.summary = None
+
+    def reset(self):
+        """
+        Reset agent state between episodes.
+        
+        This is similar to clear_history but specifically intended for
+        use between episodes in a multi-episode run.
+        """
+        self.observation_history = []
+        self.action_history = []
+        self.reasoning_history = []
+        self.reward_history = []
+        self.plan = None
+        self.reflection = None
+        self.summary = None
+        self.in_context_data = None

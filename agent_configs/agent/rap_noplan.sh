@@ -1,4 +1,4 @@
 #!/bin/bash
-# RAP-Flex agent configuration
+# TrajBS-NoPlan agent configuration
 
-export AGENT_TYPE="rap_noplan" 
+export AGENT_TYPE="trajbs_noplan"

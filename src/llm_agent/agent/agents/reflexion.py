@@ -1,11 +1,24 @@
 from llm_agent.agent.base_agent_v2 import BaseAgent
 
 class Reflexion(BaseAgent):
+    """
+    Reflexion agent that uses reflections from previous failed attempts.
+    
+    This agent retrieves reflections from previous failed attempts at the
+    same environment to improve its performance through learning from failures.
+    """
+    
     def __init__(self, *args):
         super().__init__(*args)
 
     async def choose_action(self, obs, valid_actions):
-        """Choose an action from available actions given the current observation"""
+        """
+        Choose an action using the Reflexion approach.
+        
+        Key differences from other agents:
+        - Uses reflections from previous failed attempts as in-context examples
+        - Retrieves based on environment
+        """
         # Use the previos reflections as in-context data
         in_context_data = self.get_trajectory_data(key_types=["environment_id"], keys=[self.environment_id], value_types=["reflection"], outcome="losing", k=5)
         # Agent config should control the behavior here, reflect all algorithms we want to encompass

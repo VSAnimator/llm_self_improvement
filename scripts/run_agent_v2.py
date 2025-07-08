@@ -7,12 +7,12 @@ from llm_agent.agent.agents import (
     ReAct,
     Reflexion,
     ReflexionRefine,
-    RAP,
-    RAPNoPlan,
-    RAPFlex,
-    RAPFlexDiagnostic,
-    RAPRefine,
-    RAPDiversity,
+    TrajBS,
+    TrajBSNoPlan,
+    TrajBSFlex,
+    TrajBSFlexDiagnostic,
+    TrajBSRefine,
+    TrajBSDiversity,
     Synapse,
     Expel,
     AutoGuide,
@@ -225,18 +225,18 @@ def test_agent(real_llm, db, env, test_config):
         return Reflexion(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "reflexion_refine":
         return ReflexionRefine(real_llm, db, env, test_config)
-    elif test_config.get("agent_type", "react") == "rap":
-        return RAP(real_llm, db, env, test_config)
-    elif test_config.get("agent_type", "react") == "rap_noplan":
-        return RAPNoPlan(real_llm, db, env, test_config)
-    elif test_config.get("agent_type", "react") == "rap_flex":
-        return RAPFlex(real_llm, db, env, test_config)
-    elif test_config.get("agent_type", "react") == "rap_flex_diagnostic":
-        return RAPFlexDiagnostic(real_llm, db, env, test_config)
-    elif test_config.get("agent_type", "react") == "rap_refine":
-        return RAPRefine(real_llm, db, env, test_config)
-    elif test_config.get("agent_type", "react") == "rap_diversity":
-        return RAPDiversity(real_llm, db, env, test_config)
+    elif test_config.get("agent_type", "react") == "trajbs":
+        return TrajBS(real_llm, db, env, test_config)
+    elif test_config.get("agent_type", "react") == "trajbs_noplan":
+        return TrajBSNoPlan(real_llm, db, env, test_config)
+    elif test_config.get("agent_type", "react") == "trajbs_flex":
+        return TrajBSFlex(real_llm, db, env, test_config)
+    elif test_config.get("agent_type", "react") == "trajbs_flex_diagnostic":
+        return TrajBSFlexDiagnostic(real_llm, db, env, test_config)
+    elif test_config.get("agent_type", "react") == "trajbs_refine":
+        return TrajBSRefine(real_llm, db, env, test_config)
+    elif test_config.get("agent_type", "react") == "trajbs_diversity":
+        return TrajBSDiversity(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "synapse":
         return Synapse(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "expel":
