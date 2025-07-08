@@ -20,7 +20,7 @@ class Reflexion(BaseAgent):
         - Retrieves based on environment
         """
         # Use the previos reflections as in-context data
-        in_context_data = self.get_trajectory_data(key_types=["environment_id"], keys=[self.environment_id], value_types=["reflection"], outcome="losing", k=5)
+        in_context_data = self.retrieve_trajectory_data(key_types=["environment_id"], keys=[self.environment_id], value_types=["reflection"], outcome="losing", k=5)
         # Agent config should control the behavior here, reflect all algorithms we want to encompass
         if not self.plan:
             await self.create_plan(obs, valid_actions, in_context_data) # Re-planning based off reflection can go in here

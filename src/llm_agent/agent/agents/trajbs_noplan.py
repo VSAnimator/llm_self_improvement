@@ -22,7 +22,7 @@ class TrajBSNoPlan(BaseAgent):
             # Key decision: Initial retrieval based on goal and observation
             # This is different from TrajBS-Flex which uses goal+category for planning
             # and then goal+category+plan+observation for reasoning
-            self.in_context_data = self.get_trajectory_data(
+            self.in_context_data = self.retrieve_trajectory_data(
                 key_types=["goal", "observation"],  # Match examples with similar goals and observations
                 keys=[self.goal, obs.structured],
                 value_types=["goal", "observation", "reasoning", "action"],  # Extract full state information
@@ -35,7 +35,7 @@ class TrajBSNoPlan(BaseAgent):
         
         # Key decision: Update in-context data based on the current reasoning
         # Similar to TrajBS-Flex but uses trajectory-level retrieval instead of state-level
-        self.in_context_data = self.get_state_data(
+        self.in_context_data = self.retrieve_state_data(
             trajectory_key_types=["goal", "reasoning"],  # Find trajectories with similar goals and reasoning
             trajectory_keys=[self.goal, reasoning],
             state_key_types=["reasoning"],  # Find states with similar reasoning within those trajectories

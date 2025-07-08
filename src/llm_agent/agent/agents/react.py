@@ -22,7 +22,7 @@ class ReAct(BaseAgent):
         """
         # Key decision: Retrieve examples based on goal similarity only
         # This is simpler than RAP which uses goal+category
-        data = self.get_trajectory_data(
+        data = self.retrieve_trajectory_data(
             key_types=["goal"],  # Match examples with similar goals
             keys=[self.goal],
             value_types=["goal", "plan", "observation", "reasoning", "action"],

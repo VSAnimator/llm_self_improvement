@@ -12,8 +12,8 @@ The `BaseAgent` class provides several key primitives that can be used to build 
 - `act`: Selects an action based on observation, reasoning, and available actions
 
 ### In-Context Learning
-- `get_trajectory_data`: Retrieves similar episodes from the database for trajectory-level context
-- `get_state_data`: Retrieves similar states from the database for state-level context
+- `retrieve_trajectory_data`: Retrieves similar episodes from the database for trajectory-level context
+- `retrieve_state_data`: Retrieves similar states from the database for state-level context
 - `_in_context_prompt`: Formats retrieved examples into a system prompt
 
 ### Episode Analysis
@@ -70,7 +70,7 @@ Different agents combine these keys and values in various ways to achieve differ
 
 ### Combined Trajectory and State-Level Retrieval
 
-When both trajectory-level and state-level keys are provided (as in `get_state_data`), the system performs a two-stage retrieval process:
+When both trajectory-level and state-level keys are provided (as in `retrieve_state_data`), the system performs a two-stage retrieval process:
 
 1. First, it identifies relevant trajectories using the trajectory-level keys
 2. Then, within those trajectories, it finds the most relevant states using the state-level keys

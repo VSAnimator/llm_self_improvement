@@ -10,7 +10,7 @@ class BaseAgent:
     
     This class provides core primitives for building different agent algorithms:
     1. Decision-making components (create_plan, reason, act)
-    2. In-context learning utilities (get_trajectory_data, get_state_data)
+    2. In-context learning utilities (retrieve_trajectory_data, retrieve_state_data)
     3. Episode analysis tools (reflect, store_episode, clean_history)
     
     Subclasses should implement the choose_action method to define their specific
@@ -240,7 +240,7 @@ Your actions should be clear, concise, and directly executable in the environmen
 
         return system_prompt
     
-    def _get_in_context_data(self, key_type, key, value_type, outcome="winning", k=5, window=20, filtered_environment_id=None) -> List[Dict]:
+    def _retrieve_in_context_data(self, key_type, key, value_type, outcome="winning", k=5, window=20, filtered_environment_id=None) -> List[Dict]:
         """
         Retrieve in-context examples from the database.
         
@@ -259,7 +259,7 @@ Your actions should be clear, concise, and directly executable in the environmen
         Returns:
             List of dictionaries containing retrieved examples
         """
-        success_entries, failure_entries = self.db.get_similar_entries(key_type, key, outcome=outcome, k=k, window=window, filtered_environment_id=filtered_environment_id)
+        success_entries, failure_entries = self.db.retrieve_similar_entries(key_type, key, outcome=outcome, k=k, window=window, filtered_environment_id=filtered_environment_id)
         if self.f:
             success_entry_ids = [entry['id'] for entry in success_entries]
             failure_entry_ids = [entry['id'] for entry in failure_entries]
@@ -275,8 +275,8 @@ Your actions should be clear, concise, and directly executable in the environmen
     
     """ Main components used by agent's choose_action function """
 
-    # A wrapper function for the get_in_context_data function when getting state-level data with a window
-    def get_state_data(self, trajectory_key_types, trajectory_keys, state_key_types, state_keys, value_types, outcome, k, window, filtered_environment_id="self") -> List[Dict]:
+    # A wrapper function for the retrieve_in_context_data function when getting state-level data with a window
+    def retrieve_state_data(self, trajectory_key_types, trajectory_keys, state_key_types, state_keys, value_types, outcome, k, window, filtered_environment_id="self") -> List[Dict]:
         """
         Retrieve state-level in-context examples from the database.
         
@@ -307,9 +307,9 @@ Your actions should be clear, concise, and directly executable in the environmen
             filtered_environment_id = self.environment_id
         key = trajectory_keys + state_keys
         key_type = trajectory_key_types + state_key_types
-        return self._get_in_context_data(key_type, key, value_types, outcome, k, window, filtered_environment_id=filtered_environment_id)
+        return self._retrieve_in_context_data(key_type, key, value_types, outcome, k, window, filtered_environment_id=filtered_environment_id)
     
-    def get_trajectory_data(self, key_types, keys, value_types, outcome, k, filtered_environment_id="self") -> List[Dict]:
+    def retrieve_trajectory_data(self, key_types, keys, value_types, outcome, k, filtered_environment_id="self") -> List[Dict]:
         """
         Retrieve trajectory-level in-context examples from the database.
         
@@ -329,7 +329,7 @@ Your actions should be clear, concise, and directly executable in the environmen
         """
         if filtered_environment_id == "self":
             filtered_environment_id = self.environment_id
-        return self._get_in_context_data(key_types, keys, value_types, outcome, k, filtered_environment_id=filtered_environment_id)
+        return self._retrieve_in_context_data(key_types, keys, value_types, outcome, k, filtered_environment_id=filtered_environment_id)
 
     async def create_plan(self, observation: Observation, available_actions: List[Action], in_context_data = None) -> str:
         """

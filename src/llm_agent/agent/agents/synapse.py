@@ -21,7 +21,7 @@ class Synapse(BaseAgent):
         """
         # Key decision: Retrieve examples based on goal similarity
         # but don't use them for planning (no planning phase)
-        in_context_data = self.get_trajectory_data(
+        in_context_data = self.retrieve_trajectory_data(
             key_types=["goal"],
             keys=[self.goal],
             value_types=["goal","observation", "reasoning", "action"],

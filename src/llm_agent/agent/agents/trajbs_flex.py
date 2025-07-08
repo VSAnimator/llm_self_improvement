@@ -23,7 +23,7 @@ class TrajBSFlex(BaseAgent):
         if not self.plan:
             # Key decision: Use trajectory-level retrieval for planning
             # Retrieve examples based on goal and category similarity
-            plan_data = self.get_trajectory_data(
+            plan_data = self.retrieve_trajectory_data(
                 key_types=["goal", "category"],  # Match examples with similar goals and categories
                 keys=[self.goal, self.category],
                 value_types=["goal", "plan"],  # Only need goal and plan for planning
@@ -35,7 +35,7 @@ class TrajBSFlex(BaseAgent):
         if self.in_context_data is None:
             # Key decision: Initial state-level retrieval based on observation
             # This combines trajectory-level keys (goal, category, plan) with state-level keys (observation)
-            self.in_context_data = self.get_state_data(
+            self.in_context_data = self.retrieve_state_data(
                 trajectory_key_types=["goal", "category", "plan"],  # First find trajectories with similar goals, categories, and plans
                 trajectory_keys=[self.goal, self.category, self.plan],
                 state_key_types=["observation"],  # Then find states with similar observations within those trajectories
@@ -51,7 +51,7 @@ class TrajBSFlex(BaseAgent):
         
         # Key decision: Update in-context data based on the current reasoning
         # This is the most distinctive feature of TrajBS-Flex - dynamically updating context
-        self.in_context_data = self.get_state_data(
+        self.in_context_data = self.retrieve_state_data(
             trajectory_key_types=["goal", "category", "plan"],
             trajectory_keys=[self.goal, self.category, self.plan],
             state_key_types=["reasoning"],  # Now find states with similar reasoning
