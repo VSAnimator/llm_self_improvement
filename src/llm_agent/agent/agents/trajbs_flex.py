@@ -2,10 +2,9 @@ from llm_agent.agent.base_agent_v2 import BaseAgent
 
 class TrajBSFlex(BaseAgent):
     """
-    Flexible TrajBS implementation that combines trajectory-level and state-level retrieval.
+    Default TrajBS implementation that combines trajectory-level and state-level retrieval.
     
-    This agent dynamically updates in-context examples based on the current reasoning state,
-    providing more targeted and relevant examples as the episode progresses.
+    This agent dynamically updates in-context examples based on the current reasoning state.
     """
     
     def __init__(self, *args):

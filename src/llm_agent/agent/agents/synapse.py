@@ -17,7 +17,6 @@ class Synapse(BaseAgent):
         
         Key differences from other agents:
         - No explicit planning phase
-        - Uses in-context examples for reasoning and action
         - Uses the same in-context data for both reasoning and action
         """
         # Key decision: Retrieve examples based on goal similarity

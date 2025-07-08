@@ -29,20 +29,20 @@ Basic ReAct agent that uses no in-context examples, relying solely on the LLM's 
 ### ReAct
 Enhances the ReAct paradigm with in-context examples of successful trajectories for the same goal.
 
-### TrajBS (Trajectory-Based Search)
-Extends ReAct by retrieving successful trajectories with similar goals and categories to inform planning and action selection.
+### TrajBS (Trajectory-Bootstrap)
+Extends ReAct by retrieving self-collected successful trajectories with similar goals and categories to inform planning and action selection.
 
-### TrajBS_NoPlan
-Variant of TrajBS that skips the planning phase and directly retrieves examples based on the current observation, focusing on state-level retrieval for reasoning and action selection.
-
-### TrajBS_Flex
+#### TrajBS_Flex
 Flexible TrajBS implementation that combines trajectory-level retrieval for planning with state-level retrieval for reasoning and action. Dynamically updates in-context examples based on the current reasoning state.
 
+#### TrajBS_NoPlan
+Variant of TrajBS that skips the planning phase and directly retrieves examples based on the current observation, focusing on state-level retrieval for reasoning and action selection.
+
 ### Synapse
-Focuses on providing in-context examples for reasoning and action selection without explicit planning.
+Retrieve based off the goal, no explicit planning. 
 
 ### Reflexion
-Uses reflections from previous failed attempts as in-context examples to improve performance.
+Augment a basic ReAct agent with reflections from previous failed attempts at the same environmentas in-context examples to improve performance.
 
 ## In-Context Learning Keys and Values
 

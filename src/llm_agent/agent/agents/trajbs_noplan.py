@@ -3,10 +3,7 @@ from ...env.base_env import Observation, Action
 
 class TrajBSNoPlan(BaseAgent):
     """
-    TrajBS variant that skips the planning phase and focuses on state-level retrieval.
-    
-    This agent directly retrieves examples based on the current observation,
-    focusing on state-level retrieval for reasoning and action selection.
+    TrajBS variant that skips the planning phase.
     """
     
     def __init__(self, *args):
@@ -20,7 +17,6 @@ class TrajBSNoPlan(BaseAgent):
         - Skips the planning phase entirely
         - Uses goal+observation keys for initial retrieval
         - Updates in-context examples based on reasoning
-        - Focuses on state-level retrieval
         """
         if self.in_context_data is None:
             # Key decision: Initial retrieval based on goal and observation
