@@ -26,12 +26,12 @@ import sys
 
 def config(env, gym_env_name):
     # Load default config first
-    with open("config/default.yaml", "r") as f:
-        config = yaml.safe_load(f)
+    #with open("config/default.yaml", "r") as f:
+    #    config = yaml.safe_load(f)
 
     # Override with alfworld-specific config
-    with open("config/benchmark/alfworld.yaml", "r") as f:
-        env_config = yaml.safe_load(f)
+    #with open("config/benchmark/alfworld.yaml", "r") as f:
+    #    env_config = yaml.safe_load(f)
 
     # Ensure required alfworld configuration exists
     if env == "alfworld_test":
@@ -140,16 +140,14 @@ use_gym = False
 
 def env(config):
     if config["benchmark"]["name"] == "alfworld":
-        from llm_agent.env.envs.alfworld_train_env import AlfWorldTrainEnv
-
-        return AlfWorldTrainEnv(config["benchmark"])
-    elif config["benchmark"]["name"] == "alfworld_test":
-        from llm_agent.env.envs.alfworld_env import AlfWorldEnv
-
-        return AlfWorldEnv(config["benchmark"])
+        if config["benchmark"]["split"] == "train":
+            from llm_agent.env.envs.alfworld_train_env import AlfWorldTrainEnv
+            return AlfWorldTrainEnv(config["benchmark"])
+        else:
+            from llm_agent.env.envs.alfworld_env import AlfWorldEnv
+            return AlfWorldEnv(config["benchmark"])
     elif config["benchmark"]["name"] == "intercode_sql":
         from llm_agent.env.envs.intercode_sql_env import InterCodeSqlEnv
-
         return InterCodeSqlEnv(config["benchmark"])
     elif config["benchmark"]["name"] == "wordcraft":
         from llm_agent.env.envs.wordcraft import WordCraftEnv
@@ -295,11 +293,8 @@ def main():
     parser.add_argument("--store_episodes", action="store_true", help="Store episodes")
     parser.add_argument(
         "--env",
-        default="alfworld_test",
-        help="Environment to use (alfworld, alfworld_test, webshop, gymnasium)",
-    )
-    parser.add_argument(
-        "--gym_env_name", help="Name of gymnasium environment if using gymnasium"
+        default="alfworld",
+        help="Environment to use (alfworld, wordcraft, intercode_sql)",
     )
     parser.add_argument(
         "--num_tasks", type=int, default=134, help="Number of tasks to run"
@@ -315,14 +310,28 @@ def main():
         "--multiline", action="store_true", help="Allow multiline actions"
     )
     parser.add_argument("--random_retrieval", action="store_true", help="Use random retrieval")
+    parser.add_argument("--split", default="test", help="Split to use")
     args = parser.parse_args()
 
     async def process_task(i, args, environment=None):
-        cfg = config(args.env, args.gym_env_name)
+        cfg = {}
+        # TODO: make new config system better
+        # Benchmark config
+        cfg["benchmark"] = {"name": args.env, "split": args.split, "num_tasks": args.num_tasks}
         cfg["benchmark"]["problem_id"] = i
+
+        # LLM Config
+        cfg["llm"] = {}
         cfg["llm"]["model"] = args.llm
         cfg["llm"]["backend"] = args.backend
+        cfg["llm"]["max_tokens"] = 16384
+        cfg["llm"]["temperature"] = 0.1
+        cfg["llm"]["top_p"] = 1.0
+        cfg["llm"]["frequency_penalty"] = 0.0
+        cfg["llm"]["presence_penalty"] = 0.0
+        cfg["llm"]["timeout_seconds"] = 300
 
+        # Agent config
         agent_config = test_config(agent_type=args.agent_type)
         agent_config["store_episodes"] = args.store_episodes
         agent_config["benchmark"] = args.env

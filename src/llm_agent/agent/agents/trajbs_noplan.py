@@ -1,4 +1,4 @@
-from agent_algo_bench.src.llm_agent.agent.base_agent import BaseAgent
+from llm_agent.agent.base_agent import BaseAgent
 from ...env.base_env import Observation, Action
 
 class TrajBSNoPlan(BaseAgent):

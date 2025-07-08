@@ -3,12 +3,11 @@ from enum import IntEnum
 
 import numpy as np
 import gym
-from gym.utils import seeding
 
 from llm_agent.env.envs.wordcraft_recipebook import Recipe, RecipeBook
 
 from llm_agent.env.base_env import BaseEnv, Observation, Action
-from typing import Tuple, Dict, Optional, List
+from typing import Tuple, Dict
 
 NO_RECIPE_PENALTY = 0.0
 IRRELEVANT_RECIPE_PENALTY = 0.0

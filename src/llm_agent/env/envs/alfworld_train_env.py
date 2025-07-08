@@ -1,19 +1,8 @@
-import os
-import json
 from typing import Dict, List, Optional, Tuple
-import textworld
-import textworld.gym
-from alfworld.agents.utils.misc import add_task_to_grammar
-from alfworld.agents.environment.alfred_tw_env import AlfredExpert, AlfredDemangler, AlfredExpertType
-from alfworld.info import ALFWORLD_DATA
 import alfworld
-import random
-import glob
-import random
-from os.path import join as pjoin
 
-from ..base_env import BaseEnv, Observation, Action
-from ...in_context.alfworld_fewshots import get_task_type
+from llm_agent.env.base_env import BaseEnv, Observation, Action
+from llm_agent.starter_data.example_files.alfworld_examples import get_task_type
 
 class AlfWorldTrainEnv(BaseEnv):
     """Environment wrapper for ALFWorld text-based environments"""

@@ -465,7 +465,7 @@ class LearningDB:
         ]
         return success_entries, failure_entries
 
-    def get_similar_entries(
+    def retrieve_similar_entries(
         self,
         key_type: Union[str, List[str]],
         key: Union[str, List[str]],

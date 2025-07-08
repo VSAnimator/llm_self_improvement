@@ -117,18 +117,18 @@ run_agent() {
     echo "Starting trial $trial for $env"
     
     # Echo the command that would be run
-    echo Would run: python scripts/run_agent.py \
-        --llm $LLM \
-        --agent_type $AGENT_TYPE \
-        --num_passes 1 \
-        --env $env \
-        --num_ic $NUM_IC \
-        --num_tasks $NUM_TASKS \
-        --start_task $start_task \
-        --db_path $trial_db_path \
-        --log_name $trial_log_name \
-        --split train \
-        --store_episodes
+    python scripts/run_agent.py \
+      --llm $LLM \
+      --agent_type $AGENT_TYPE \
+      --num_passes 1 \
+      --env $env \
+      --num_ic $NUM_IC \
+      --num_tasks $NUM_TASKS \
+      --start_task $start_task \
+      --db_path $trial_db_path \
+      --log_name $trial_log_name \
+      --split train \
+      --store_episodes
     
     # Capture process ID and add to array
     PIDS+=($!)
@@ -141,13 +141,16 @@ run_agent() {
 # Create a counter for parallel jobs
 JOB_COUNT=0
 
+# Make data/training dir if it doesn't exist
+mkdir -p "$CURRENT_DIR/data/training/${ENV_TYPE}/${LOG_NAME}"
+
 # Run trials for the selected environment
 for trial in $(seq 1 $NUM_TRIALS); do
   # Create data directory for trial if needed
-  trial_data_dir="$CURRENT_DIR/data/${ENV_TYPE}/${LOG_NAME}/trial_${trial}"
+  trial_data_dir="$CURRENT_DIR/data/training/${ENV_TYPE}/${LOG_NAME}/trial_${trial}"
   
   if [ "$COPY_DATA" = true ]; then
-    echo "Creating directory for trial $trial"
+    echo "Creating directory for trial $trial: $trial_data_dir"
     if [ -n "$SOURCE_DATA_PATH" ]; then
       cp -r "$SOURCE_DATA_PATH" "$trial_data_dir"
     else

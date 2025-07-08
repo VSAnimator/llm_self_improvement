@@ -519,7 +519,7 @@ class LearningDB:
 
         return rules
 
-    def get_similar_sets(self, n, k):
+    def retrieve_similar_sets(self, n, k):
         """Get similar sets of episodes by finding trajectories with similar goals using embeddings"""
         # Get all successful trajectories
         self.trajectory_cursor.execute("""
@@ -539,8 +539,8 @@ class LearningDB:
             base_goal = base_traj[1]
             base_category = base_traj[2]
             
-            # Get similar trajectories using get_similar_entries
-            success_entries, _ = self.get_similar_entries(
+            # Get similar trajectories using retrieve_similar_entries
+            success_entries, _ = self.retrieve_similar_entries(
                 key_type=['goal', 'category'],
                 key=[base_goal, base_category], 
                 outcome='winning',
@@ -634,7 +634,7 @@ class LearningDB:
         """, (f'%{trajectory_id}%',))
         return [{'name': r[0], 'content': r[1], 'context': r[2]} for r in self.rule_cursor.fetchall()]
 
-    def get_similar_entries(self, key_type: Union[str, List[str]], key: Union[str, List[str]], k: int = 5, outcome: str = None, window: int = 1, filtered_environment_id: str = None) -> List[Dict]:
+    def retrieve_similar_entries(self, key_type: Union[str, List[str]], key: Union[str, List[str]], k: int = 5, outcome: str = None, window: int = 1, filtered_environment_id: str = None) -> List[Dict]:
         # For environment_id, use exact matching instead of embedding search
         if 'environment_id' in key_type:
             key = key[0]
