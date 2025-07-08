@@ -236,10 +236,7 @@ Your actions should be clear, concise, and directly executable in the environmen
                 for k_type in value_type:
                     system_prompt += f"{k_type}: {entry[k_type]}\n"
 
-        if self.config.get("diversity_mode", False):
-            system_prompt += f"\nFollow the provided examples closely." # However, make sure to solve the goal while taking at least one action that is different from the provided examples."
-        else:
-            system_prompt += f"\nFollow the provided examples closely."
+        system_prompt += f"\nFollow the provided examples closely."
 
         return system_prompt
     
@@ -351,9 +348,6 @@ Your actions should be clear, concise, and directly executable in the environmen
         """
         conversation = []
         system_prompt = f"You are an expert at generating high-level plans of actions to achieve a goal. "
-        if self.config.get("diversity_mode", False):
-            system_prompt += f"\nMake sure to solve the goal while taking at least one action that is different from the provided examples. This plan must be a single line without any line breaks."
-            print("Diversity mode enabled")
         if in_context_data:
             system_prompt += self._in_context_prompt(in_context_data)
         conversation.append({"role": "system", "content": system_prompt})

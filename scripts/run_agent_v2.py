@@ -6,17 +6,9 @@ from pathlib import Path
 from llm_agent.agent.agents import (
     ReAct,
     Reflexion,
-    ReflexionRefine,
-    TrajBS,
     TrajBSNoPlan,
     TrajBSFlex,
-    TrajBSFlexDiagnostic,
-    TrajBSRefine,
-    TrajBSDiversity,
     Synapse,
-    Expel,
-    AutoGuide,
-    AutoManual,
     TRAD,
     FinetuneAgent,
 )
@@ -147,16 +139,7 @@ use_gym = False
 
 
 def env(config):
-    if use_gym:
-        from llm_agent.env.envs.gym_env import GymEnv
-
-        env_config = {"env_name": "CartPole-v1"}
-        return GymEnv(env_config)
-    elif config["benchmark"]["name"] == "webshop":
-        from llm_agent.env.envs.webshop_site_env import WebShopEnv
-
-        return WebShopEnv(config["benchmark"])
-    elif config["benchmark"]["name"] == "alfworld":
+    if config["benchmark"]["name"] == "alfworld":
         from llm_agent.env.envs.alfworld_train_env import AlfWorldTrainEnv
 
         return AlfWorldTrainEnv(config["benchmark"])
@@ -164,26 +147,10 @@ def env(config):
         from llm_agent.env.envs.alfworld_env import AlfWorldEnv
 
         return AlfWorldEnv(config["benchmark"])
-    elif config["benchmark"]["name"] == "intercode":
-        from llm_agent.env.envs.intercode_env import InterCodeEnv
-
-        return InterCodeEnv(config["benchmark"])
     elif config["benchmark"]["name"] == "intercode_sql":
         from llm_agent.env.envs.intercode_sql_env import InterCodeSqlEnv
 
         return InterCodeSqlEnv(config["benchmark"])
-    elif config["benchmark"]["name"] == "animation":
-        from llm_agent.env.envs.animation_env import AnimationEnv
-
-        return AnimationEnv(config["benchmark"])
-    elif config["benchmark"]["name"] == "lsystem":
-        from llm_agent.env.envs.lsystem_env import LSystemEnv
-
-        return LSystemEnv(config["benchmark"])
-    elif config["benchmark"]["name"] == "textcraft":
-        from llm_agent.env.envs.textcraft import TextCraftEnv
-
-        return TextCraftEnv(config["benchmark"])
     elif config["benchmark"]["name"] == "wordcraft":
         from llm_agent.env.envs.wordcraft import WordCraftEnv
         return WordCraftEnv(config["benchmark"])
@@ -210,43 +177,22 @@ def test_config(agent_type):
 def test_agent(real_llm, db, env, test_config):
     if (
         test_config.get("agent_type", "react") == "trad"
-        or test_config.get("benchmark", "") == "webshop"
-        or test_config.get("benchmark", "") == "intercode"
         or test_config.get("benchmark", "") == "intercode_sql"
-        or test_config.get("benchmark", "") == "animation"
-        or test_config.get("benchmark", "") == "textcraft"
         or test_config.get("benchmark", "") == "wordcraft"
-        or test_config.get("benchmark", "") == "lsystem"
     ):
         test_config["give_action_space"] = True
     if test_config.get("agent_type", "react") == "react":
         return ReAct(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "reflexion":
         return Reflexion(real_llm, db, env, test_config)
-    elif test_config.get("agent_type", "react") == "reflexion_refine":
-        return ReflexionRefine(real_llm, db, env, test_config)
-    elif test_config.get("agent_type", "react") == "trajbs":
-        return TrajBS(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "trajbs_noplan":
         return TrajBSNoPlan(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "trajbs_flex":
         return TrajBSFlex(real_llm, db, env, test_config)
-    elif test_config.get("agent_type", "react") == "trajbs_flex_diagnostic":
-        return TrajBSFlexDiagnostic(real_llm, db, env, test_config)
-    elif test_config.get("agent_type", "react") == "trajbs_refine":
-        return TrajBSRefine(real_llm, db, env, test_config)
-    elif test_config.get("agent_type", "react") == "trajbs_diversity":
-        return TrajBSDiversity(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "synapse":
         return Synapse(real_llm, db, env, test_config)
-    elif test_config.get("agent_type", "react") == "expel":
-        return Expel(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "trad":
         return TRAD(real_llm, db, env, test_config)
-    elif test_config.get("agent_type", "react") == "autoguide":
-        return AutoGuide(real_llm, db, env, test_config)
-    elif test_config.get("agent_type", "react") == "automanual":
-        return AutoManual(real_llm, db, env, test_config)
     elif test_config.get("agent_type", "react") == "finetune":
         return FinetuneAgent(real_llm, db, env, test_config)
     else:
@@ -368,7 +314,6 @@ def main():
     parser.add_argument(
         "--multiline", action="store_true", help="Allow multiline actions"
     )
-    parser.add_argument("--diversity_mode", action="store_true", help="Use diversity mode")
     parser.add_argument("--random_retrieval", action="store_true", help="Use random retrieval")
     args = parser.parse_args()
 
@@ -411,7 +356,6 @@ def main():
             raise ValueError(f"Invalid database type: {args.db_type}")
         agent_config["multiline_action"] = args.multiline
         agent_config["multiline_reasoning"] = args.multiline
-        agent_config["diversity_mode"] = args.diversity_mode
         agent = test_agent(llm, learning_db, environment, agent_config)
         if args.run_offline_rules:
             # Only need to run offline rules once
