@@ -1,5 +1,7 @@
 from typing import Dict, List, Optional, Tuple
 import alfworld
+from alfworld.agents.utils.misc import add_task_to_grammar
+from alfworld.agents.environment.alfred_tw_env import AlfredExpert, AlfredDemangler, AlfredExpertType
 
 from llm_agent.env.base_env import BaseEnv, Observation, Action
 from llm_agent.starter_data.example_files.alfworld_examples import get_task_type

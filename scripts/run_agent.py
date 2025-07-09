@@ -317,7 +317,13 @@ def main():
         cfg = {}
         # TODO: make new config system better
         # Benchmark config
-        cfg["benchmark"] = {"name": args.env, "split": args.split, "num_tasks": args.num_tasks}
+        cfg["benchmark"] = {}
+        # Load alfworld config if appropriate
+        if args.env == "alfworld":
+            with open("config/benchmark/alfworld.yaml", "r") as f:
+                cfg["benchmark"] = yaml.safe_load(f)
+        # Do the rest
+        cfg["benchmark"].update({"name": args.env, "split": args.split, "num_tasks": args.num_tasks})
         cfg["benchmark"]["problem_id"] = i
 
         # LLM Config
