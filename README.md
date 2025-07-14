@@ -50,26 +50,20 @@ The repository is organized as follows:
 
 ### (Optional) Step 1: Ingest Data into Database
 
+The ```data/starter``` folder currently holds starter databases for alfworld and wordcraft
+
 ### Step 2: Self-generate Database from Train Environments
 
 Run the train_alfworld.sh script to generate a database of in-context examples:
 
 ```bash
-./train_alfworld.sh
+./bash-scripts/train/train_unified.sh --config default:alfworld:rap_flex: --llm gpt-4o-mini
 ```
-
-This script:
-1. Creates new databases for training runs with 3, 6, and 10 in-context examples
-2. Copies the initial human-curated in-context examples from the alfworld_expel database
-3. Launches 3 parallel processes, each running the training script with a different number of in-context examples
-4. Creates new databases with the training results, while saving backup copies of the original databases
-
-You can verify successful execution by checking the trajectory_*.json files to confirm they contain all trajectories from the training runs.
 
 ### Step 3: Run on Test Environments with Generated Database
 
 ```bash
-./test_alfworld.sh
+./bash-scripts/test/test_unified.sh --config default:alfworld:rap_flex: --llm gpt-4o-mini
 ```
 
 ## Scripts Usage
