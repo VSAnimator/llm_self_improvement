@@ -134,16 +134,11 @@ Many of the included agent algorithms leverage a database of in-context examples
 
 - Alfworld: ```python src/llm_agent/database/ingest_alfworld.py```
 - WebShop: ```python src/llm_agent/database/ingest_webshop.py```
-- Intercode-SQL: TODO
 - WordCraft: ```python src/llm_agent/database/ingest_wordcraft_logs.py```
+- Intercode-SQL: TODO
 
 ### Agent Algorithms
-
-The repository supports several agent algorithms:
-
-1. **TODO**
-
-More details on agent algorithms can be found in the paper.
+See [`agent`](https://github.com/VSAnimator/llm_self_improvement/tree/main/src/llm_agent/agent) for more details.
 
 ## Extensibility
 

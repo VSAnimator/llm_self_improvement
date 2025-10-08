@@ -1,8 +1,7 @@
 import os
 
-from llm_agent.starter_data.example_files.alfworld_examples import PARSED_FEWSHOTS_LISTS
-
 from llm_agent.database.learning_db import LearningDB
+from llm_agent.env.alfworld_examples import PARSED_FEWSHOTS_LISTS
 
 # Import wrapper classes for obs and act
 from llm_agent.env.base_env import Action, Observation
