@@ -1,36 +1,37 @@
-import asyncio
-
-import yaml
-import os
-from pathlib import Path
-from llm_agent.agent.agents import (
-    ReAct,
-    Reflexion,
-    TrajBSNoPlan,
-    TrajBSFlex,
-    Synapse,
-    TRAD,
-    FinetuneAgent,
-)
-from llm_agent.env.base_env import Observation, Action
-from llm_agent.llm.lite_llm import LiteLLMWrapper
 import argparse
-from tqdm import tqdm
+import asyncio
 import multiprocessing
-import time
-import threading
-import traceback
+import os
 import signal
 import sys
+import threading
+import time
+import traceback
+from pathlib import Path
+
+import yaml
+from tqdm import tqdm
+
+from llm_agent.agent.agents import (
+    TRAD,
+    FinetuneAgent,
+    ReAct,
+    Reflexion,
+    Synapse,
+    TrajBSFlex,
+    TrajBSNoPlan,
+)
+from llm_agent.env.base_env import Action, Observation
+from llm_agent.llm.lite_llm import LiteLLMWrapper
 
 
 def config(env, gym_env_name):
     # Load default config first
-    #with open("config/default.yaml", "r") as f:
+    # with open("config/default.yaml", "r") as f:
     #    config = yaml.safe_load(f)
 
     # Override with alfworld-specific config
-    #with open("config/benchmark/alfworld.yaml", "r") as f:
+    # with open("config/benchmark/alfworld.yaml", "r") as f:
     #    env_config = yaml.safe_load(f)
 
     # Ensure required alfworld configuration exists
@@ -142,18 +143,23 @@ def env(config):
     if config["benchmark"]["name"] == "alfworld":
         if config["benchmark"]["split"] == "train":
             from llm_agent.env.envs.alfworld_train_env import AlfWorldTrainEnv
+
             return AlfWorldTrainEnv(config["benchmark"])
         else:
             from llm_agent.env.envs.alfworld_env import AlfWorldEnv
+
             return AlfWorldEnv(config["benchmark"])
     elif config["benchmark"]["name"] == "intercode_sql":
         from llm_agent.env.envs.intercode_sql_env import InterCodeSqlEnv
+
         return InterCodeSqlEnv(config["benchmark"])
     elif config["benchmark"]["name"] == "wordcraft":
         from llm_agent.env.envs.wordcraft import WordCraftEnv
+
         return WordCraftEnv(config["benchmark"])
     elif config["benchmark"]["name"] == "wordcraft_test":
         from llm_agent.env.envs.wordcraft import WordCraftEnv
+
         return WordCraftEnv(config["benchmark"])
     else:
         raise ValueError(f"Invalid environment name: {config['benchmark']['name']}")
@@ -309,7 +315,9 @@ def main():
     parser.add_argument(
         "--multiline", action="store_true", help="Allow multiline actions"
     )
-    parser.add_argument("--random_retrieval", action="store_true", help="Use random retrieval")
+    parser.add_argument(
+        "--random_retrieval", action="store_true", help="Use random retrieval"
+    )
     parser.add_argument("--split", default="test", help="Split to use")
     args = parser.parse_args()
 
@@ -323,7 +331,9 @@ def main():
             with open("config/benchmark/alfworld.yaml", "r") as f:
                 cfg["benchmark"] = yaml.safe_load(f)
         # Do the rest
-        cfg["benchmark"].update({"name": args.env, "split": args.split, "num_tasks": args.num_tasks})
+        cfg["benchmark"].update(
+            {"name": args.env, "split": args.split, "num_tasks": args.num_tasks}
+        )
         cfg["benchmark"]["problem_id"] = i
 
         # LLM Config

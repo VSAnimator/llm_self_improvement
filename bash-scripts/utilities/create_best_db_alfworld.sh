@@ -18,9 +18,8 @@ trap cleanup SIGINT
 
 # Ingest the best and worst examples into the databases (other mode is _3_ic)
 for mode in best worst; do
-    for ic in "_6_ic"; do 
+    for ic in "_6_ic"; do
         echo "Ingesting $mode examples with $ic"
         python src/llm_agent/database/ingest_alfworld_db_entries.py --mode $mode --json_file "compare${ic}/${mode}_examples_per_task.json" --db_path "data/alfworld_filtered/alfworld_pbt_${mode}_examples${ic}/learning.db"
     done
 done
-

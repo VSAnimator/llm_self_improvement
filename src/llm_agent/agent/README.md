@@ -39,7 +39,7 @@ Flexible TrajBS implementation that combines trajectory-level retrieval for plan
 Variant of TrajBS that skips the planning phase and directly retrieves examples based on the current observation, focusing on state-level retrieval for reasoning and action selection.
 
 ### Synapse
-Retrieve based off the goal, no explicit planning. 
+Retrieve based off the goal, no explicit planning.
 
 ### Reflexion
 Augment a basic ReAct agent with reflections from previous failed attempts at the same environmentas in-context examples to improve performance.
@@ -93,12 +93,12 @@ from llm_agent.agent.base_agent_v2 import BaseAgent
 class MyNewAgent(BaseAgent):
     def __init__(self, *args):
         super().__init__(*args)
-    
+
     async def choose_action(self, obs, valid_actions):
         # Implement your agent's decision-making logic here
         # Use the primitives provided by BaseAgent
         return action
-    
+
     async def analyze_episode(self):
         # Optional: Implement post-episode analysis
         self.clean_history()

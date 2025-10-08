@@ -114,7 +114,7 @@ for trial in $(seq 1 $NUM_TRIALS); do
     for ckpt in "${CHECKPOINT_ARRAY[@]}"; do
         # Set the database path based on trial and checkpoint
         DB_PATH="$CURRENT_DIR/data/${ENV_TYPE}/trial_${trial}"
-        
+
         # For checkpoints other than final, look for backup directories
         if [ "$ckpt" != "$NUM_TASKS" ]; then
             if [ -d "${DB_PATH}_backups/${ckpt}" ]; then
@@ -126,16 +126,16 @@ for trial in $(seq 1 $NUM_TRIALS); do
         else
             DB_PATH="${DB_PATH}/learning.db"
         fi
-        
+
         # Set log name for this test run
         if [ -z "$LOG_NAME" ]; then
             TEST_LOG_NAME="${CONFIG_STRING}_trial_${trial}/ckpt_${ckpt}"
         else
             TEST_LOG_NAME="${LOG_NAME}_trial_${trial}/ckpt_${ckpt}"
         fi
-        
+
         echo "Testing checkpoint ${ckpt} for trial ${trial}"
-        
+
         # Comment out the actual run and just echo the command
         echo Would run: python scripts/run_agent_v2.py \
             --llm $LLM \
@@ -148,24 +148,24 @@ for trial in $(seq 1 $NUM_TRIALS); do
             --log_name $TEST_LOG_NAME \
             --split test \
             --parallel $TEST_PARALLEL
-        
+
         # Capture process ID
         PIDS+=($!)
-        
+
         echo "Test for trial ${trial}, checkpoint ${ckpt} started with PID ${PIDS[-1]}"
-        
+
         # Track parallel jobs
         ((JOB_COUNT++))
-        
+
         # Wait if we've reached the parallel limit
         if [ "$JOB_COUNT" -ge "$TEST_PARALLEL" ]; then
             wait "${PIDS[-$TEST_PARALLEL]}"
             JOB_COUNT=$((TEST_PARALLEL-1))
         fi
-        
+
         sleep 3
     done
-    
+
     # Wait for all jobs for this trial to complete
     if [ "$TEST_PARALLEL" -eq 1 ]; then
         wait
@@ -178,4 +178,4 @@ for pid in "${PIDS[@]}"; do
     wait "$pid"
 done
 
-echo "All tests completed" 
+echo "All tests completed"

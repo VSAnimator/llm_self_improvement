@@ -1,15 +1,15 @@
-import os
-import re
-import json
-import random
 import asyncio
-from time import time
-from collections import Counter
-from typing import Dict, List, Optional, Any, Callable, Type
+import fcntl
+import json
+import os
+import random
+import re
 import threading
+from collections import Counter
+from time import time
+from typing import Any, Callable, Dict, List, Optional, Type
 
 import openai
-import fcntl
 
 TRACE_FILE = "trace_log.json"
 

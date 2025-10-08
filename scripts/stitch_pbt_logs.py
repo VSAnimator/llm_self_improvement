@@ -3,15 +3,16 @@ import re
 import shutil
 from collections import defaultdict
 
-'''
+"""
 log_path = "pbt_6ic_seg20_log.txt"
 log_root = "logs/episodes/alfworld/train/rap_flex/openai/gpt-4o-mini/pbt_6ic_seg20"
 output_root = "logs/episodes/alfworld/train/rap_flex/openai/gpt-4o-mini/pbt_6ic_seg20_stitched"
-'''
+"""
 
 log_path = "pbt_wordcraft_10ic_seg10_log.txt"
 log_root = "logs/episodes/wordcraft/train/rap_noplan/openai/gpt-4o-mini/pbt_10ic_seg10"
 output_root = "logs/episodes/wordcraft/train/rap_noplan/openai/gpt-4o-mini/pbt_10ic_seg10_stitched"
+
 
 def parse_pbt_log(log_path):
     replacements = defaultdict(dict)
@@ -19,7 +20,7 @@ def parse_pbt_log(log_path):
     trial_ids = set()
     segment_start_lines = []
 
-    with open(log_path, 'r') as f:
+    with open(log_path, "r") as f:
         for line in f:
             # Detect segment start
             if "Starting segment" in line:
@@ -29,9 +30,13 @@ def parse_pbt_log(log_path):
                     current_segment = int(seg_start_match.group(1))
 
             # Detect replacements
-            replace_match = re.search(r"Replacing trial (\d+) with a copy of trial (\d+)", line)
+            replace_match = re.search(
+                r"Replacing trial (\d+) with a copy of trial (\d+)", line
+            )
             if replace_match and current_segment is not None:
-                target, source = int(replace_match.group(1)), int(replace_match.group(2))
+                target, source = int(replace_match.group(1)), int(
+                    replace_match.group(2)
+                )
                 replacements[current_segment][target] = source
 
             # Detect any trial references
@@ -57,6 +62,7 @@ def parse_pbt_log(log_path):
 
     return replacements, trial_ids, num_segments
 
+
 def build_lineages(replacements, trial_ids, num_segments):
     lineages = {trial: [] for trial in trial_ids}
     for trial in trial_ids:
@@ -69,15 +75,20 @@ def build_lineages(replacements, trial_ids, num_segments):
 
 def print_lineages(lineages):
     print("\n=== Trial Lineages ===")
-    header = ["Trial"] + [f"Seg {s}" for s in range(1, len(next(iter(lineages.values()))) + 1)]
+    header = ["Trial"] + [
+        f"Seg {s}" for s in range(1, len(next(iter(lineages.values()))) + 1)
+    ]
     print("\t".join(header))
     for trial, lineage in sorted(lineages.items()):
         lineage_ids = [str(source) for _, source in lineage]
         print(f"{trial}\t" + "\t".join(lineage_ids))
 
+
 def copy_log_segments_cumulative(lineages, log_root, output_root):
     os.makedirs(output_root, exist_ok=True)
-    stitched_dirs = {trial: os.path.join(output_root, f"trial_{trial}") for trial in lineages}
+    stitched_dirs = {
+        trial: os.path.join(output_root, f"trial_{trial}") for trial in lineages
+    }
 
     # Initialize empty dirs for all trials
     for trial_dir in stitched_dirs.values():
@@ -96,7 +107,9 @@ def copy_log_segments_cumulative(lineages, log_root, output_root):
 
             # If this trial was replaced (i.e., source ≠ trial), overwrite cumulative logs
             if source_trial != trial:
-                print(f"[Replace] Trial {trial} ← Trial {source_trial} at segment {segment}")
+                print(
+                    f"[Replace] Trial {trial} ← Trial {source_trial} at segment {segment}"
+                )
                 # Remove old cumulative directory and copy from source
                 if os.path.exists(dest_dir):
                     shutil.rmtree(dest_dir)
@@ -130,6 +143,7 @@ def copy_log_segments_cumulative(lineages, log_root, output_root):
         # Now delete the segment directories
         for dir in dirs:
             shutil.rmtree(os.path.join(trial_dir, dir))
+
 
 # Main execution
 if __name__ == "__main__":

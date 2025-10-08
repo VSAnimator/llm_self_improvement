@@ -1,40 +1,45 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Any, Tuple, Optional
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
+
 
 @dataclass
 class Observation:
     """Represents an environment observation with both structured and text descriptions"""
+
     structured: Dict[str, Any]  # Structured representation of observation
 
-@dataclass 
+
+@dataclass
 class Action:
     """Represents an action with text descriptions"""
+
     text: str  # Natural language description of action
+
 
 class BaseEnv(ABC):
     """Abstract base class for environments that can interact with LLM agents"""
-    
+
     def __init__(self, config: Dict):
         """Initialize environment"""
-        self.num_attempts = config.get('num_attempts', 3)
-    
+        self.num_attempts = config.get("num_attempts", 3)
+
     @abstractmethod
     def reset(self) -> Observation:
         """Reset environment to initial state
-        
+
         Returns:
             Initial observation
         """
         pass
-    
+
     @abstractmethod
     def step(self, action: Action) -> Tuple[Observation, float, bool, Dict]:
         """Take action in environment
-        
+
         Args:
             action: Action to take
-            
+
         Returns:
             Tuple containing:
             - Next observation
@@ -43,24 +48,24 @@ class BaseEnv(ABC):
             - Info dict
         """
         pass
-    
+
     @abstractmethod
     def get_action_space(self) -> Dict:
         """Get JSON schema describing valid action format
-        
+
         Returns:
             JSON schema for actions
         """
         pass
-    
+
     def get_available_actions(self, info: Optional[Dict] = None) -> List[Action]:
         """Get list of available actions
-            
+
         Returns:
             List of available actions
         """
         return []  # Default implementation returns empty list
-        
+
     @property
     def current_observation(self) -> Observation:
         """Get current environment observation"""

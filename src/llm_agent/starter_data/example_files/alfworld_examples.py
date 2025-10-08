@@ -34,37 +34,38 @@ d = {
     "act_puttwo_2": "You are in the middle of a room. Looking quickly around you, you see a cabinet 20, a cabinet 19, a cabinet 18, a cabinet 17, a cabinet 16, a cabinet 15, a cabinet 14, a cabinet 13, a cabinet 12, a cabinet 11, a cabinet 10, a cabinet 9, a cabinet 8, a cabinet 7, a cabinet 6, a cabinet 5, a cabinet 4, a cabinet 3, a cabinet 2, a cabinet 1, a coffeemachine 1, a countertop 3, a countertop 2, a countertop 1, a drawer 3, a drawer 2, a drawer 1, a fridge 1, a garbagecan 1, a microwave 1, a shelf 3, a shelf 2, a shelf 1, a sinkbasin 1, a stoveburner 4, a stoveburner 3, a stoveburner 2, a stoveburner 1, and a toaster 1.\nYour task is to: put two saltshaker in drawer.\n> go to drawer 1\nThe drawer 1 is closed.\n> open drawer 1\nYou open the drawer 1. The drawer 1 is open. In it, you see nothing.\n> go to drawer 2\nThe drawer 2 is closed.\n> open drawer 2\nYou open the drawer 2. The drawer 2 is open. In it, you see a dishsponge 3.\n> go to drawer 3\nThe drawer 3 is closed.\n> open drawer 3\nYou open the drawer 3. The drawer 3 is open. In it, you see a fork 2, a ladle 2, and a spoon 1.\n> go to countertop 1\nOn the countertop 1, you see a bowl 1, a butterknife 1, a mug 2, a pan 1, a papertowelroll 1, a spatula 1, and a statue 3.\n> go to countertop 2\nOn the countertop 2, you see a bread 1, a butterknife 2, a dishsponge 2, a fork 1, a kettle 1, a knife 1, a ladle 1, a spatula 3, a spoon 2, a statue 2, and a vase 3.\n> go to countertop 3\nOn the countertop 3, you see a bowl 2, a houseplant 1, a knife 2, a peppershaker 1, a saltshaker 4, a soapbottle 1, a spatula 2, and a tomato 3.\n> take saltshaker 4 from countertop 3\nYou pick up the saltshaker 4 from the countertop 3.\n> go to drawer 1\nThe drawer 1 is open. In it, you see nothing.\n> put saltshaker 4 in/on drawer 1\nYou put the saltshaker 4 in/on the drawer 1.\n> go to shelf 1\nOn the shelf 1, you see a statue 1.\n> go to shelf 2\nOn the shelf 2, you see a dishsponge 1, and a vase 1.\n> go to shelf 3\nOn the shelf 3, you see nothing.\n> go to cabinet 1\nThe cabinet 1 is closed.\n> open cabinet 1\nYou open the cabinet 1. The cabinet 1 is open. In it, you see nothing.\n> go to cabinet 2\nNothing happens.\n> look\nYou are facing the cabinet 2, and cabinet 1. Next to it, you see nothing.\n> go to cabinet 3\nThe cabinet 3 is closed.\n> open cabinet 3\nYou open the cabinet 3. The cabinet 3 is open. In it, you see a saltshaker 3, and a saltshaker 2.\n> take saltshaker 2 from cabinet 3\nYou pick up the saltshaker 2 from the cabinet 3.\n> go to drawer 1\nThe drawer 1 is open. In it, you see a saltshaker 4.\n> put saltshaker 2 in/on drawer 1\nYou put the saltshaker 2 in/on the drawer 1.\n",
     "act_examine_0": "You are in the middle of a room. Looking quickly around you, you see a bed 1, a desk 1, a drawer 3, a drawer 2, a drawer 1, a garbagecan 1, a safe 1, a shelf 5, a shelf 4, a shelf 3, a shelf 2, a shelf 1, a sidetable 2, and a sidetable 1.\nYour task is to: look at bowl under the desklamp.\nOK. \n> go to drawer 1\nOn the drawer 1, you see nothing.\n> go to drawer 2\nThe drawer 2 is closed.\n> open drawer 2\nYou open the drawer 2. The drawer 2 is open. In it, you see nothing.\n> go to drawer 3\nThe drawer 3 is closed.\n> open drawer 3\nYou open the drawer 3. The drawer 3 is open. In it, you see nothing.\n> go to desk 1\nOn the desk 1, you see a alarmclock 2, a book 1, a cellphone 1, a keychain 1, a laptop 2, a laptop 1, and a pen 3.\n> go to sidetable 1\nOn the sidetable 1, you see a cd 1, a pen 1, and a pencil 1.\n> go to shelf 1\nOn the shelf 1, you see nothing.\n> go to shelf 2\nOn the shelf 2, you see a bowl 1.\n> take bowl 1 from shelf 2\nYou pick up the bowl 1 from the shelf 2.\n> go to desk 1\nOn the desk 1, you see a alarmclock 2, a book 1, a cellphone 1, a keychain 1, a laptop 2, a laptop 1, and a pen 3.\n> go to sidetable 1\nOn the sidetable 1, you see a cd 1, a pen 1, and a pencil 1.\n> go to sidetable 2\nOn the sidetable 2, you see a alarmclock 1, a desklamp 1, and a pen 2.\n> use desklamp 1\nYou turn on the desklamp 1.\n",
     "act_examine_1": "You are in the middle of a room. Looking quickly around you, you see a bed 1, a drawer 10, a drawer 9, a drawer 8, a drawer 7, a drawer 6, a drawer 5, a drawer 4, a drawer 3, a drawer 2, a drawer 1, a dresser 1, a garbagecan 1, a shelf 9, a shelf 8, a shelf 7, a shelf 6, a shelf 5, a shelf 4, a shelf 3, a shelf 2, and a shelf 1.\nYour task is to: examine the pen with the desklamp.\n> go to drawer 1\nThe drawer 1 is closed.\n> open drawer 1\nYou open the drawer 1. The drawer 1 is open. In it, you see nothing.\n> go to drawer 2\nThe drawer 2 is closed.\n> open drawer 2\nYou open the drawer 2. The drawer 2 is open. In it, you see nothing.\n> go to drawer 3\nThe drawer 3 is closed.\n> open drawer 3\nYou open the drawer 3. The drawer 3 is open. In it, you see nothing.\n> go to drawer 4\nThe drawer 4 is closed.\n> open drawer 4\nYou open the drawer 4. The drawer 4 is open. In it, you see a cd 3, a keychain 1, and a pen 2.\n> take pen 2 from drawer 4\nYou pick up the pen 2 from the drawer 4.\n> go to dresser 1\nOn the dresser 1, you see a alarmclock 2, a alarmclock 1, a book 1, a cd 1, a creditcard 1, a desklamp 1, a keychain 2, a pen 3, and a pen 1.\n> use desklamp 1\nYou turn on the desklamp 1.\n",
-    "act_examine_2": "You are in the middle of a room. Looking quickly around you, you see a coffeetable 1, a diningtable 1, a drawer 4, a drawer 3, a drawer 2, a drawer 1, a dresser 1, a garbagecan 1, a sidetable 2, a sidetable 1, and a sofa 1.\nYour task is to: look at statue under the desklamp.\n> go to dresser 1\nOn the dresser 1, you see a cellphone 3, a newspaper 2, a statue 1, and a television 1.\n> take statue 1 from dresser 1\nYou pick up the statue 1 from the dresser 1.\n> go to sidetable 1\nOn the sidetable 1, you see nothing.\n> go to sidetable 2\nOn the sidetable 2, you see a desklamp 3, a newspaper 1, and a statue 2.\n> use desklamp 3\nYou turn on the desklamp 3.\n"
+    "act_examine_2": "You are in the middle of a room. Looking quickly around you, you see a coffeetable 1, a diningtable 1, a drawer 4, a drawer 3, a drawer 2, a drawer 1, a dresser 1, a garbagecan 1, a sidetable 2, a sidetable 1, and a sofa 1.\nYour task is to: look at statue under the desklamp.\n> go to dresser 1\nOn the dresser 1, you see a cellphone 3, a newspaper 2, a statue 1, and a television 1.\n> take statue 1 from dresser 1\nYou pick up the statue 1 from the dresser 1.\n> go to sidetable 1\nOn the sidetable 1, you see nothing.\n> go to sidetable 2\nOn the sidetable 2, you see a desklamp 3, a newspaper 1, and a statue 2.\n> use desklamp 3\nYou turn on the desklamp 3.\n",
 }
 
 PREFIXES = {
-            'pick_and_place': 'put',
-            'pick_clean_then_place': 'clean', 
-            'pick_heat_then_place': 'heat',
-            'pick_cool_then_place': 'cool',
-            'look_at_obj': 'examine',
-            'pick_two_obj': 'puttwo'
-        }
+    "pick_and_place": "put",
+    "pick_clean_then_place": "clean",
+    "pick_heat_then_place": "heat",
+    "pick_cool_then_place": "cool",
+    "look_at_obj": "examine",
+    "pick_two_obj": "puttwo",
+}
 
-FEWSHOTS = {k: [d[f'react_{v}_{i}'] for i in range(3)] for k, v in PREFIXES.items()}
+FEWSHOTS = {k: [d[f"react_{v}_{i}"] for i in range(3)] for k, v in PREFIXES.items()}
+
 
 def get_task_type(task_desc):
     """Map task description to task type based on key verbs.
-    
+
     Args:
         task_desc: String containing task description
-        
+
     Returns:
         task_type: String indicating task type (pick_and_place, pick_clean_then_place, etc)
     """
     task_desc = task_desc.lower()
-    
+
     if "clean" in task_desc:
         return "pick_clean_then_place"
     elif "heat" in task_desc or "hot" in task_desc:
         return "pick_heat_then_place"
     elif "cool" in task_desc:
-        return "pick_cool_then_place" 
+        return "pick_cool_then_place"
     elif "look at" in task_desc or "examine" in task_desc:
         return "look_at_obj"
     elif "two" in task_desc or any(w in task_desc for w in ["put two", "put 2"]):
@@ -74,45 +75,49 @@ def get_task_type(task_desc):
     else:
         return None
 
+
 def parse_fewshot(fewshot):
     """Parse a fewshot example into observations and actions"""
-    lines = fewshot.split('\n')
+    lines = fewshot.split("\n")
     parsed = []
-    
+
     current_obs = []
     current_act = []
-    
+
     for line in lines:
-        if line.startswith('> '):
+        if line.startswith("> "):
             # If we have a pending observation, add it
-            if current_obs and current_obs[0] != 'OK.':
-                parsed.append(('obs', ' '.join(current_obs)))
+            if current_obs and current_obs[0] != "OK.":
+                parsed.append(("obs", " ".join(current_obs)))
                 current_obs = []
-            
+
             # Parse the action
-            act = line[2:] # Remove '> ' prefix
-            if act.startswith('think:'):
+            act = line[2:]  # Remove '> ' prefix
+            if act.startswith("think:"):
                 # If the last action was also a thought, we need to combine them
-                if parsed and parsed[-1][0] == 'thought':
-                    parsed[-1] = ('thought', parsed[-1][1] + ' ' + act[7:].strip())
+                if parsed and parsed[-1][0] == "thought":
+                    parsed[-1] = ("thought", parsed[-1][1] + " " + act[7:].strip())
                 else:
-                    parsed.append(('thought', act[7:].strip())) # Remove 'think: ' prefix
+                    parsed.append(
+                        ("thought", act[7:].strip())
+                    )  # Remove 'think: ' prefix
             else:
-                parsed.append(('act', act.strip()))
-                
+                parsed.append(("act", act.strip()))
+
         else:
             current_obs.append(line.strip())
-            
+
     # Add final observation if exists
     if current_obs:
-        parsed.append(('obs', ' '.join(current_obs)))
-        
+        parsed.append(("obs", " ".join(current_obs)))
+
     return parsed
+
 
 def parse_fewshot_lists(fewshot):
     """Parse a fewshot example into observations and actions"""
-    lines = fewshot.split('\n')
-    
+    lines = fewshot.split("\n")
+
     current_obs = ""
     current_act = ""
     current_thought = ""
@@ -123,12 +128,12 @@ def parse_fewshot_lists(fewshot):
     obs_list = []
     thought_list = []
     act_list = []
-    
+
     for line in lines:
-        if line.startswith('>'):
+        if line.startswith(">"):
             # Parse the action
-            act = line[1:].strip() # Remove '>' prefix
-            if act.startswith('think:'):
+            act = line[1:].strip()  # Remove '>' prefix
+            if act.startswith("think:"):
                 if plan == "":
                     plan = act[6:].strip()
                 else:
@@ -136,13 +141,13 @@ def parse_fewshot_lists(fewshot):
                     current_thought += act[7:].strip()
             else:
                 current_act = act.strip()
-                
+
         else:
             # If the current line is OK, just skip
             if line.strip() == "OK.":
                 continue
             if len(current_obs) > 0:
-            # New obs--meaning add the previous obs, thought, and act to the lists
+                # New obs--meaning add the previous obs, thought, and act to the lists
                 obs_list.append(current_obs)
                 thought_list.append(current_thought)
                 act_list.append(current_act)
@@ -152,71 +157,73 @@ def parse_fewshot_lists(fewshot):
 
     del act_list[-1]
     del thought_list[-1]
-            
+
     # Add final observation if exists
     if len(current_obs) > 0:
         obs_list.append(current_obs)
-        
+
     return goal, plan, obs_list, thought_list, act_list
+
 
 def parse_fewshot_old(fewshot):
     """Parse a fewshot example into observations and actions"""
-    lines = fewshot.split('\n')
+    lines = fewshot.split("\n")
     parsed = []
-    
+
     current_obs = []
     current_act = []
-    
+
     for line in lines:
-        if line.startswith('> '):
+        if line.startswith("> "):
             # If we have a pending observation, add it
-            if current_obs and current_obs[0] != 'OK.':
-                parsed.append(('obs', ' '.join(current_obs)))
+            if current_obs and current_obs[0] != "OK.":
+                parsed.append(("obs", " ".join(current_obs)))
                 current_obs = []
-            
+
             # Parse the action
-            act = line[2:] # Remove '> ' prefix
-            if act.startswith('think:'):
-                parsed.append(('thought', act[7:].strip())) # Remove 'think: ' prefix
+            act = line[2:]  # Remove '> ' prefix
+            if act.startswith("think:"):
+                parsed.append(("thought", act[7:].strip()))  # Remove 'think: ' prefix
             else:
-                parsed.append(('act', act.strip()))
-                
+                parsed.append(("act", act.strip()))
+
         else:
             current_obs.append(line.strip())
-            
+
     # Add final observation if exists
     if current_obs:
-        parsed.append(('obs', ' '.join(current_obs)))
-        
+        parsed.append(("obs", " ".join(current_obs)))
+
     return parsed
+
 
 def filter_thoughts(parsed_fewshot):
     """Filter out thoughts from parsed fewshot and return observation and action lists
-    
+
     Args:
         parsed_fewshot: List of tuples containing (type, text) pairs from parse_fewshot()
-        
+
     Returns:
         observations: List of observation strings
         actions: List of action strings
     """
     observations = []
     actions = []
-    
+
     for item_type, text in parsed_fewshot:
-        if item_type == 'obs':
+        if item_type == "obs":
             # Filter out "OK." responses to thoughts
             if text != "OK.":
                 observations.append(text)
-        elif item_type == 'act':
+        elif item_type == "act":
             actions.append(text)
-            
+
     return observations, actions
+
 
 # Parse all fewshots
 PARSED_FEWSHOTS = {
-    task: [parse_fewshot(fs) for fs in fewshots]
-    for task, fewshots in FEWSHOTS.items()
+    task: [parse_fewshot(fs) for fs in fewshots] for task, fewshots in FEWSHOTS.items()
 }
 
 # Filter thoughts from all fewshots
@@ -230,12 +237,13 @@ PARSED_FEWSHOTS_LISTS = {
     for task, fewshots in FEWSHOTS.items()
 }
 
+
 def get_fewshots_for_goal(goal: str) -> list:
     """Get filtered fewshot examples for a given goal
-    
+
     Args:
         goal: Goal string from environment
-        
+
     Returns:
         List of (observations, actions) tuples for the matching task type
     """

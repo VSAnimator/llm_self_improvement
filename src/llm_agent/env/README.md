@@ -112,19 +112,19 @@ To create a new environment, follow these steps:
            super().__init__(config)
            # Initialize your environment-specific attributes
            self._observation = None
-           
+
        def reset(self) -> Observation:
            # Reset environment state
            # Return initial observation
            obs = Observation(structured={"text": "Initial state description"})
            self._observation = obs
            return obs
-           
+
        def step(self, action: Action) -> Tuple[Observation, float, bool, Dict]:
            # Process the action
            # Update environment state
            # Return (observation, reward, done, info)
-           
+
        def get_action_space(self) -> Dict:
            # Return JSON schema for valid actions
            return {
@@ -133,7 +133,7 @@ To create a new environment, follow these steps:
                    "action": {"type": "string"}
                }
            }
-           
+
        def get_available_actions(self, info: Optional[Dict] = None) -> List[Action]:
            # Optional: Return list of available actions
            return [Action(text="action1"), Action(text="action2")]
@@ -157,7 +157,7 @@ class SimpleTextEnv(BaseEnv):
         self._observation = None
         self.steps = 0
         self.max_steps = config.get("max_steps", 10)
-        
+
     def reset(self) -> Observation:
         self.state = "initial"
         self.steps = 0
@@ -168,17 +168,17 @@ class SimpleTextEnv(BaseEnv):
         })
         self._observation = obs
         return obs
-        
+
     def step(self, action: Action) -> Tuple[Observation, float, bool, Dict]:
         self.steps += 1
-        
+
         # Process action
         if action.text == "move forward":
             if self.state == "initial":
                 self.state = "middle"
             elif self.state == "middle":
                 self.state = "final"
-        
+
         # Create observation
         obs = Observation(structured={
             "text": f"You are in the {self.state} state. Your goal is to {self.goal}.",
@@ -186,16 +186,16 @@ class SimpleTextEnv(BaseEnv):
             "steps": self.steps
         })
         self._observation = obs
-        
+
         # Calculate reward and done flag
         reward = 1.0 if self.state == "final" else 0.0
         done = self.state == "final" or self.steps >= self.max_steps
-        
+
         # Additional info
         info = {"state": self.state}
-        
+
         return obs, reward, done, info
-        
+
     def get_action_space(self) -> Dict:
         return {
             "type": "object",
@@ -206,7 +206,7 @@ class SimpleTextEnv(BaseEnv):
                 }
             }
         }
-        
+
     def get_available_actions(self, info: Optional[Dict] = None) -> List[Action]:
         return [
             Action(text="move forward"),
@@ -250,10 +250,10 @@ done = False
 while not done:
     # Agent selects action based on observation
     action = agent.choose_action(obs)
-    
+
     # Environment processes action
     obs, reward, done, info = env.step(action)
-    
+
     # Optional: Use info dict for additional processing
     if info.get("error"):
         print(f"Error: {info['error']}")

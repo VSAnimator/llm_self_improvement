@@ -57,4 +57,4 @@ fi
 
 if [[ -n "$CUSTOM_CONFIG" && -f "agent_configs/custom/${CUSTOM_CONFIG}.sh" ]]; then
   source "agent_configs/custom/${CUSTOM_CONFIG}.sh"
-fi 
+fi

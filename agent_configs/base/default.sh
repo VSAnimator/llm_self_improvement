@@ -5,4 +5,4 @@
 export START_TASK=0
 export NUM_TRIALS=5
 export COPY_DATA=true
-export PARALLEL=1 
+export PARALLEL=1

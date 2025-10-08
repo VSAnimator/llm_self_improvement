@@ -1,9 +1,10 @@
-import sqlite3
 import json
-import uuid
-import chromadb
+import sqlite3
 import sys
+import uuid
 from datetime import datetime
+
+import chromadb
 from chromadb.utils import embedding_functions
 
 
