@@ -73,20 +73,20 @@ The `scripts/` directory contains various utilities for running experiments:
 ### Main Agent Runner
 
 ```bash
-python scripts/run_agent.py --llm <llm_name> --agent_type <agent_type> --db_path <database_path> --db_name <database_name> --num_passes <num_passes>
+python scripts/run_agent.py --llm <llm_name> --agent_type <agent_type> --db_path <database_path> --log_name <log_name> --num_passes <num_passes>
 ```
 
 Key parameters:
 - `--llm`: LLM to use (e.g., openai/gpt-4o-mini)
 - `--agent_type`: Agent algorithm to use (e.g., rap, expel)
 - `--db_path`: Path to the database of in-context examples
-- `--db_name`: Name of the database to use
+- `--log_name`: Name of the log directory
 - `--num_passes`: Number of passes through the environment
 - `--env`: Environment to use (default: alfworld)
 
 Example:
 ```bash
-python scripts/run_agent.py --llm openai/gpt-4o-mini --agent_type rap --db_path /data/rl/clone_test/data/alfworld_expel/learning.db --db_name expel_rap_testonly --num_passes 1
+python scripts/run_agent.py --llm openai/gpt-4o-mini --agent_type rap --db_path /data/rl/clone_test/data/alfworld_expel/learning.db --log_name expel_rap_testonly --num_passes 1
 ```
 
 ### Database Ingestion Scripts
@@ -151,7 +151,7 @@ More details on agent algorithms can be found in the paper.
 
 The `src/llm_agent/env/base_env.py` file defines the interface for environments. To add your own environment:
 
-1. Create a new Python file in `src/llm_agent/env/envs/`
+1. Create a new Python file in `src/llm_agent/env/`
 2. Implement a class that inherits from `BaseEnv`
 3. Implement the required methods: `reset()`, `step()`, and `get_action_space()`
 4. Optionally implement `get_available_actions()`
