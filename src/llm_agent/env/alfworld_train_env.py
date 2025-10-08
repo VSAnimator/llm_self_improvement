@@ -1,12 +1,7 @@
 from typing import Dict, List, Optional, Tuple
 
 import alfworld
-from alfworld.agents.environment.alfred_tw_env import (
-    AlfredDemangler,
-    AlfredExpert,
-    AlfredExpertType,
-)
-from alfworld.agents.utils.misc import add_task_to_grammar
+from alfworld.agents.environment import get_environment
 
 from llm_agent.env.alfworld_examples import get_task_type
 from llm_agent.env.base_env import Action, BaseEnv, Observation
@@ -29,9 +24,7 @@ class AlfWorldTrainEnv(BaseEnv):
 
         # Initialize alfworld environment
         split = config["split"]
-        self.env = getattr(alfworld.agents.environment, config["type"])(
-            config, train_eval=split
-        )
+        self.env = get_environment(config["type"])(config, train_eval=split)
         self.env = self.env.init_env(batch_size=1)
 
         # Track current state
