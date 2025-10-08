@@ -6,7 +6,7 @@ num_fewshots: 2
 eval_configs:
   k_folds: 2
   k_folds_seed: 42
-type: 'AlfredTWEnv' 
+type: 'AlfredTWEnv'
 split: eval_out_of_distribution
 ai_name: alfred
 

@@ -1,6 +1,6 @@
 # Self-Generated In-Context Examples Improve LLM Agents for Sequential Decision-Making Tasks
 
-This repository contains code for the paper [Self-Generated In-Context Examples Improve LLM Agents for Sequential Decision-Making Tasks](https://arxiv.org/abs/2505.00234). 
+This repository contains code for the paper [Self-Generated In-Context Examples Improve LLM Agents for Sequential Decision-Making Tasks](https://arxiv.org/abs/2505.00234).
 
 ## Installation
 
@@ -12,7 +12,7 @@ This repository contains code for the paper [Self-Generated In-Context Examples 
 
     or follow the instructions [here](https://docs.astral.sh/uv/getting-started/installation/)
 
-2. Clone this repository: 
+2. Clone this repository:
     ```bash
     git clone git@github.com:VSAnimator/agent_algo_bench.git
     cd agent_algo_bench
@@ -116,7 +116,7 @@ python src/llm_agent/database/ingest_wordcraft_logs.py
     alfworld-download
     ```
 
-- [Intercode-SQL](https://github.com/princeton-nlp/intercode) (flag --env ic_sql): follow the instructions to set up and run the docker container. 
+- [Intercode-SQL](https://github.com/princeton-nlp/intercode) (flag --env ic_sql): follow the instructions to set up and run the docker container.
 
 - [Wordcraft](https://github.com/minqi/wordcraft) (flag --env wordcraft): no additional installation needed
 
@@ -171,7 +171,7 @@ See the [Agent README](src/llm_agent/agent/README.md) for detailed instructions 
 
 ### Creating Your Own Database
 
-See the [Database README](src/llm_agent/database/README.md) for details on the database interface. We have implemented versions with both SQLite and PostgreSQL backends. 
+See the [Database README](src/llm_agent/database/README.md) for details on the database interface. We have implemented versions with both SQLite and PostgreSQL backends.
 
 ## License
 

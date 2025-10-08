@@ -1,18 +1,18 @@
 import os
 from enum import IntEnum
+from typing import Dict, Tuple
 
-import numpy as np
 import gym
+import numpy as np
 
+from llm_agent.env.base_env import Action, BaseEnv, Observation
 from llm_agent.env.envs.wordcraft_recipebook import Recipe, RecipeBook
-
-from llm_agent.env.base_env import BaseEnv, Observation, Action
-from typing import Tuple, Dict
 
 NO_RECIPE_PENALTY = 0.0
 IRRELEVANT_RECIPE_PENALTY = 0.0
 GOAL_REWARD = 1.0
 SUBGOAL_REWARD = 0.0
+
 
 class WordCraftBaseEnv(gym.Env):
     """
@@ -20,12 +20,13 @@ class WordCraftBaseEnv(gym.Env):
 
     At a high level, the state consists of a goal, the inventory, and the current selection.
     """
+
     def __init__(
         self,
-        data_path='src/llm_agent/env/envs/alchemy2.json',
+        data_path="src/llm_agent/env/envs/alchemy2.json",
         recipe_book_path=None,
         max_depth=1,
-        split='by_task',
+        split="by_task",
         train_ratio=0.95,
         num_distractors=0,
         uniform_distractors=False,
@@ -46,13 +47,18 @@ class WordCraftBaseEnv(gym.Env):
             max_depth = self.recipe_book.max_depth
         else:
             self.recipe_book = RecipeBook(
-                data_path=data_path, max_depth=max_depth, split=split, train_ratio=train_ratio, seed=seed)
+                data_path=data_path,
+                max_depth=max_depth,
+                split=split,
+                train_ratio=train_ratio,
+                seed=seed,
+            )
 
         self.set_seed(seed)
 
         self.max_selection_size = self.recipe_book.max_recipe_size
         self.max_mix_steps = max(max_mix_steps or max_depth, max_depth)
-        self.max_steps = self.max_selection_size*self.max_mix_steps
+        self.max_steps = self.max_selection_size * self.max_mix_steps
 
         self.sample_depth = max_depth
 
@@ -78,12 +84,18 @@ class WordCraftBaseEnv(gym.Env):
         obs = self.reset()
         num_entities = len(self.recipe_book.entities)
         dspaces = {
-            'goal_index': gym.spaces.MultiDiscrete([num_entities]),
-            'table_index': gym.spaces.MultiDiscrete(self.max_table_size*[num_entities]),
-            'selection_index': gym.spaces.MultiDiscrete(self.max_selection_size*[num_entities]),
+            "goal_index": gym.spaces.MultiDiscrete([num_entities]),
+            "table_index": gym.spaces.MultiDiscrete(
+                self.max_table_size * [num_entities]
+            ),
+            "selection_index": gym.spaces.MultiDiscrete(
+                self.max_selection_size * [num_entities]
+            ),
         }
         self.observation_space = gym.spaces.Dict(dspaces)
-        self.action_space = gym.spaces.Discrete(self.max_table_size) # Actions correspond to choosing an entity in a table position
+        self.action_space = gym.spaces.Discrete(
+            self.max_table_size
+        )  # Actions correspond to choosing an entity in a table position
 
     def reset(self):
         self.episode_step = 0
@@ -93,16 +105,18 @@ class WordCraftBaseEnv(gym.Env):
 
         self.task = self.recipe_book.sample_task(depth=self.sample_depth)
         print("Sampled task", self.task)
-        self.distractors = self.recipe_book.sample_distractors(self.task, self.num_distractors, uniform=self.uniform_distractors)
+        self.distractors = self.recipe_book.sample_distractors(
+            self.task, self.num_distractors, uniform=self.uniform_distractors
+        )
         self._reset_selection()
         self._reset_table()
         self._reset_history()
 
         return self._get_observation()
 
-    def eval(self, split='test'):
+    def eval(self, split="test"):
         self.eval_mode = True
-        self.recipe_book.test_mode = (split == 'test')
+        self.recipe_book.test_mode = split == "test"
 
     def train(self):
         self.eval_mode = False
@@ -128,13 +142,14 @@ class WordCraftBaseEnv(gym.Env):
         self.table_index = -np.ones(self.max_table_size, dtype=int)
 
         num_start_items = len(self.table)
-        self.table_index[:num_start_items] = \
-            np.array([self.recipe_book.entity2index[e] for e in self.table], dtype=int)
+        self.table_index[:num_start_items] = np.array(
+            [self.recipe_book.entity2index[e] for e in self.table], dtype=int
+        )
 
     def _reset_selection(self):
         self.selection = []
         self.selection_index = -np.ones(self.max_selection_size, dtype=int)
-        
+
     def _reset_history(self):
         self.subgoal_history = set()
 
@@ -144,14 +159,14 @@ class WordCraftBaseEnv(gym.Env):
         since torchbeast stores actions in a shared_memory tensor shared among actor processes
         """
         return {
-            'goal_index': [self.recipe_book.entity2index[self.task.goal]],
-            'table_index': self.table_index,
-            'selection_index': self.selection_index,
+            "goal_index": [self.recipe_book.entity2index[self.task.goal]],
+            "table_index": self.table_index,
+            "selection_index": self.selection_index,
         }
 
     def step(self, action):
         reward = 0
-        if self.done: # no-op if env is done
+        if self.done:  # no-op if env is done
             return self._get_observation(), reward, self.done, {}
 
         # Handle invalid actions
@@ -188,7 +203,11 @@ class WordCraftBaseEnv(gym.Env):
                 reward = 0
                 if result not in self.subgoal_history:
                     self.subgoal_history.add(result)
-                    reward = SUBGOAL_REWARD if self.subgoal_rewards and not self.eval_mode else 0
+                    reward = (
+                        SUBGOAL_REWARD
+                        if self.subgoal_rewards and not self.eval_mode
+                        else 0
+                    )
             else:
                 reward = IRRELEVANT_RECIPE_PENALTY if not self.eval_mode else 0
             self.episode_reward += reward
@@ -203,14 +222,17 @@ class WordCraftBaseEnv(gym.Env):
             self._reset_selection()
 
         self.episode_step += 1
-        if self.episode_mix_steps >= self.max_mix_steps or self.episode_step >= self.max_steps:
+        if (
+            self.episode_mix_steps >= self.max_mix_steps
+            or self.episode_step >= self.max_steps
+        ):
             self.done = True
 
         obs = self._get_observation()
 
         return obs, reward, self.done, {}
 
-    def _display_ascii(self, mode='human'):
+    def _display_ascii(self, mode="human"):
         """
         Render the env state as ascii:
 
@@ -224,28 +246,29 @@ class WordCraftBaseEnv(gym.Env):
 
         Subgoal rewards: 0
         """
-        goal_str = f'Combine the ingredients to make *{self.task.goal}*'
-        if mode == 'human':
+        goal_str = f"Combine the ingredients to make *{self.task.goal}*"
+        if mode == "human":
             table_str = f"{', '.join([f'{i+1}:{e}' for i, e in enumerate(self.table)])}"
         else:
             table_str = f"{', '.join(self.table)}"
         selection_str = f"(on hand): {', '.join(self.selection)}"
-        hr = ''.join(['-']*50)
+        hr = "".join(["-"] * 50)
 
         # output = f'\n{goal_str}\n\n{hr}\n{table_str}\n{hr}\n\n{selection_str}\n\nSubgoal rewards: {self.episode_reward}\n'
-        output = f'\n{goal_str}\n\n{hr}\n{table_str}\n{hr}\n\n{selection_str}\n\n'
+        output = f"\n{goal_str}\n\n{hr}\n{table_str}\n{hr}\n\n{selection_str}\n\n"
 
         return output
 
-    def render(self, mode='human'):
+    def render(self, mode="human"):
         return self._display_ascii(mode)
 
+
 gym.envs.registration.register(
-    id='wordcraft-multistep-goal-v0',
+    id="wordcraft-multistep-goal-v0",
     entry_point=f"{__name__}:WordCraftEnv",
 )
 
-'''
+"""
 if __name__ == "__main__":
     env = WordCraftEnv(max_depth=2, num_distractors=2)
     env.reset()
@@ -259,29 +282,32 @@ if __name__ == "__main__":
         env.render()
         if done:
             env.reset()
-'''
+"""
+
 
 class WordCraftEnv(BaseEnv):
     def __init__(self, config: Dict):
         """Initialize WordCraft environment
-        
+
         Args:
             config: Configuration dictionary
         """
         super().__init__(config)
-        self.max_steps = config.get('max_steps', 100)
+        self.max_steps = config.get("max_steps", 100)
         self._observation = None
         self.steps = 0
-        self.id = config.get('problem_id', 0)
+        self.id = config.get("problem_id", 0)
         self.category = "wordcraft"
-        self.env = WordCraftBaseEnv(max_depth=2, num_distractors=0, seed=self.id, max_mix_steps=4)
+        self.env = WordCraftBaseEnv(
+            max_depth=2, num_distractors=0, seed=self.id, max_mix_steps=4
+        )
         # If we are in test, need to set the test mode
-        if config.get('split', 'train') == 'test':
-            self.env.eval('test')
-        
+        if config.get("split", "train") == "test":
+            self.env.eval("test")
+
     def clean_obs(self, obs: str) -> str:
         """Clean the observation
-        
+
         Args:
             obs: Observation to clean
         """
@@ -298,28 +324,28 @@ class WordCraftEnv(BaseEnv):
         # Add a bit saying "ingredients available"
         obs = "Ingredients available: " + obs
         return obs
-        
+
     def reset(self) -> Tuple[Observation, Dict]:
         """Reset environment to initial state
-        
+
         Returns:
             Tuple[Observation, Dict]: Initial observation and info
         """
         x = self.env.reset()
         obs = self.env.render()
         obs = obs.strip()
-        self.goal = obs.split('\n')[0]
+        self.goal = obs.split("\n")[0]
         self.goal += ". You may only combine two entities at a time. You can take only two steps to make the final product."
         obs = self.clean_obs(obs)
         return obs, {}
-    
+
     def step(self, action: Action) -> Tuple[Observation, float, bool, bool, Dict]:
         """
         Take a step in the environment
         """
-        
+
         action_list = []
-        valid_options = [f'{e}' for e in self.env.table]
+        valid_options = [f"{e}" for e in self.env.table]
         for option in valid_options:
             if option in action:
                 # Get the index of the option
@@ -335,15 +361,15 @@ class WordCraftEnv(BaseEnv):
         obs = self.env.render()
         obs = self.clean_obs(obs)
         return obs, toreturn[1], toreturn[2], toreturn[3]
-    
+
     def get_action_space(self) -> Dict:
         """Get JSON schema describing valid action format
-        
+
         Returns:
             JSON schema for text commands
         """
         # Output strings with the names of the two entities we would like to combine
         return {
             "type": "string",
-            "description": "Output strings with the names of the two entities we would like to combine in this step."
+            "description": "Output strings with the names of the two entities we would like to combine in this step.",
         }

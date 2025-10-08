@@ -113,9 +113,9 @@ run_agent() {
     local trial_log_name=$4
     local start_task=$5
     local sleep_duration=${6:-5}
-    
+
     echo "Starting trial $trial for $env"
-    
+
     # Echo the command that would be run
     python scripts/run_agent.py \
       --llm $LLM \
@@ -129,12 +129,12 @@ run_agent() {
       --log_name $trial_log_name \
       --split train \
       --store_episodes
-    
+
     # Capture process ID and add to array
     PIDS+=($!)
-    
+
     echo "Trial $trial started with PID ${PIDS[-1]}"
-    
+
     sleep "$sleep_duration"
 }
 
@@ -148,7 +148,7 @@ mkdir -p "$CURRENT_DIR/data/training/${ENV_TYPE}/${LOG_NAME}"
 for trial in $(seq 1 $NUM_TRIALS); do
   # Create data directory for trial if needed
   trial_data_dir="$CURRENT_DIR/data/training/${ENV_TYPE}/${LOG_NAME}/trial_${trial}"
-  
+
   if [ "$COPY_DATA" = true ]; then
     echo "Creating directory for trial $trial: $trial_data_dir"
     if [ -n "$SOURCE_DATA_PATH" ]; then
@@ -157,23 +157,23 @@ for trial in $(seq 1 $NUM_TRIALS); do
       mkdir -p "$trial_data_dir"
     fi
   fi
-  
+
   # Set trial DB path
   TRIAL_DB_PATH="${trial_data_dir}/learning.db"
-  
+
   # Set log name
   if [ -z "$LOG_NAME" ]; then
     TRIAL_LOG_NAME="${CONFIG_PARTS[0]}_${CONFIG_PARTS[1]}_${CONFIG_PARTS[2]}_${CONFIG_PARTS[3]}_trial_${trial}"
   else
     TRIAL_LOG_NAME="${LOG_NAME}_trial_${trial}"
   fi
-  
+
   # Run agent with appropriate parameters
   run_agent "$ENV_TYPE" "$trial" "$TRIAL_DB_PATH" "$TRIAL_LOG_NAME" "$START_TASK" "5"
-  
+
   # Track parallel jobs
   ((JOB_COUNT++))
-  
+
   # Wait if we've reached the parallel limit
   if [ "$JOB_COUNT" -ge "$PARALLEL" ]; then
     wait "${PIDS[-$PARALLEL]}"

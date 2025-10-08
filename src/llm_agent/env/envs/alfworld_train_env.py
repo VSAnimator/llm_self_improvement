@@ -1,14 +1,20 @@
 from typing import Dict, List, Optional, Tuple
-import alfworld
-from alfworld.agents.utils.misc import add_task_to_grammar
-from alfworld.agents.environment.alfred_tw_env import AlfredExpert, AlfredDemangler, AlfredExpertType
 
-from llm_agent.env.base_env import BaseEnv, Observation, Action
+import alfworld
+from alfworld.agents.environment.alfred_tw_env import (
+    AlfredDemangler,
+    AlfredExpert,
+    AlfredExpertType,
+)
+from alfworld.agents.utils.misc import add_task_to_grammar
+
+from llm_agent.env.base_env import Action, BaseEnv, Observation
 from llm_agent.starter_data.example_files.alfworld_examples import get_task_type
+
 
 class AlfWorldTrainEnv(BaseEnv):
     """Environment wrapper for ALFWorld text-based environments"""
-    
+
     def __init__(self, config: Dict):
         """Initialize ALFWorld environment
 
@@ -18,75 +24,83 @@ class AlfWorldTrainEnv(BaseEnv):
                 - max_steps: Maximum steps per episode (default: 50)
         """
         super().__init__(config)
-        
-        self.max_steps = config.get('max_steps', 50)
-        
+
+        self.max_steps = config.get("max_steps", 50)
+
         # Initialize alfworld environment
-        split = config['split']
-        self.env = getattr(alfworld.agents.environment, config["type"])(config, train_eval=split)
+        split = config["split"]
+        self.env = getattr(alfworld.agents.environment, config["type"])(
+            config, train_eval=split
+        )
         self.env = self.env.init_env(batch_size=1)
-        
+
         # Track current state
         self._observation = None
         self.steps = 0
         self.id = None
 
         # Seed the environment
-        self.env.seed(config.get('problem_id'))
-        
+        self.env.seed(config.get("problem_id"))
+
     def reset(self) -> Observation:
         """Reset environment to initial state
-        
+
         Returns:
             Initial observation
         """
         obs, info = self.env.reset()
         obs = obs[0]
         # Get goal out of obs
-        self.goal = "Your task is to: " + obs.split('Your task is to: ')[1].split('___')[0]
+        self.goal = (
+            "Your task is to: " + obs.split("Your task is to: ")[1].split("___")[0]
+        )
         self.category = get_task_type(self.goal)
-        obs = obs.split("-= Welcome to TextWorld, ALFRED! =-")[1].split("Your task is to: ")[0].strip()
+        obs = (
+            obs.split("-= Welcome to TextWorld, ALFRED! =-")[1]
+            .split("Your task is to: ")[0]
+            .strip()
+        )
         self._observation = obs
         self.steps = 0
-        self.id = info['extra.gamefile'][0] # Set ID from info
+        self.id = info["extra.gamefile"][0]  # Set ID from info
         return obs, info
-        
+
     def step(self, action: Action) -> Tuple[Observation, float, bool, Dict]:
         """Take action in environment
-        
+
         Args:
             action: Text action to take
-            
+
         Returns:
             Tuple containing:
             - Next observation (observation text)
-            - Reward (1 for success, 0 otherwise) 
+            - Reward (1 for success, 0 otherwise)
             - Done flag
             - Info dict
         """
         self.steps += 1
 
         action = action.replace(" in ", " in/on ").replace(" on ", " in/on ")
-        
+
         obs, reward, done, info = self.env.step([action])
         obs = obs[0]
         reward = reward[0]
         done = done[0]
-        #print(reward, done)
+        # print(reward, done)
         # Clean the obs following prior work
-        if obs.startswith('You arrive at '):
-            obs = obs[obs.find('. ')+2:]
+        if obs.startswith("You arrive at "):
+            obs = obs[obs.find(". ") + 2 :]
         self._observation = obs
-        
+
         # End episode if max steps reached
         if self.steps >= self.max_steps:
             done = True
-            
+
         return obs, reward, done, info
-        
+
     def get_action_space(self) -> Dict:
         """Get JSON schema describing valid action format
-        
+
         Returns:
             JSON schema for text actions
         """
@@ -106,27 +120,29 @@ class AlfWorldTrainEnv(BaseEnv):
                 Replace "target" with the desired location/object.
                 Replace "object" with the desired object.
                 Neither the word "target" nor "object" should be in the action command.
-            """.strip("\n")
+            """.strip(
+                "\n"
+            ),
         }
-        
+
     def get_available_actions(self, info: Optional[Dict] = None) -> List[Action]:
         """Get list of available actions in current/given state
-        
+
         Args:
             state: State to get actions for (uses current state if None)
-            
+
         Returns:
             List of valid actions in current state
         """
         if info is None:
             return []
-            
+
         # Get admissible commands from env info
         return info["admissible_commands"]
-        
+
     def render(self) -> str:
         """Render environment state as text
-        
+
         Returns:
             Text description of current state
         """

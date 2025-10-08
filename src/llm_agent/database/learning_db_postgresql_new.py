@@ -1,7 +1,8 @@
-import uuid
 import json
+import uuid
+from typing import Any, Dict, List, Optional, Union
+
 import numpy as np
-from typing import List, Dict, Union, Optional, Any
 import psycopg2
 from sentence_transformers import SentenceTransformer
 
@@ -9,13 +10,14 @@ from sentence_transformers import SentenceTransformer
 class LearningDB:
     """
     PostgreSQL implementation of the Learning Database with pgvector support.
-    
+
     This implementation provides:
     - Vector similarity search using pgvector extension
     - ACID compliance with transaction support
     - Better performance for large datasets
     - Native vector operations for efficient similarity search
     """
+
     def __init__(
         self,
         db_path: str = "~/.learning_db",
@@ -23,7 +25,7 @@ class LearningDB:
     ):
         """
         Initialize PostgreSQL connection and embedding model.
-        
+
         Args:
             db_path: PostgreSQL host path
             db_name: Database name
@@ -46,7 +48,7 @@ class LearningDB:
     def _create_tables_if_not_exist(self):
         """
         Create trajectories and states tables with vector columns if they don't exist.
-        
+
         This method:
         1. Enables the pgvector extension if not already enabled
         2. Creates the trajectories table with vector columns for semantic search
@@ -129,7 +131,7 @@ class LearningDB:
     ):
         """
         Store a complete episode with its trajectory and states.
-        
+
         Args:
             environment_id: Identifier for the environment
             goal: The goal of the episode
@@ -161,10 +163,10 @@ class LearningDB:
     def _encode_text(self, text: str) -> List[float]:
         """
         Generate a vector embedding for the given text using SentenceTransformer.
-        
+
         Args:
             text: Text to encode
-            
+
         Returns:
             List of floats representing the embedding vector
         """
@@ -188,10 +190,10 @@ class LearningDB:
     ):
         """
         Insert trajectory data into the trajectories table with vector embeddings.
-        
+
         Creates vector embeddings for semantic fields (goal, category, plan, etc.)
         to enable efficient similarity search using pgvector.
-        
+
         Args:
             trajectory_id: UUID for the trajectory
             environment_id: Identifier for the environment
@@ -261,10 +263,10 @@ class LearningDB:
     ):
         """
         Insert state data into the states table with vector embeddings.
-        
+
         Creates vector embeddings for state fields (observation, reasoning, action)
         to enable efficient similarity search at the state level.
-        
+
         Args:
             trajectory_id: UUID for the parent trajectory
             observations: List of observations
@@ -321,17 +323,17 @@ class LearningDB:
     ) -> tuple[List[str], List[float]]:
         """
         Compute top-k nearest entries based on average cosine distance across fields.
-        
+
         Uses pgvector's vector operators to efficiently find similar entries
         by computing the average distance across multiple vector fields.
-        
+
         Args:
             table_name: Name of the table ('trajectories' or 'states')
             field_names: Fields to compute similarity on
             query_texts: Query texts to generate embeddings
             n_results: Number of results to return
             filter: Additional filter conditions
-            
+
         Returns:
             Tuple of (list of IDs, list of average distances)
         """
@@ -371,15 +373,15 @@ class LearningDB:
     ) -> tuple[List[str], List[float]]:
         """
         Get top-k IDs based on key type and query text.
-        
+
         Supports searching by trajectory fields or state fields.
-        
+
         Args:
             key_type: Type(s) of key (e.g., "goal", "observation")
             key: Query text(s) to search for
             n_results: Number of results to return
             filter: Additional filter conditions
-            
+
         Returns:
             Tuple of (list of IDs, list of average distances)
         """
@@ -400,15 +402,15 @@ class LearningDB:
     ) -> Dict:
         """
         Format a trajectory entry for return, applying windowing.
-        
+
         Converts JSON strings back to Python objects and applies
         windowing to limit the sequence length.
-        
+
         Args:
             entry: Dictionary containing trajectory data
             window_start: Start index for windowing
             window_end: End index for windowing
-            
+
         Returns:
             Formatted dictionary with parsed JSON fields
         """
@@ -429,14 +431,14 @@ class LearningDB:
     ) -> tuple[List[Dict], List[Dict]]:
         """
         Retrieve trajectories matching an exact environment ID.
-        
+
         Performs a direct lookup by environment_id without vector similarity.
-        
+
         Args:
             env_id: Environment ID to match
             n_results: Maximum number of results to return
             outcome_filter: Filter by success/failure
-            
+
         Returns:
             Tuple of (successful entries, failed entries)
         """
@@ -476,7 +478,7 @@ class LearningDB:
     ) -> tuple[List[Dict], List[Dict]]:
         """
         Retrieve similar trajectory entries based on key type and query.
-        
+
         This is the main retrieval method that supports:
         - Exact matching by environment_id
         - Vector similarity search on trajectory fields
@@ -484,7 +486,7 @@ class LearningDB:
         - Hybrid search across both trajectory and state fields
         - Filtering by success/failure
         - Windowing around critical states
-        
+
         Args:
             key_type: Type(s) of key (e.g., "goal", "observation")
             key: Query text(s) to search for
@@ -492,7 +494,7 @@ class LearningDB:
             outcome: Filter by "winning" or "success" if specified
             window: Window size around critical state for state-based searches
             filtered_environment_id: Optional environment ID to filter by
-            
+
         Returns:
             Tuple of (successful entries, failed entries)
         """
