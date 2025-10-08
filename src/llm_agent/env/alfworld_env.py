@@ -10,9 +10,9 @@ from alfworld.agents.environment.alfred_tw_env import (
     AlfredExpertType,
 )
 from alfworld.agents.utils.misc import add_task_to_grammar
+from llm_agent.starter_data.example_files.alfworld_examples import get_task_type
 
 from llm_agent.env.base_env import Action, BaseEnv, Observation
-from llm_agent.starter_data.example_files.alfworld_examples import get_task_type
 
 
 class AlfWorldEnv(BaseEnv):
