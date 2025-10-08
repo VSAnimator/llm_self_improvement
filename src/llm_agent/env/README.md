@@ -97,7 +97,7 @@ def current_observation(self) -> Observation:
 
 To create a new environment, follow these steps:
 
-1. **Create a new Python file** in the `envs` directory.
+1. **Create a new Python file** in the `env` directory.
 
 2. **Import the base classes**:
    ```python

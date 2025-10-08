@@ -142,23 +142,23 @@ use_gym = False
 def env(config):
     if config["benchmark"]["name"] == "alfworld":
         if config["benchmark"]["split"] == "train":
-            from llm_agent.env.envs.alfworld_train_env import AlfWorldTrainEnv
+            from llm_agent.env.alfworld_train_env import AlfWorldTrainEnv
 
             return AlfWorldTrainEnv(config["benchmark"])
         else:
-            from llm_agent.env.envs.alfworld_env import AlfWorldEnv
+            from llm_agent.env.alfworld_env import AlfWorldEnv
 
             return AlfWorldEnv(config["benchmark"])
     elif config["benchmark"]["name"] == "intercode_sql":
-        from llm_agent.env.envs.intercode_sql_env import InterCodeSqlEnv
+        from llm_agent.env.intercode_sql_env import InterCodeSqlEnv
 
         return InterCodeSqlEnv(config["benchmark"])
     elif config["benchmark"]["name"] == "wordcraft":
-        from llm_agent.env.envs.wordcraft import WordCraftEnv
+        from llm_agent.env.wordcraft import WordCraftEnv
 
         return WordCraftEnv(config["benchmark"])
     elif config["benchmark"]["name"] == "wordcraft_test":
-        from llm_agent.env.envs.wordcraft import WordCraftEnv
+        from llm_agent.env.wordcraft import WordCraftEnv
 
         return WordCraftEnv(config["benchmark"])
     else:
