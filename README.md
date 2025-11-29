@@ -111,7 +111,7 @@ python src/llm_agent/database/ingest_wordcraft_logs.py
 - [Alfworld](https://github.com/alfworld/alfworld) (flag --env alfworld): text-based kitchen simulator. Download data:
     ```bash
     uv pip install -vvv "textworld[pddl]>=1.6.1"
-    uv pip install alfworld==0.3.5
+    uv pip install alfworld==0.4.2
     export ALFWORLD_DATA=./data/alfworld
     alfworld-download
     ```
