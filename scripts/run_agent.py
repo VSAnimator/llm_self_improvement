@@ -274,18 +274,21 @@ def main():
             return
         await run_env(agent, environment, log_file, args.num_attempts)
 
-    def worker(task_queue, args):
-        """Worker function that fetches tasks from the queue and runs them sequentially."""
-        while not task_queue.empty():
+    async def worker_async(task_queue, args):
+        """Async worker that fetches tasks from the queue and runs them sequentially."""
+        while True:
             try:
-                i = task_queue.get_nowait()  # Non-blocking get to prevent hanging
+                i = task_queue.get_nowait()
             except multiprocessing.queues.Empty:
                 break
             try:
-                asyncio.run(process_task(i, args))  # Run the async function
+                await process_task(i, args)
             except Exception as e:
                 print(f"Error processing task {i}: {e}")
                 print(traceback.format_exc())
+
+    def worker(task_queue, args):
+        asyncio.run(worker_async(task_queue, args))
 
     def monitor_progress(task_queue, total_tasks):
         """Thread function to update tqdm every second."""
