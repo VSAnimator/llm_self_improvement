@@ -48,11 +48,11 @@ The repository is organized as follows:
 
 ## Current Experimental Usage
 
-### (Optional) Step 1: Ingest Data into Database
+### (Optional) Step 0: Choose/create starter databases
 
-The ```data/starter``` folder currently holds starter databases for alfworld and wordcraft
+The ```data/starter``` folder currently holds starter databases for alfworld and wordcraft. Our algorithm does not require a starter database, though a small human-provided set of in-context examples can bootstrap learning.
 
-### Step 2: Self-generate Database from Train Environments
+### Step 1: Self-generate Database from Train Environments
 
 Run the train_alfworld.sh script to generate a database of in-context examples:
 
@@ -60,7 +60,7 @@ Run the train_alfworld.sh script to generate a database of in-context examples:
 ./bash-scripts/train/train_unified.sh --config default:alfworld:rap_flex: --llm gpt-4o-mini
 ```
 
-### Step 3: Run on Test Environments with Generated Database
+### Step 2: Run on Test Environments with Generated Database
 
 ```bash
 ./bash-scripts/test/test_unified.sh --config default:alfworld:rap_flex: --llm gpt-4o-mini
@@ -91,17 +91,11 @@ python scripts/run_agent.py --llm openai/gpt-4o-mini --agent_type rap --db_path 
 
 ### Database Ingestion Scripts
 
-The repository includes scripts for ingesting data into the database:
+The repository includes an example script for ingesting data into the database:
 
 ```bash
 # For ALFWorld
 python src/llm_agent/database/ingest_alfworld.py
-
-# For WebShop
-python src/llm_agent/database/ingest_webshop.py
-
-# For WordCraft
-python src/llm_agent/database/ingest_wordcraft_logs.py
 ```
 
 ## Options
@@ -127,15 +121,6 @@ python src/llm_agent/database/ingest_wordcraft_logs.py
 For API LLMs, we support arbitrary LLMs that are supported by LiteLLM. Make sure to set the API key in the appropriate environment variable.
 
 For local LLMs, set up [VLLM](https://github.com/vllm-project/vllm), and point the script to the port via the flag --vllm_port.
-
-### Data Sources
-
-Many of the included agent algorithms leverage a database of in-context examples to learn. You have the option to start with an empty database or load a pre-existing database. The data sources for the included environments are:
-
-- Alfworld: ```python src/llm_agent/database/ingest_alfworld.py```
-- WebShop: ```python src/llm_agent/database/ingest_webshop.py```
-- Intercode-SQL: ```python src/llm_agent/database/ingest_webshop.py```
-- WordCraft: ```python src/llm_agent/database/ingest_wordcraft.py```
 
 ### Agent Algorithms
 See [`agent`](https://github.com/VSAnimator/llm_self_improvement/tree/main/src/llm_agent/agent) for more details.
